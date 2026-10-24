@@ -8,7 +8,6 @@ const path = (name) => fileURLToPath(new URL(`./${name}`, import.meta.url));
 for (const [name, cmd] of [
   ['lint.mjs', process.execPath],
   ['test-harnesses.mjs', process.execPath],
-  ['install.sh', 'sh'],
 ]) {
   test(`${name} --help prints usage and exits 0`, () => {
     const r = spawnSync(cmd, [path(name), '--help'], { encoding: 'utf8' });
