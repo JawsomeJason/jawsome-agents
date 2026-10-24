@@ -1,0 +1,39 @@
+{
+  "name": "smart-usage",
+  "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jason Featheringham",
+    "email": "jason@jawsomejason.com"
+  },
+  "license": "MIT",
+  "keywords": ["claude-code-only"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "mode": {
+      "type": "string",
+      "title": "Auto effort mode",
+      "description": "auto applies the picked effort to the turn; suggest shows a band to apply it; off does nothing.",
+      "default": "auto",
+      "options": ["auto", "suggest", "off"]
+    },
+    "threshold": {
+      "type": "number",
+      "title": "Auto effort threshold",
+      "description": "Minimum probability for the picked effort before it is applied or suggested (0 to 1).",
+      "default": 0.6
+    },
+    "skipUnder": {
+      "type": "number",
+      "title": "Skip follow-ups shorter than (chars)",
+      "description": "A follow-up prompt shorter than this keeps the current effort without a new pick. 0 picks every time.",
+      "default": 30
+    },
+    "tiersFile": {
+      "type": "string",
+      "title": "Tiers file",
+      "description": "Absolute path to a JSON file shaped like the object in hooks/tiers.ts. Empty uses the plugin's own tiers.ts.",
+      "default": ""
+    }
+  }
+}

@@ -6,7 +6,8 @@ These rules apply to every agent and person who edits this repo, in any harness.
 
 - `plugins/<name>/skills/<skill>/` holds each skill: `SKILL.md`, plus optional `references/`, `scripts/` and `assets/`.
 - `plugins/<name>/.claude-plugin/plugin.json` and the root `.claude-plugin/marketplace.json` are thin install wrappers. They live outside `skills/`, and skills never depend on them.
-- `scripts/` holds repo tooling: the lint with its rules file and fixtures, `install.sh`, and `test-harnesses.mjs`, each with its tests.
+- `scripts/` holds repo tooling: the lint with its rules file and fixtures, and `test-harnesses.mjs`, each with its tests.
+- Users of other harnesses install portable skills with the skills CLI, which reads `.claude-plugin/marketplace.json`. Each portable plugin's entry lists its skills under `skills`, so the CLI finds and groups them from the manifest. Only a search that finds nothing, or a run with `--full-depth`, walks the whole tree, where the lint fixtures' `SKILL.md` files would show up too.
 
 ## Skills follow the Agent Skills spec only
 
@@ -31,6 +32,10 @@ Skills must keep working as harnesses, models, vendors and runtimes change aroun
 - **Time.** Prose carries no time-relative words and no absolute dates. Words like `currently`, `latest` and `recently` go stale. Dates belong in data files.
 - **Reasons.** Every rule states why it exists. A rule with its reason still generalizes after the tools change.
 - **Identity.** No person, company, domain or private path appears anywhere, except the authorship fields in the install manifests and `LICENSE`, which must name the author. Skills work for any user at any company.
+
+## Claude Code-only plugins
+
+A plugin whose `plugin.json` lists the `claude-code-only` keyword is built for Claude Code alone, as mods and hooks. The Durability rules keep skills portable, and such a plugin has nothing to port, so the lint skips the rules in `claudeOnlyExempt` for it, and it may name what Claude Code offers and the services it calls. Identity rules still apply. A `SKILL.md` inside it must set `metadata.internal: true`, because the skills CLI always searches each listed plugin's `skills/` folder and skips only internal skills; without the flag, a skill that runs only in Claude Code would install into harnesses that can't run it. A plugin name can't start with `claude-`, since Claude Code reserves that prefix for its vendor's own plugins, so the keyword carries the meaning instead of the name.
 
 ## Lint
 
