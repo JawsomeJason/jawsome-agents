@@ -212,9 +212,12 @@ function lintSkill(skillDir, report, { claudeOnly = false } = {}) {
   });
 
   const frontmatter = text.slice(0, text.indexOf('\n---', 3));
-  // The skills CLI installs every SKILL.md it reaches in a listed plugin unless the skill is internal.
-  if (claudeOnly && !/^\s+internal:\s*true\s*$/m.test(frontmatter)) {
-    report(skillFile, 1, 'claude-only-skill', 'a skill in a Claude Code-only plugin needs metadata.internal: true, so cross-harness installers skip it');
+  // The skills CLI installs every SKILL.md it reaches in a listed plugin unless the skill is internal, so a Claude
+  // Code-only skill either hides from it or tells every reader up front which harness it needs.
+  const internal = /^\s+internal:\s*true\s*$/m.test(frontmatter);
+  const labeled = /\bClaude Code\b/.test(fm?.fields.get('compatibility')?.value ?? '') && (fm?.fields.get('description')?.value ?? '').startsWith('Claude Code only:');
+  if (claudeOnly && !internal && !labeled) {
+    report(skillFile, 1, 'claude-only-skill', 'a skill in a Claude Code-only plugin needs metadata.internal: true, or a compatibility naming Claude Code and a description starting "Claude Code only:"');
   }
   // Standards generated for one repo describe that repo, so they may name the services it runs on.
   const generated = /^\s+generator:\s*standards\s*$/m.test(frontmatter);

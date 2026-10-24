@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-# Run: bats plugins/smart-usage/tests/require-agent-tier.bats
+# Run: bats plugins/smart-usage-claude/tests/require-agent-tier.bats
 
 HOOK="$BATS_TEST_DIRNAME/../hooks/require-agent-tier.sh"
 

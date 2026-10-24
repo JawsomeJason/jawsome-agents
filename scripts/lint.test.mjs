@@ -50,7 +50,7 @@ const expected = {
   'claude-only-skill': 'claude-only-skill',
 };
 
-const passing = ['clean', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete', 'claude-only-allowed'];
+const passing = ['clean', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete', 'claude-only-allowed', 'claude-only-labeled'];
 
 test('every fixture directory has an expectation', () => {
   const dirs = readdirSync(fileURLToPath(new URL('./lint-fixtures', import.meta.url))).filter((d) => !passing.includes(d));
@@ -146,6 +146,25 @@ test('a Claude Code-only plugin may name its harness, models and vendors, and on
     cpSync(fixture('claude-only-allowed'), copy, { recursive: true });
     writeFileSync(join(copy, 'plugins/cc-demo/.claude-plugin/plugin.json'), '{"name":"cc-demo","version":"0.0.0"}');
     assert.deepEqual([...new Set(lint(copy).map((e) => e.rule))].sort(), ['harness-tool', 'model-name', 'vendor-name']);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
+});
+
+test('a skill in a Claude Code-only plugin passes as internal or fully labeled, and fails unmarked or half labeled', () => {
+  assert.deepEqual(lint(fixture('claude-only-labeled')), []);
+  const copy = mkdtempSync(join(tmpdir(), 'claude-only-'));
+  const skill = join(copy, 'plugins/cc-demo/skills/demo/SKILL.md');
+  try {
+    cpSync(fixture('claude-only-labeled'), copy, { recursive: true });
+    for (const frontmatter of [
+      'description: Unmarked fixture skill. Use only in lint tests.',
+      'description: "Claude Code only: fixture skill with no compatibility. Use only in lint tests."',
+      'description: "Claude Code only: fixture skill on another harness. Use only in lint tests."\ncompatibility: Requires Node.js',
+    ]) {
+      writeFileSync(skill, `---\nname: demo\n${frontmatter}\n---\n\nAsk the user before you edit.\n`);
+      assert.deepEqual(lint(copy).map((e) => e.rule), ['claude-only-skill'], frontmatter);
+    }
   } finally {
     rmSync(copy, { recursive: true, force: true });
   }

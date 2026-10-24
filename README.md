@@ -7,7 +7,7 @@ Agent skills that run in any harness that reads the [Agent Skills spec](https://
 | Plugin | What it does |
 | --- | --- |
 | `standards` | Mines a repo's review history into coding standards that agents follow while they write code there, each with its reason and the review comments behind it, and prunes the rules that don't change what agents write. |
-| `smart-usage` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/smart-usage/README.md). |
+| `smart-usage-claude` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/smart-usage-claude/README.md). |
 
 Invoke `standards` as `/standards [command] [scope]`:
 
@@ -35,7 +35,7 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 ```text
 /plugin marketplace add JawsomeJason/jawsome-agents
 /plugin install standards@jawsome-agents
-/plugin install smart-usage@jawsome-agents
+/plugin install smart-usage-claude@jawsome-agents
 ```
 
 ### Every other harness

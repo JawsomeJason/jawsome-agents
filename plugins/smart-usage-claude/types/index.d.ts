@@ -4,6 +4,6 @@ export type Suggestion = { level: Level; probability: number; from: Level }
 
 declare module 'claude-code' {
   interface PluginState {
-    'smart-usage': { suggestion: Suggestion | null }
+    'smart-usage-claude': { suggestion: Suggestion | null }
   }
 }

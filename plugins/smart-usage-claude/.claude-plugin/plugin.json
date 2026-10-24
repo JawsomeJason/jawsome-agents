@@ -1,5 +1,5 @@
 {
-  "name": "smart-usage",
+  "name": "smart-usage-claude",
   "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
   "version": "0.1.0",
   "author": {
