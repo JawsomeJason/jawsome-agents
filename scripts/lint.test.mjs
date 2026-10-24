@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { lint } from './lint.mjs';
@@ -45,9 +47,11 @@ const expected = {
   'workflow-pin': 'workflow-pin',
   'manifest-sync': 'manifest-sync',
   'generated-section': 'generated-section',
+  'claude-only-skill': 'claude-only-skill',
+  'claude-only-name': 'claude-only-name',
 };
 
-const passing = ['clean', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete'];
+const passing = ['clean', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete', 'claude-only-allowed', 'claude-only-labeled'];
 
 test('every fixture directory has an expectation', () => {
   const dirs = readdirSync(fileURLToPath(new URL('./lint-fixtures', import.meta.url))).filter((d) => !passing.includes(d));
@@ -134,4 +138,49 @@ test('workflows pin every action by SHA and the runner image', () => {
 
 test('a generated § file that follows the template passes the section check', () => {
   assert.deepEqual(lint(fixture('generated-section-complete')), []);
+});
+
+test('a Claude Code-only plugin may name its harness, models and vendors, and only its name prefix grants that', () => {
+  assert.deepEqual(lint(fixture('claude-only-allowed')), []);
+  const copy = mkdtempSync(join(tmpdir(), 'claude-only-'));
+  try {
+    cpSync(fixture('claude-only-allowed'), copy, { recursive: true });
+    renameSync(join(copy, 'plugins/claudecode-demo'), join(copy, 'plugins/demo'));
+    writeFileSync(join(copy, 'plugins/demo/.claude-plugin/plugin.json'), '{"name":"demo","version":"0.0.0"}');
+    writeFileSync(join(copy, '.claude-plugin/marketplace.json'), '{"name":"copy","owner":{"name":"Fixture"},"plugins":[{"name":"demo","source":"./plugins/demo"}]}');
+    assert.deepEqual([...new Set(lint(copy).map((e) => e.rule))].sort(), ['harness-tool', 'model-name', 'vendor-name']);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
+});
+
+test('a skill in a Claude Code-only plugin passes as internal or fully labeled, and fails unmarked or half labeled', () => {
+  assert.deepEqual(lint(fixture('claude-only-labeled')), []);
+  const copy = mkdtempSync(join(tmpdir(), 'claude-only-'));
+  const skill = join(copy, 'plugins/claudecode-demo/skills/demo/SKILL.md');
+  try {
+    cpSync(fixture('claude-only-labeled'), copy, { recursive: true });
+    for (const frontmatter of [
+      'description: Unmarked fixture skill. Use only in lint tests.',
+      'description: "Claude Code only: fixture skill with no compatibility. Use only in lint tests."',
+      'description: "Claude Code only: fixture skill on another harness. Use only in lint tests."\ncompatibility: Requires Node.js',
+    ]) {
+      writeFileSync(skill, `---\nname: demo\n${frontmatter}\n---\n\nAsk the user before you edit.\n`);
+      assert.deepEqual(lint(copy).map((e) => e.rule), ['claude-only-skill'], frontmatter);
+    }
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
+});
+
+test('hooks declared in plugin.json also need the Claude Code-only name prefix', () => {
+  const copy = mkdtempSync(join(tmpdir(), 'claude-only-name-'));
+  try {
+    cpSync(fixture('claude-only-name'), copy, { recursive: true });
+    rmSync(join(copy, 'plugins/demo/hooks'), { recursive: true });
+    writeFileSync(join(copy, 'plugins/demo/.claude-plugin/plugin.json'), '{"name":"demo","version":"0.0.0","hooks":{}}');
+    assert.deepEqual(lint(copy).map((e) => e.rule), ['claude-only-name']);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
 });

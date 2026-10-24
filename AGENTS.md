@@ -6,7 +6,8 @@ These rules apply to every agent and person who edits this repo, in any harness.
 
 - `plugins/<name>/skills/<skill>/` holds each skill: `SKILL.md`, plus optional `references/`, `scripts/` and `assets/`.
 - `plugins/<name>/.claude-plugin/plugin.json` and the root `.claude-plugin/marketplace.json` are thin install wrappers. They live outside `skills/`, and skills never depend on them.
-- `scripts/` holds repo tooling: the lint with its rules file and fixtures, `install.sh`, and `test-harnesses.mjs`, each with its tests.
+- `scripts/` holds repo tooling: the lint with its rules file and fixtures, and `test-harnesses.mjs`, each with its tests.
+- Users of other harnesses install portable skills with the skills CLI, which reads `.claude-plugin/marketplace.json`. Each portable plugin's entry lists its skills under `skills`, so the CLI finds and groups them from the manifest. Only a search that finds nothing, or a run with `--full-depth`, walks the whole tree, where the lint fixtures' `SKILL.md` files would show up too.
 
 ## Skills follow the Agent Skills spec only
 
@@ -31,6 +32,12 @@ Skills must keep working as harnesses, models, vendors and runtimes change aroun
 - **Time.** Prose carries no time-relative words and no absolute dates. Words like `currently`, `latest` and `recently` go stale. Dates belong in data files.
 - **Reasons.** Every rule states why it exists. A rule with its reason still generalizes after the tools change.
 - **Identity.** No person, company, domain or private path appears anywhere, except the authorship fields in the install manifests and `LICENSE`, which must name the author. Skills work for any user at any company.
+
+## Claude Code-only plugins
+
+A plugin named `claudecode-<name>` is built for Claude Code alone, as mods and hooks. The Durability rules keep skills portable, and such a plugin has nothing to port, so the lint skips the rules in `claudeOnlyExempt` for it, and it may name what Claude Code offers and the services it calls. Identity rules still apply. The prefix is the one marker, so a reader sees the harness in the install command, and the lint enforces it: a plugin that ships hooks, in `hooks/hooks.json` or under `hooks` in `plugin.json`, must carry it, because only Claude Code reads a plugin's hooks. Claude Code reserves the `claude-` prefix for its vendor's own plugins, hence `claudecode-`.
+
+The skills CLI always searches each listed plugin's `skills/` folder and skips only internal skills, so a `SKILL.md` inside a `claudecode-` plugin either hides from it or says up front which harness it needs. It sets `metadata.internal: true`, or it sets a `compatibility` that names Claude Code (such as `Requires Claude Code`) and a `description` that starts with `Claude Code only:`. An unmarked skill would install into harnesses that can't run it, and the lint fails it.
 
 ## Lint
 

@@ -1,6 +1,6 @@
 {
   "name": "jawsome-agents",
-  "description": "Harness-agnostic agent skills built on the Agent Skills spec",
+  "description": "Harness-agnostic agent skills built on the Agent Skills spec, plus Claude Code-only plugins",
   "owner": {
     "name": "Jason Featheringham",
     "email": "jason@jawsomejason.com"
@@ -10,7 +10,16 @@
       "name": "standards",
       "description": "Mines a repo's review history into coding standards that agents follow while they write code, and prunes the rules agents already follow.",
       "version": "0.2.0",
-      "source": "./plugins/standards"
+      "source": "./plugins/standards",
+      "skills": [
+        "./skills/standards"
+      ]
+    },
+    {
+      "name": "claudecode-smart-usage",
+      "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
+      "version": "0.1.0",
+      "source": "./plugins/claudecode-smart-usage"
     }
   ]
 }

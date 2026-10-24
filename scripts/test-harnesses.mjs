@@ -58,9 +58,10 @@ function tempHome(dir) {
   return dir;
 }
 
-function install(harness, env) {
-  const r = spawnSync('sh', [join(repo, 'scripts/install.sh'), '--harness', harness, '--apply'], { env, encoding: 'utf8' });
-  if (r.status !== 0 || !/applied: [1-9]/.test(r.stdout)) throw new Error(`install.sh failed: ${r.stdout}${r.stderr}`);
+// Links the portable skill into the harness's user skills folder, where an install puts it.
+function install(skillsDir) {
+  mkdirSync(skillsDir, { recursive: true });
+  symlinkSync(join(repo, 'plugins/standards/skills/standards'), join(skillsDir, 'standards'));
 }
 
 async function run(cmd, argv, cwd, env, scratch) {
@@ -106,7 +107,7 @@ export const HARNESSES = {
       copyFileSync(join(HOME, '.codex/auth.json'), join(codexHome, 'auth.json'));
       const env = harnessEnv({ HOME: join(tmp, 'home'), CODEX_HOME: codexHome });
       tempHome(env.HOME);
-      install('codex', env);
+      install(join(codexHome, 'skills'));
       // stdin stays closed: codex exec waits on an open stdin.
       return {
         cmd: 'codex',
@@ -132,7 +133,7 @@ export const HARNESSES = {
       }
       copyFileSync(join(HOME, '.local/share/opencode/auth.json'), join(env.XDG_DATA_HOME, 'opencode/auth.json'));
       tempHome(env.HOME);
-      install('opencode', env);
+      install(join(env.XDG_CONFIG_HOME, 'opencode/skills'));
       return { cmd: 'opencode', argv: ['run', '--standalone', '-m', OPENCODE_MODEL, PROMPT], env };
     },
   },

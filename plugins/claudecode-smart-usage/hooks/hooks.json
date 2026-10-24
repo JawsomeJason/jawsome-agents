@@ -1,0 +1,11 @@
+{
+  "modules": ["./register.tsx"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [{ "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/require-agent-tier.sh\"" }]
+      }
+    ]
+  }
+}
