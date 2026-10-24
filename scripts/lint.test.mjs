@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { lint } from './lint.mjs';
@@ -45,9 +47,10 @@ const expected = {
   'workflow-pin': 'workflow-pin',
   'manifest-sync': 'manifest-sync',
   'generated-section': 'generated-section',
+  'claude-only-skill': 'claude-only-skill',
 };
 
-const passing = ['clean', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete'];
+const passing = ['clean', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete', 'claude-only-allowed'];
 
 test('every fixture directory has an expectation', () => {
   const dirs = readdirSync(fileURLToPath(new URL('./lint-fixtures', import.meta.url))).filter((d) => !passing.includes(d));
@@ -134,4 +137,16 @@ test('workflows pin every action by SHA and the runner image', () => {
 
 test('a generated § file that follows the template passes the section check', () => {
   assert.deepEqual(lint(fixture('generated-section-complete')), []);
+});
+
+test('a Claude Code-only plugin may name its harness, models and vendors, and only its keyword grants that', () => {
+  assert.deepEqual(lint(fixture('claude-only-allowed')), []);
+  const copy = mkdtempSync(join(tmpdir(), 'claude-only-'));
+  try {
+    cpSync(fixture('claude-only-allowed'), copy, { recursive: true });
+    writeFileSync(join(copy, 'plugins/cc-demo/.claude-plugin/plugin.json'), '{"name":"cc-demo","version":"0.0.0"}');
+    assert.deepEqual([...new Set(lint(copy).map((e) => e.rule))].sort(), ['harness-tool', 'model-name', 'vendor-name']);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
 });

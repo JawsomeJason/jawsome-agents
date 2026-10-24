@@ -158,7 +158,7 @@ function scanLinks(file, text, skillDir, report) {
   });
 }
 
-function lintSkill(skillDir, report) {
+function lintSkill(skillDir, report, { claudeOnly = false } = {}) {
   const skillFile = join(skillDir, 'SKILL.md');
   const text = readFileSync(skillFile, 'utf8');
   const fm = parseFrontmatter(text);
@@ -211,9 +211,17 @@ function lintSkill(skillDir, report) {
     }
   });
 
+  const frontmatter = text.slice(0, text.indexOf('\n---', 3));
+  // The skills CLI installs every SKILL.md it reaches in a listed plugin unless the skill is internal.
+  if (claudeOnly && !/^\s+internal:\s*true\s*$/m.test(frontmatter)) {
+    report(skillFile, 1, 'claude-only-skill', 'a skill in a Claude Code-only plugin needs metadata.internal: true, so cross-harness installers skip it');
+  }
   // Standards generated for one repo describe that repo, so they may name the services it runs on.
-  const generated = /^\s+generator:\s*standards\s*$/m.test(text.slice(0, text.indexOf('\n---', 3)));
-  const exempt = generated ? { skip: RULES.generatedStandardsExempt, quoteExempt: RULES.generatedQuoteExempt } : {};
+  const generated = /^\s+generator:\s*standards\s*$/m.test(frontmatter);
+  const exempt = {
+    skip: [...(generated ? RULES.generatedStandardsExempt : []), ...(claudeOnly ? RULES.claudeOnlyExempt : [])],
+    quoteExempt: generated ? RULES.generatedQuoteExempt : [],
+  };
   for (const file of listFiles(skillDir, (f) => f.endsWith('.md'))) {
     const body = readFileSync(file, 'utf8');
     scanDenylists(file, body, 'skill', report, exempt);
@@ -332,6 +340,15 @@ function lintWorkflows(root, report) {
   }
 }
 
+/** Plugins whose plugin.json lists the Claude Code-only keyword. They skip claudeOnlyExempt; identity rules still apply. */
+function claudeOnlyPlugins(pluginsDir) {
+  if (!existsSync(pluginsDir)) return new Set();
+  return new Set(readdirSync(pluginsDir).filter((dir) => {
+    const file = join(pluginsDir, dir, '.claude-plugin', 'plugin.json');
+    return existsSync(file) && (JSON.parse(readFileSync(file, 'utf8')).keywords ?? []).includes(RULES.claudeOnlyKeyword);
+  }));
+}
+
 function findSkillDirs(dir) {
   return listFiles(dir, (f) => basename(f) === 'SKILL.md').map(dirname).sort();
 }
@@ -347,7 +364,9 @@ export function lint(target) {
     lintMarketplace(root, report);
     const pluginsDir = join(root, 'plugins');
     const skillDirs = existsSync(pluginsDir) ? findSkillDirs(pluginsDir) : [];
-    skillDirs.forEach((d) => lintSkill(d, report));
+    const claudeOnly = claudeOnlyPlugins(pluginsDir);
+    const pluginOf = (rel) => /^plugins\/([^/]+)\//.exec(rel)?.[1];
+    skillDirs.forEach((d) => lintSkill(d, report, { claudeOnly: claudeOnly.has(pluginOf(relative(root, d).split(sep).join('/'))) }));
     lintWorkflows(root, report);
     // Every other file the repo ships: Markdown docs get the doc rules, and everything else the identity rule.
     const inSkill = (rel) => /^plugins\/[^/]+\/skills\//.test(rel);
@@ -359,7 +378,7 @@ export function lint(target) {
       // The repo's own install slug is the one identity a doc must carry, so it is blanked first.
       let text = blank(raw.toString('utf8'), RULES.docAllow);
       if (rel.endsWith('.md')) {
-        scanDenylists(file, text, 'doc', report);
+        scanDenylists(file, text, 'doc', report, { skip: claudeOnly.has(pluginOf(rel)) ? RULES.claudeOnlyExempt : [] });
         continue;
       }
       // The install manifests must name their author, so those objects are blanked.
