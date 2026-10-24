@@ -15,7 +15,7 @@
   "docAllow": ["JawsomeJason/jawsome-agents"],
   "identityExempt": ["LICENSE", "scripts/lint-rules.json"],
   "manifestIdentityKeys": ["author", "owner"],
-  "claudeOnlyKeyword": "claude-code-only",
+  "claudeOnlyPrefix": "claudecode-",
   "claudeOnlyExempt": ["harness-tool", "model-name", "vendor-name"],
   "denylists": [
     {

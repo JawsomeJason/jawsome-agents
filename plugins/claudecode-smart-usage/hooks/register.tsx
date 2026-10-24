@@ -10,7 +10,7 @@ const MODEL = 'jev-latest'
 const AUTO_WAIT_MS = 900
 const FOLLOW_UP_MINUTES = 15
 
-const suggestion = atom({ plugin: 'smart-usage-claude', key: 'suggestion' } as const, null)
+const suggestion = atom({ plugin: 'claudecode-smart-usage', key: 'suggestion' } as const, null)
 
 type Mode = 'suggest' | 'auto' | 'off'
 

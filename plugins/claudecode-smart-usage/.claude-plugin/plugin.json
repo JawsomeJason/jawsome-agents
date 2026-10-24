@@ -1,5 +1,5 @@
 {
-  "name": "smart-usage-claude",
+  "name": "claudecode-smart-usage",
   "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
   "version": "0.1.0",
   "author": {
@@ -7,7 +7,6 @@
     "email": "jason@jawsomejason.com"
   },
   "license": "MIT",
-  "keywords": ["claude-code-only"],
   "types": "./types/index.d.ts",
   "userConfig": {
     "mode": {

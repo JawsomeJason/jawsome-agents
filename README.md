@@ -1,13 +1,13 @@
 # jawsome-agents
 
-Agent skills that run in any harness that reads the [Agent Skills spec](https://agentskills.io/specification). Each skill uses only the spec's frontmatter and plain files, so the same folder installs in Claude Code, Codex, opencode and any other harness that loads skill folders. A plugin tagged Claude Code only is the exception: it holds mods and hooks for that one harness.
+Agent skills that run in any harness that reads the [Agent Skills spec](https://agentskills.io/specification). Each skill uses only the spec's frontmatter and plain files, so the same folder installs in Claude Code, Codex, opencode and any other harness that loads skill folders. A plugin named `claudecode-*` is the exception: it holds mods and hooks for Claude Code alone.
 
 ## Plugins
 
 | Plugin | What it does |
 | --- | --- |
 | `standards` | Mines a repo's review history into coding standards that agents follow while they write code there, each with its reason and the review comments behind it, and prunes the rules that don't change what agents write. |
-| `smart-usage-claude` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/smart-usage-claude/README.md). |
+| `claudecode-smart-usage` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/claudecode-smart-usage/README.md). |
 
 Invoke `standards` as `/standards [command] [scope]`:
 
@@ -35,7 +35,7 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 ```text
 /plugin marketplace add JawsomeJason/jawsome-agents
 /plugin install standards@jawsome-agents
-/plugin install smart-usage-claude@jawsome-agents
+/plugin install claudecode-smart-usage@jawsome-agents
 ```
 
 ### Every other harness
@@ -60,7 +60,7 @@ CI runs the lint and both test suites. The harness test needs each harness's log
 ### Add a plugin
 
 1. Read [AGENTS.md](AGENTS.md). It holds the rules every skill follows and the reason for each.
-2. Create `plugins/<name>/skills/<skill>/SKILL.md`, with optional `references/`, `scripts/` and `assets/` beside it. A Claude Code-only plugin follows the rules in AGENTS.md under "Claude Code-only plugins" instead.
+2. Create `plugins/<name>/skills/<skill>/SKILL.md`, with optional `references/`, `scripts/` and `assets/` beside it. A `claudecode-*` plugin follows the rules in AGENTS.md under "Claude Code-only plugins" instead.
 3. Add `plugins/<name>/.claude-plugin/plugin.json` and an entry for the plugin in `.claude-plugin/marketplace.json`.
 4. Run the lint and the tests, then `node scripts/test-harnesses.mjs`.
 

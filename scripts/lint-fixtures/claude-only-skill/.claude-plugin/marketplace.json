@@ -1,1 +1,1 @@
-{"name":"claude-only-skill","owner":{"name":"Fixture"},"plugins":[{"name":"cc-demo","source":"./plugins/cc-demo"}]}
+{"name":"claude-only-skill","owner":{"name":"Fixture"},"plugins":[{"name":"claudecode-demo","source":"./plugins/claudecode-demo"}]}

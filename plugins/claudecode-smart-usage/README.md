@@ -1,4 +1,4 @@
-# smart-usage-claude
+# claudecode-smart-usage
 
 A Claude Code plugin that spends reasoning effort where it pays. It does two things:
 
@@ -12,14 +12,14 @@ It works in Claude Code only. It is a mod and hooks, with no portable skills, so
 ## Install
 
 ```text
-/plugin install smart-usage-claude --marketplace JawsomeJason/jawsome-agents
+/plugin install claudecode-smart-usage --marketplace JawsomeJason/jawsome-agents
 ```
 
 Or add the marketplace first, then install from it:
 
 ```text
 /plugin marketplace add JawsomeJason/jawsome-agents
-/plugin install smart-usage-claude@jawsome-agents
+/plugin install claudecode-smart-usage@jawsome-agents
 ```
 
 ## Settings
@@ -50,10 +50,10 @@ The mod API can rewrite the effort of each model request, but it has no call tha
 ## Check it
 
 ```sh
-claude plugin validate plugins/smart-usage-claude
-claude plugin test plugins/smart-usage-claude             # the mod's engine tests
-bats plugins/smart-usage-claude/tests/require-agent-tier.bats
-bun plugins/smart-usage-claude/scripts/eval.ts            # live Jev picks for six reference prompts; needs the key
+claude plugin validate plugins/claudecode-smart-usage
+claude plugin test plugins/claudecode-smart-usage             # the mod's engine tests
+bats plugins/claudecode-smart-usage/tests/require-agent-tier.bats
+bun plugins/claudecode-smart-usage/scripts/eval.ts            # live Jev picks for six reference prompts; needs the key
 ```
 
 ## Credit

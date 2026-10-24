@@ -343,13 +343,22 @@ function lintWorkflows(root, report) {
   }
 }
 
-/** Plugins whose plugin.json lists the Claude Code-only keyword. They skip claudeOnlyExempt; identity rules still apply. */
-function claudeOnlyPlugins(pluginsDir) {
+/**
+ * Plugins named with the Claude Code-only prefix. They skip claudeOnlyExempt; identity rules still apply. A plugin
+ * that ships hooks, which only Claude Code reads from a plugin, must carry the prefix.
+ */
+function claudeOnlyPlugins(pluginsDir, report) {
   if (!existsSync(pluginsDir)) return new Set();
-  return new Set(readdirSync(pluginsDir).filter((dir) => {
-    const file = join(pluginsDir, dir, '.claude-plugin', 'plugin.json');
-    return existsSync(file) && (JSON.parse(readFileSync(file, 'utf8')).keywords ?? []).includes(RULES.claudeOnlyKeyword);
-  }));
+  const dirs = readdirSync(pluginsDir).filter((d) => statSync(join(pluginsDir, d)).isDirectory());
+  for (const dir of dirs.filter((d) => !d.startsWith(RULES.claudeOnlyPrefix))) {
+    const hooksFile = join(pluginsDir, dir, 'hooks', 'hooks.json');
+    const manifest = join(pluginsDir, dir, '.claude-plugin', 'plugin.json');
+    const manifestHooks = existsSync(manifest) && JSON.parse(readFileSync(manifest, 'utf8')).hooks !== undefined;
+    if (existsSync(hooksFile) || manifestHooks) {
+      report(existsSync(hooksFile) ? hooksFile : manifest, 1, 'claude-only-name', `plugins/${dir} ships Claude Code hooks, so its name must start with "${RULES.claudeOnlyPrefix}"`);
+    }
+  }
+  return new Set(dirs.filter((d) => d.startsWith(RULES.claudeOnlyPrefix)));
 }
 
 function findSkillDirs(dir) {
@@ -367,7 +376,7 @@ export function lint(target) {
     lintMarketplace(root, report);
     const pluginsDir = join(root, 'plugins');
     const skillDirs = existsSync(pluginsDir) ? findSkillDirs(pluginsDir) : [];
-    const claudeOnly = claudeOnlyPlugins(pluginsDir);
+    const claudeOnly = claudeOnlyPlugins(pluginsDir, report);
     const pluginOf = (rel) => /^plugins\/([^/]+)\//.exec(rel)?.[1];
     skillDirs.forEach((d) => lintSkill(d, report, { claudeOnly: claudeOnly.has(pluginOf(relative(root, d).split(sep).join('/'))) }));
     lintWorkflows(root, report);

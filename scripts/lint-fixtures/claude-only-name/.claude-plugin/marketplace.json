@@ -1,0 +1,1 @@
+{"name":"claude-only-name","owner":{"name":"Fixture"},"plugins":[{"name":"demo","source":"./plugins/demo"}]}
