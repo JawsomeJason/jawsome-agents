@@ -7,7 +7,7 @@ A Claude Code plugin that spends reasoning effort where it pays. It does two thi
 
 `hooks/tiers.ts` is the one source for both: the effort levels the mod asks about and the model tiers the hook prints.
 
-It works in Claude Code only. It is a mod and hooks, with no portable skills, so `npx skills add` finds nothing in it.
+It works in Claude Code only. It is a mod, hooks and one Claude Code-only skill, `/smart-usage`, so `npx skills add` installs nothing from it.
 
 ## Install
 
@@ -32,10 +32,23 @@ Set these in `/config`, or under `pluginConfigs` in your settings file.
 | `threshold` | `0.6` | The minimum probability Jev must give its pick before the mod acts. The default is untuned. |
 | `skipUnder` | `30` | A follow-up shorter than this many characters keeps the current effort without asking Jev. `0` asks every time. |
 | `tiersFile` | empty | An absolute path to your own tiers file. See below. |
+| `log` | `true` | Appends each Jev pick to `$HOME/.claude/smart-usage/picks.jsonl`. See below. `false` writes nothing. |
 
 ### Your own tiers
 
 Copy the object in `hooks/tiers.ts` into a JSON file, edit the effort descriptions or the model tiers, and set `tiersFile` to its path. The mod reads `efforts` from it, and the hook reads both `efforts` and `models`. A file that can't be read or parsed falls back to `hooks/tiers.ts`.
+
+### The pick log
+
+Each Jev answer adds one JSON line: the time, session, mode, the first 500 characters of the prompt, whether a previous prompt went with it, the picked level with its probability and every level's probability, the current and base effort, the level applied (in `suggest` mode, the level the band offered) or `null` with a `reason` (`below-threshold`, `same-level`, `timeout` or `no-answer`), the call's milliseconds and its input tokens. Each write keeps only the last 14 days and at most 2000 lines. A log that can't be written costs a debug line and never changes the pick. It holds your prompts, so it stays on your machine.
+
+Ask `/smart-usage report` in Claude Code, or run the script yourself:
+
+```sh
+bun plugins/claudecode-smart-usage/scripts/report.ts [--days N] [--json]
+```
+
+It prints the picks per level, applied against not applied with the count per reason, the median probability and the share under the threshold, the median latency and the timeouts, and the five newest prompts per level. `/smart-usage report --html` renders the same numbers as a local page.
 
 ## What it needs and costs
 
@@ -53,6 +66,7 @@ The mod API can rewrite the effort of each model request, but it has no call tha
 claude plugin validate plugins/claudecode-smart-usage
 claude plugin test plugins/claudecode-smart-usage             # the mod's engine tests
 bats plugins/claudecode-smart-usage/tests/require-agent-tier.bats
+node --test plugins/claudecode-smart-usage/tests/report.test.mjs  # the report script, against a fixture log
 bun plugins/claudecode-smart-usage/scripts/eval.ts            # live Jev picks for six reference prompts; needs the key
 ```
 

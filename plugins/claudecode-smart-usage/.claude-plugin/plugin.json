@@ -1,7 +1,7 @@
 {
   "name": "claudecode-smart-usage",
   "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Jason Featheringham",
     "email": "jason@jawsomejason.com"
@@ -33,6 +33,12 @@
       "title": "Tiers file",
       "description": "Absolute path to a JSON file shaped like the object in hooks/tiers.ts. Empty uses the plugin's own tiers.ts.",
       "default": ""
+    },
+    "log": {
+      "type": "boolean",
+      "title": "Log picks",
+      "description": "Append each Jev pick to $HOME/.claude/smart-usage/picks.jsonl, keeping 14 days and at most 2000 lines.",
+      "default": true
     }
   }
 }

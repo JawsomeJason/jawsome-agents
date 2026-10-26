@@ -171,3 +171,177 @@ test('the tiersFile option replaces the effort criteria sent to Jev', { options:
   expect(read).toEqual(['/tmp/tiers.json'])
   expect(bodies.map(body => JSON.parse(body).questions.effort.criteria)).toEqual([efforts])
 })
+
+const LOG = '/tmp/me/.claude/smart-usage/picks.jsonl'
+const DAY = 86_400_000
+
+// Stands for the disk under the pick log: `files` holds what each path reads back.
+const diskHolds = (on: On, files: Record<string, string>, writes: string[]) => {
+  on('fs.exists', (_, e) => ({ value: e.path in files }))
+  on('fs.read', (_, e) => ({ value: files[e.path] ?? '' }))
+  on('fs.write', (_, e) => {
+    writes.push(e.text)
+    files[e.path] = e.text
+    return { value: undefined }
+  })
+  on('session.id', () => ({ value: 'session-1' }))
+}
+
+const logLines = (writes: string[]) => (writes.at(-1) ?? '').trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
+
+test('auto mode logs an applied pick with every field', { options: { mode: 'auto' } }, async ($, on) => {
+  const writes: string[] = []
+  const clock = mock.clock(on)
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  on('ui.log', () => ({ value: undefined }))
+  mock.env(on, { TYPESAFE_API_KEY: 'test-key', HOME: '/tmp/me' })
+  diskHolds(on, {}, writes)
+  jevSays(on, 'high', 0.97, [])
+  modelRecords(on, [])
+  on('ui.status', () => ({ value: undefined }))
+
+  await $.prompt.submit(PROMPT)
+  await runStep($.turn.step(STEP))
+  await clock.settle()
+
+  expect(logLines(writes)).toEqual([
+    {
+      ts: new Date(clock.now()).toISOString(),
+      session: 'session-1',
+      mode: 'auto',
+      prompt: PROMPT.text,
+      previousPrompt: false,
+      level: 'high',
+      probability: 0.97,
+      probabilities: { high: 0.97 },
+      current: 'medium',
+      base: 'medium',
+      applied: 'high',
+      reason: null,
+      ms: 0,
+      inputTokens: 595,
+    },
+  ])
+})
+
+for (const [name, level, probability, reason] of [
+  ['under the threshold', 'high', 0.5, 'below-threshold'],
+  ['at the current level', 'medium', 0.97, 'same-level'],
+] as const) {
+  test(`suggest mode logs a pick ${name} as not applied`, { options: { mode: 'suggest' } }, async ($, on) => {
+    const writes: string[] = []
+    const clock = mock.clock(on)
+    on('prompt.submit', (_, e) => ({ text: e.text }))
+    on('ui.log', () => ({ value: undefined }))
+    mock.env(on, { TYPESAFE_API_KEY: 'test-key', HOME: '/tmp/me' })
+    diskHolds(on, {}, writes)
+    jevSays(on, level, probability, [])
+    modelRecords(on, [])
+
+    await $.prompt.submit(PROMPT)
+    await runStep($.turn.step(STEP))
+    await clock.settle()
+
+    expect(logLines(writes).map(({ mode, level, applied, reason }) => ({ mode, level, applied, reason }))).toEqual([
+      { mode: 'suggest', level, applied: null, reason },
+    ])
+  })
+}
+
+test('auto mode logs a late answer as a timeout, with the pick it came to', { options: { mode: 'auto' } }, async ($, on) => {
+  const writes: string[] = []
+  const efforts: unknown[] = []
+  const clock = mock.clock(on)
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  on('ui.log', () => ({ value: undefined }))
+  mock.env(on, { TYPESAFE_API_KEY: 'test-key', HOME: '/tmp/me' })
+  diskHolds(on, {}, writes)
+  let answer = () => {}
+  const late = new Promise<void>(resolve => (answer = resolve))
+  on('http.fetch', async () => {
+    await late
+    const body = { answers: { effort: { choice: 'high', probabilities: { high: 0.97 } } }, usage: { input_tokens: 595 } }
+    return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify(body) } }
+  })
+  modelRecords(on, efforts)
+  on('ui.status', () => ({ value: undefined }))
+
+  await $.prompt.submit(PROMPT)
+  const step = runStep($.turn.step(STEP))
+  await clock.advance(2000)
+  await step
+  answer()
+  await clock.settle()
+
+  expect(efforts).toEqual(['medium'])
+  expect(logLines(writes).map(({ level, applied, reason, ms }) => ({ level, applied, reason, ms }))).toEqual([
+    { level: 'high', applied: null, reason: 'timeout', ms: 2000 },
+  ])
+})
+
+test('each write drops lines older than 14 days and keeps the last 2000', { options: { mode: 'auto' } }, async ($, on) => {
+  const writes: string[] = []
+  const clock = mock.clock(on)
+  await clock.set(30 * DAY)
+  const line = (ts: number, prompt: string) => JSON.stringify({ ts: new Date(ts).toISOString(), prompt })
+  const old = line(clock.now() - 15 * DAY, 'old')
+  const recent = Array.from({ length: 2000 }, (_, i) => line(clock.now() - DAY, `recent ${i}`))
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  on('ui.log', () => ({ value: undefined }))
+  mock.env(on, { TYPESAFE_API_KEY: 'test-key', HOME: '/tmp/me' })
+  diskHolds(on, { [LOG]: [old, ...recent, 'not json'].join('\n') + '\n' }, writes)
+  jevSays(on, 'high', 0.97, [])
+  modelRecords(on, [])
+  on('ui.status', () => ({ value: undefined }))
+
+  await $.prompt.submit(PROMPT)
+  await runStep($.turn.step(STEP))
+  await clock.settle()
+
+  const prompts = logLines(writes).map(entry => entry.prompt)
+  expect(prompts).toHaveLength(2000)
+  expect(prompts[0]).toBe('recent 1')
+  expect(prompts.at(-1)).toBe(PROMPT.text)
+})
+
+test('log: false writes nothing', { options: { mode: 'auto', log: false } }, async ($, on) => {
+  const writes: string[] = []
+  const efforts: unknown[] = []
+  const clock = mock.clock(on)
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  on('ui.log', () => ({ value: undefined }))
+  mock.env(on, { TYPESAFE_API_KEY: 'test-key', HOME: '/tmp/me' })
+  diskHolds(on, {}, writes)
+  jevSays(on, 'high', 0.97, [])
+  modelRecords(on, efforts)
+  on('ui.status', () => ({ value: undefined }))
+
+  await $.prompt.submit(PROMPT)
+  await runStep($.turn.step(STEP))
+  await clock.settle()
+
+  expect(efforts).toEqual(['high'])
+  expect(writes).toEqual([])
+})
+
+test('a log that fails to write leaves the pick as it was', { options: { mode: 'auto' } }, async ($, on) => {
+  const efforts: unknown[] = []
+  const debug: string[] = []
+  const clock = mock.clock(on)
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  on('ui.log', (_, e) => (debug.push(e.text), { value: undefined }))
+  mock.env(on, { TYPESAFE_API_KEY: 'test-key', HOME: '/tmp/me' })
+  on('fs.exists', () => ({ value: false }))
+  on('fs.write', () => ({ deny: 'EACCES' }))
+  jevSays(on, 'high', 0.97, [])
+  modelRecords(on, efforts)
+  on('ui.status', () => ({ value: undefined }))
+
+  await $.prompt.submit(PROMPT)
+  await runStep($.turn.step(STEP))
+  await clock.settle()
+  await runStep($.turn.step({ ...STEP, index: 1 }))
+
+  expect(efforts).toEqual(['high', 'high'])
+  expect(debug.some(text => text.startsWith('pick log not written: ') && text.includes('EACCES'))).toBe(true)
+})

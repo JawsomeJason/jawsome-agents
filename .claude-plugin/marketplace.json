@@ -18,7 +18,7 @@
     {
       "name": "claudecode-smart-usage",
       "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./plugins/claudecode-smart-usage"
     }
   ]
