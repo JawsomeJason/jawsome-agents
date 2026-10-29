@@ -7,6 +7,7 @@ Agent skills that run in any harness that reads the [Agent Skills spec](https://
 | Plugin | What it does |
 | --- | --- |
 | `standards` | Mines a repo's review history into coding standards that agents follow while they write code there, each with its reason and the review comments behind it, and prunes the rules that don't change what agents write. |
+| `guard` | `enforce` turns one convention into the cheapest check the toolchain runs (a type, a lint rule, a hook, a test) and proves it fires. `harden` sorts every step of a skill into code, a judgment-model question or the agent, then rebuilds it on the split you approve. |
 | `claudecode-smart-usage` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/claudecode-smart-usage/README.md). |
 
 Invoke `standards` as `/standards [command] [scope]`:
@@ -35,6 +36,7 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 ```text
 /plugin marketplace add JawsomeJason/jawsome-agents
 /plugin install standards@jawsome-agents
+/plugin install guard@jawsome-agents
 /plugin install claudecode-smart-usage@jawsome-agents
 ```
 
@@ -42,9 +44,10 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 
 ```sh
 npx skills add JawsomeJason/jawsome-agents --skill standards
+npx skills add JawsomeJason/jawsome-agents --skill enforce --skill harden
 ```
 
-The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards` is the only portable skill here, so it is the only one the CLI lists.
+The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce` and `harden` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
 
 ## Develop
 

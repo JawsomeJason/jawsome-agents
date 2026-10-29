@@ -16,6 +16,16 @@
       ]
     },
     {
+      "name": "guard",
+      "description": "Turns conventions into checks the toolchain runs, and moves the steps a skill does by hand into scripts and narrow judgment-model questions.",
+      "version": "0.3.0",
+      "source": "./plugins/guard",
+      "skills": [
+        "./skills/enforce",
+        "./skills/harden"
+      ]
+    },
+    {
       "name": "claudecode-smart-usage",
       "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
       "version": "0.1.0",
