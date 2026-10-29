@@ -58,6 +58,7 @@ node scripts/lint.mjs                              # lint the repo's skills and 
 node --test 'scripts/*.test.mjs'                   # tests for the lint and test-harnesses.mjs
 node --test 'plugins/standards/tests/*.test.mjs'   # tests for the standards scripts
 node scripts/test-harnesses.mjs                    # real runs in each installed harness
+node plugins/guard/tests/eval.mjs                  # guard's routing and behavior evals, in real Claude Code sessions
 ```
 
 CI runs the format check, the lint and both test suites. The harness test needs each harness's login and spends real usage, so it runs by hand: in a temp home per harness, it installs the skills, invokes `standards` with no argument and checks that the menu prints. A harness that isn't installed or isn't logged in shows as skipped. Pass `--keep` to keep the temp homes for debugging.
