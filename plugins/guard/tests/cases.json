@@ -1,0 +1,158 @@
+{
+  "how_to_run": "node plugins/guard/tests/eval.mjs runs every case on each model in --models. Routing cases pass when the first skill the agent invokes is the expected one, or when it invokes no guard skill for expect none. Behavior cases build a throwaway repo from files, run the prompt, then pass when every automatic check holds and a grader agent finds every rubric line met in the final reply.",
+  "routing": [
+    {
+      "id": "lint-rule",
+      "request": "Make this a lint rule: no default exports anywhere in src/.",
+      "expect": "enforce"
+    },
+    {
+      "id": "linter-catch",
+      "request": "Can the linter catch people importing from ../../internal paths?",
+      "expect": "enforce"
+    },
+    {
+      "id": "already-enforced",
+      "request": "Is 'no console.log in production code' already enforced in this repo?",
+      "expect": "enforce"
+    },
+    {
+      "id": "recurring-review",
+      "request": "Reviewers keep flagging missing awaits on promises. Stop that from happening again.",
+      "expect": "enforce"
+    },
+    {
+      "id": "enforcement-candidate",
+      "request": "Enforcement candidate: commit messages must start with a conventional commit prefix such as feat: or fix:.",
+      "expect": "enforce"
+    },
+    {
+      "id": "what-could-be-script",
+      "request": "What in the release-notes skill could be a script instead of the agent doing it?",
+      "expect": "harden"
+    },
+    {
+      "id": "harden-path",
+      "request": "Harden skills/triage/SKILL.md.",
+      "expect": "harden"
+    },
+    {
+      "id": "deterministic",
+      "request": "The triage skill gives different answers every run and burns tokens counting labels by hand. Make it deterministic.",
+      "expect": "harden"
+    },
+    {
+      "id": "typed-question",
+      "request": "The triage skill has the agent classify each ticket as bug, feature or chore. Which of its steps could be a typed question to a judgment model?",
+      "expect": "harden"
+    },
+    {
+      "id": "rename",
+      "request": "Rename the variable total to sum in src/index.js.",
+      "expect": "none"
+    },
+    {
+      "id": "readme",
+      "request": "Write a short README for this repo.",
+      "expect": "none"
+    }
+  ],
+  "behavior": [
+    {
+      "id": "enforce-already",
+      "prompt": "/guard:enforce never import lodash; use the standard library",
+      "files": {
+        "eslint.config.js": "export default [\n  {\n    files: ['src/**/*.js'],\n    rules: {\n      'no-restricted-imports': ['error', { patterns: [{ group: ['lodash', 'lodash/*', 'lodash.*', 'lodash-es', 'lodash-es/*'], message: 'Use the standard library instead of lodash.' }] }],\n    },\n  },\n];\n",
+        "package.json": "{\n  \"name\": \"demo\",\n  \"type\": \"module\",\n  \"scripts\": { \"lint\": \"eslint .\" }\n}\n",
+        "src/index.js": "export const sum = (xs) => xs.reduce((a, b) => a + b, 0);\n"
+      },
+      "checks": ["unchanged"],
+      "rubric": [
+        "Says the rule is already enforced.",
+        "Cites eslint.config.js, and the no-restricted-imports entry or its line, as what enforces it.",
+        "Builds no new check."
+      ]
+    },
+    {
+      "id": "enforce-taste",
+      "prompt": "/guard:enforce error messages should sound friendly and human",
+      "files": {
+        "package.json": "{\n  \"name\": \"demo\",\n  \"type\": \"module\"\n}\n",
+        "src/index.js": "export function parse(s) {\n  if (!s) throw new Error('Nothing to parse yet. Pass a string and try again.');\n  return JSON.parse(s);\n}\n"
+      },
+      "checks": ["unchanged"],
+      "rubric": [
+        "Says no machine can reliably check it, because it is a matter of tone or taste.",
+        "Leaves it as prose and builds no check."
+      ]
+    },
+    {
+      "id": "enforce-build",
+      "prompt": "/guard:enforce no console.log calls in src/",
+      "files": {
+        "package.json": "{\n  \"name\": \"demo\",\n  \"type\": \"module\",\n  \"scripts\": { \"lint\": \"node scripts/check.mjs\", \"test\": \"node --test\" }\n}\n",
+        "scripts/check.mjs": "// The repo's own lint: one rule per entry, each a regex over every file in src/.\nimport { readdirSync, readFileSync } from 'node:fs';\nimport { join } from 'node:path';\n\nconst RULES = [\n  { pattern: /\\bvar\\s/, message: 'use let or const instead of var' },\n];\n\nlet failed = 0;\nfor (const name of readdirSync('src')) {\n  const lines = readFileSync(join('src', name), 'utf8').split('\\n');\n  lines.forEach((line, i) => {\n    for (const rule of RULES) if (rule.pattern.test(line)) { console.error(`src/${name}:${i + 1} ${rule.message}`); failed++; }\n  });\n}\nprocess.exit(failed ? 1 : 0);\n",
+        "src/index.js": "export const sum = (xs) => xs.reduce((a, b) => a + b, 0);\n"
+      },
+      "checks": [
+        "catches:src/zz-violation.js:console.log('debug');\n",
+        "no-stray-violations"
+      ],
+      "rubric": [
+        "Names the rung it chose and why a cheaper rung did not reach.",
+        "Reports seeing the check fail on a violating snippet, with the error line, and pass on the corrected one.",
+        "Deleted its own violating and corrected snippets afterward."
+      ]
+    },
+    {
+      "id": "harden-count",
+      "prompt": "/guard:harden skills/todo-report/SKILL.md",
+      "files": {
+        "skills/todo-report/SKILL.md": "---\nname: todo-report\ndescription: Reports which source files hold the most TODO comments. Use when asked for a TODO report.\n---\n\n# TODO report\n\n1. Read every file under src/ and count the lines that contain TODO.\n2. Sort the files by that count, highest first.\n3. Never list a file with zero TODOs.\n4. Write a two-sentence summary for the team about where the debt sits.\n",
+        "src/a.js": "// TODO: split this\nexport const a = 1; // TODO: rename\n",
+        "src/b.js": "export const b = 2;\n"
+      },
+      "checks": ["unchanged"],
+      "rubric": [
+        "Presents a brief with one row per step, and stops for approval without editing anything.",
+        "Sends the counting and the sorting to code, as a script.",
+        "Treats the never-list-zero rule as a rule for code or a check, not as prose the agent must remember.",
+        "Keeps the two-sentence summary with the agent."
+      ]
+    },
+    {
+      "id": "harden-judgment-none",
+      "prompt": "/guard:harden skills/pr-triage/SKILL.md",
+      "files": {
+        "skills/pr-triage/SKILL.md": "---\nname: pr-triage\ndescription: Sorts open pull requests into features, fixes and chores. Use when asked to triage pull requests.\n---\n\n# PR triage\n\n1. Read the pull request titles from prs.json.\n2. Decide whether each title is a feature, a fix or a chore.\n3. Report how many fall in each group.\n",
+        "prs.json": "[\"Add dark mode\", \"Fix crash on empty cart\", \"Bump eslint\"]\n"
+      },
+      "checks": ["unchanged"],
+      "rubric": [
+        "Presents a brief and stops for approval without editing anything.",
+        "Sends reading prs.json and counting the groups to code.",
+        "Does not propose a judgment model as the way to decide feature, fix or chore, because none is set up. Code may settle the obvious titles with a rule table, and what is left stays with the agent as a narrow question with those fixed options.",
+        "Notes that a judgment model could take that decision later, or asks whether one is available."
+      ]
+    },
+    {
+      "id": "harden-judgment-sdk",
+      "prompt": "/guard:harden skills/pr-triage/SKILL.md",
+      "env": {
+        "TYPESAFE_API_KEY": "eval-placeholder-not-a-real-key"
+      },
+      "files": {
+        "skills/pr-triage/SKILL.md": "---\nname: pr-triage\ndescription: Sorts open pull requests into features, fixes and chores. Use when asked to triage pull requests.\n---\n\n# PR triage\n\n1. Read the pull request titles from prs.json.\n2. Decide whether each title is a feature, a fix or a chore.\n3. Report how many fall in each group.\n",
+        "prs.json": "[\"Add dark mode\", \"Fix crash on empty cart\", \"Bump eslint\"]\n",
+        "requirements.txt": "typesafe-sdk==0.4.0\n"
+      },
+      "checks": ["unchanged"],
+      "rubric": [
+        "Presents a brief and stops for approval without editing anything.",
+        "Detects the judgment model the project already uses.",
+        "Sends the feature, fix or chore decision to that judgment model as a choice question with those three options.",
+        "Gives a confidence threshold, and a fallback below it such as asking the operator or handing the case to the agent."
+      ]
+    }
+  ]
+}
