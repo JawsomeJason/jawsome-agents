@@ -37,11 +37,11 @@ Accepts an area slug or §. See [scope](scope.md) for the forms and how to resol
 
 **Deliver the arm in the prompt.** Every harness reads its prompt, so the arms differ only in the rule text. Each prompt is the arm's text, a blank line, then the probe.
 
-| Arm | Text before the probe |
-| --- | --- |
-| `none` | Nothing. |
+| Arm         | Text before the probe                      |
+| ----------- | ------------------------------------------ |
+| `none`      | Nothing.                                   |
 | `one-liner` | `Project rule:` and the rule's index line. |
-| `full` | `Project rule:` and the whole § file. |
+| `full`      | `Project rule:` and the whole § file.      |
 
 ## Step 1. Generate a probe
 
