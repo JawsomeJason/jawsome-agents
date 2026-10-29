@@ -7,7 +7,7 @@ export type { Level }
 
 export const LEVELS: readonly Level[] = ['low', 'medium', 'high', 'xhigh', 'max']
 
-export type Pick = { level: Level; probability: number; inputTokens: number }
+export type Pick = { level: Level; probability: number; probabilities: Record<string, number>; inputTokens: number }
 
 export const ENDPOINT = 'https://api.typesafe.ai/v1/systemone'
 
@@ -59,7 +59,7 @@ export const parsePick = (body: unknown): Pick | null => {
   if (!answer || !isLevel(answer.choice)) return null
   const probability = answer.probabilities?.[answer.choice]
   if (typeof probability !== 'number') return null
-  return { level: answer.choice, probability, inputTokens: response.usage?.input_tokens ?? 0 }
+  return { level: answer.choice, probability, probabilities: answer.probabilities ?? {}, inputTokens: response.usage?.input_tokens ?? 0 }
 }
 
 // The level to move to, or null when the session's effort already fits or Jev

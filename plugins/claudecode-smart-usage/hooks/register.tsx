@@ -4,6 +4,8 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Suggestion } from '../types'
 import { buildRequest, decide, DEFAULT_CRITERIA, ENDPOINT, isLevel, parseCriteria, parsePick } from './jev'
 import type { Criteria, Level, Pick, Previous } from './jev'
+import { appendPruned } from './log'
+import type { NotApplied, PickLogEntry } from './log'
 
 const MODEL = 'jev-latest'
 // Auto mode holds the turn's first request at most this long after Enter.
@@ -27,7 +29,11 @@ const loadCriteria = async ($: EngineInterface, path: string): Promise<Criteria>
   }
 }
 
-const classify = async ($: EngineInterface, criteria: Promise<Criteria>, text: string, previous?: Previous): Promise<Pick | null> => {
+// What one Jev call came to: its pick, or null when it gave none, and how long it took.
+type Asked = { pick: Pick | null; ms: number }
+
+// Null when there is no key, so nothing was asked.
+const classify = async ($: EngineInterface, criteria: Promise<Criteria>, text: string, previous?: Previous): Promise<Asked | null> => {
   const key = await $.env.get('TYPESAFE_API_KEY')
   if (!key) return null
   const started = await $.clock.now()
@@ -43,15 +49,39 @@ const classify = async ($: EngineInterface, criteria: Promise<Criteria>, text: s
       `jev ${response.status} in ${ms}ms: ${pick ? `${pick.level} ${percent(pick.probability)}, ${pick.inputTokens} input tokens` : 'no answer'}`,
       { to: 'debug' },
     )
-    return pick
+    return { pick, ms }
   } catch (error) {
     $.ui.log(`jev failed: ${String(error)}`, { to: 'debug' })
-    return null
+    return { pick: null, ms: (await $.clock.now()) - started }
   }
 }
 
+// Why `decide` gave no level.
+const notApplied = (pick: Pick | null, current: Level): NotApplied =>
+  !pick ? 'no-answer' : pick.level === current ? 'same-level' : 'below-threshold'
+
+// Writes queue behind each other, so two picks never read the same old log.
+let logging = Promise.resolve()
+
+// A log that can't be read or written costs only a debug line; the pick never waits on it.
+const writeLog = ($: EngineInterface, entry: Omit<PickLogEntry, 'ts' | 'session'>) => {
+  logging = logging.then(async () => {
+    try {
+      const home = await $.env.get('HOME')
+      if (!home) throw new Error('HOME is not set')
+      const path = `${home}/.claude/smart-usage/picks.jsonl`
+      const now = await $.clock.now()
+      const session = await $.session.id().catch(() => undefined)
+      const text = (await $.fs.exists(path)) ? await $.fs.read(path) : ''
+      await $.fs.write(path, appendPruned(text, { ts: new Date(now).toISOString(), session, ...entry }, now))
+    } catch (error) {
+      $.ui.log(`pick log not written: ${String(error)}`, { to: 'debug' })
+    }
+  })
+}
+
 let previous: { text: string; at: number } | undefined
-let pending: { pick: Promise<Pick | null>; at: number } | undefined
+let pending: { asked: Promise<Asked | null>; at: number; prompt: string; previousPrompt: boolean } | undefined
 // The session's own effort on the last main request, before this mod touched it.
 let sessionEffort: Level | undefined
 // Auto mode's pick, kept through short follow-ups.
@@ -71,6 +101,7 @@ export const register: Register = (on, options) => {
   const threshold = Math.min(Math.max(Number(options.threshold) || 0.6, 0), 1)
   const skipUnder = Math.max(Number(options.skipUnder) || 0, 0)
   const tiersFile = typeof options.tiersFile === 'string' ? options.tiersFile.trim() : ''
+  const isLogging = options.log !== false
   let criteria: Promise<Criteria> | undefined
 
   on('prompt.submit', async ($, e, next) => {
@@ -86,7 +117,7 @@ export const register: Register = (on, options) => {
     turnLevel = undefined
     await update($, suggestion, () => null)
     criteria ??= loadCriteria($, tiersFile)
-    pending = { pick: classify($, criteria, text, prior), at: now }
+    pending = { asked: classify($, criteria, text, prior), at: now, prompt: text.slice(0, 500), previousPrompt: Boolean(prior) }
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -100,18 +131,41 @@ export const register: Register = (on, options) => {
     const current = hold?.level ?? e.effort
 
     if (e.index === 0 && pending) {
-      const { pick, at } = pending
+      const { asked, at, prompt, previousPrompt } = pending
       pending = undefined
+      const pick = asked.then(result => result?.pick ?? null)
+      const base = e.effort
+      const log = (applied: Level | null, reason: NotApplied | null) =>
+        void asked.then(result => {
+          if (!isLogging || !result) return
+          const { pick, ms } = result
+          writeLog($, {
+            mode: mode === 'auto' ? 'auto' : 'suggest',
+            prompt,
+            previousPrompt,
+            level: pick?.level ?? null,
+            probability: pick?.probability ?? null,
+            probabilities: pick?.probabilities ?? null,
+            current,
+            base,
+            applied,
+            reason,
+            ms,
+            inputTokens: pick?.inputTokens ?? null,
+          })
+        })
       if (mode === 'auto') {
         const left = AUTO_WAIT_MS - ((await $.clock.now()) - at)
-        const timeout = $.clock.sleep(Math.max(left, 0)).then(() => null)
+        const timeout = $.clock.sleep(Math.max(left, 0)).then(() => undefined)
         const answer = await Promise.race([pick, timeout])
-        const level = decide(answer, current, threshold)
+        const level = decide(answer ?? null, current, threshold)
         if (level) turnLevel = level
         $.ui.status(level && answer ? `effort ${level} (auto, Jev ${percent(answer.probability)})` : undefined)
+        log(level, level ? null : answer === undefined ? 'timeout' : notApplied(answer, current))
       } else {
         void pick.then(answer => {
           const level = decide(answer, current, threshold)
+          log(level, level ? null : notApplied(answer, current))
           if (level && answer) return update($, suggestion, () => ({ level, probability: answer.probability, from: current }))
         })
       }
