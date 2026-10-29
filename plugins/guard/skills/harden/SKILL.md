@@ -22,12 +22,12 @@ List every action the agent takes when it runs: each command it runs, value it c
 
 ## 3. Sort each step
 
-| Goes to | Takes | Sketch |
-| --- | --- | --- |
-| Code | A computable answer: counting, sorting, parsing, matching across sources, lookups, rule tables, gathering from CLIs and APIs, formatting output, state and idempotency checks | A script name, with its inputs and outputs |
-| Code, as a check | A rule the agent must remember | The rule, then "via the `enforce` skill" |
-| Judgment model | A narrow judgment: one of a fixed set, whether a claim holds, a position on a rubric, where something is in an image | The question type, the question, the options, a confidence threshold, and the fallback below it |
-| Agent | Open-ended writing, multi-step reasoning, new situations | Why it stays |
+| Goes to          | Takes                                                                                                                                                                         | Sketch                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Code             | A computable answer: counting, sorting, parsing, matching across sources, lookups, rule tables, gathering from CLIs and APIs, formatting output, state and idempotency checks | A script name, with its inputs and outputs                                                      |
+| Code, as a check | A rule the agent must remember                                                                                                                                                | The rule, then "via the `enforce` skill"                                                        |
+| Judgment model   | A narrow judgment: one of a fixed set, whether a claim holds, a position on a rubric, where something is in an image                                                          | The question type, the question, the options, a confidence threshold, and the fallback below it |
+| Agent            | Open-ended writing, multi-step reasoning, new situations                                                                                                                      | Why it stays                                                                                    |
 
 Mark a step already in the right place `keep`. Split a step that mixes them: code gathers the candidates, the judgment model judges them, the agent writes what is left. Leave each rule's check to the `enforce` skill, which picks the rung.
 
