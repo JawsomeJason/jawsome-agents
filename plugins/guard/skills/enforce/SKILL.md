@@ -1,6 +1,6 @@
 ---
 name: enforce
-description: Turns one convention or repeated correction into a check the toolchain runs, in any repo. Finds the cheapest rung that catches it (type system, existing lint rule, custom lint rule, generator, commit hook, CI, test, playbook script), builds it, and proves it fires on a real violation; reports instead when the convention is already enforced or is a judgment call no machine can check. Use right after a correction, a recurring bug, the same review comment twice, or a newly written rule, and whenever a rules file, agent instructions file, playbook or style guide states something a tool could check. Triggers include "/enforce", "can we enforce this", "make this a lint rule", "can the linter catch this", "is this already enforced", "stop people doing X", "add a guardrail", or "keep this from regressing". Prefer the `harden` skill when the subject is a whole skill or playbook rather than one named convention; harden hands enforce each rule it finds.
+description: Turns one convention or repeated correction into a check the toolchain runs, in any repo. Finds the cheapest rung that catches it (type system, existing lint rule, custom lint rule, generator, commit hook, CI, test, playbook script), builds it, and proves it fires on a real violation; reports instead when the convention is already enforced or is a judgment call no machine can check. Use for an enforcement candidate (a rule a tool could check, such as one a lint or a hook could enforce), right after a correction, a recurring bug, the same review comment twice, or a newly written rule, and whenever a rules file, agent instructions file, playbook or style guide states something a tool could check. Triggers include "/enforce", "can we enforce this", "make this a lint rule", "is this already enforced", "add a guardrail", or "keep this from regressing". Prefer the `harden` skill when the subject is a whole skill or playbook rather than one named convention; harden hands enforce each rule it finds.
 argument-hint: "[convention to enforce]"
 ---
 
@@ -37,7 +37,7 @@ Cheapest means closest to the author and least new code to maintain. Stop at the
 5. **Commit hook.** The commit itself is the subject: its message or what is staged.
 6. **CI.** It needs the whole repo, the network or a build artifact.
 7. **Test.** The property is behavioural.
-8. **Playbook script.** The rule governs how an agent runs a playbook, not the code: a gate before a step. Follow [references/playbook-checks.md](references/playbook-checks.md).
+8. **Playbook script.** The rule governs how an agent runs a playbook step, not the code. Write a script that exits non-zero with the right action when the rule breaks, and propose the one-line step edit that runs it. Hand that edit to whatever maintains the operator's playbooks, because it knows which file holds the step.
 9. **Prose.** Last resort, for section 3.
 
 The check's message is the author's only teaching, so name the right shape ("use the `data-*` state attributes"), not the ban. Put the rationale in a config comment.
