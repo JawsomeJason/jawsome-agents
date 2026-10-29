@@ -1,6 +1,6 @@
 {
   "name": "guard",
-  "description": "Turns conventions into checks the toolchain runs, and moves the steps a skill or playbook does by hand into scripts and narrow judgment-model questions.",
+  "description": "Turns conventions into checks the toolchain runs, and moves the steps a skill does by hand into scripts and narrow judgment-model questions.",
   "version": "0.3.0",
   "author": {
     "name": "Jason Featheringham",

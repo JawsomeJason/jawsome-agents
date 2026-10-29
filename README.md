@@ -7,7 +7,7 @@ Agent skills that run in any harness that reads the [Agent Skills spec](https://
 | Plugin | What it does |
 | --- | --- |
 | `standards` | Mines a repo's review history into coding standards that agents follow while they write code there, each with its reason and the review comments behind it, and prunes the rules that don't change what agents write. |
-| `guard` | `enforce` turns one convention into the cheapest check the toolchain runs (a type, a lint rule, a hook, a test) and proves it fires. `harden` sorts every step of a skill or playbook into code, a judgment-model question or the agent, then rebuilds it on the split you approve. |
+| `guard` | `enforce` turns one convention into the cheapest check the toolchain runs (a type, a lint rule, a hook, a test) and proves it fires. `harden` sorts every step of a skill into code, a judgment-model question or the agent, then rebuilds it on the split you approve. |
 | `claudecode-smart-usage` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/claudecode-smart-usage/README.md). |
 
 Invoke `standards` as `/standards [command] [scope]`:

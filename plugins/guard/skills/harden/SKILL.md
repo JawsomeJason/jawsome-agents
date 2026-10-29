@@ -1,20 +1,20 @@
 ---
 name: harden
-description: Sorts every step one skill or playbook has the agent perform at run time into the cheapest place that does it reliably (code, a typed question to a judgment model, or the agent itself), and rebuilds it on the split the operator approves. Use when a skill or playbook has the agent count, sort, parse, match or look things up by hand, when it asks the agent for a narrow judgment that a judgment model (a decision model that answers typed questions such as a choice, a yes-or-no or a score, with a calibrated confidence) could answer, when it leans on rules the agent must remember or runs slow, costly or different every time. Triggers include "/harden", "harden the releasing playbook", "what in this skill could be a script", "make this deterministic", "which of these could be a typed question", or a SKILL.md or playbook path with that intent. Prefer the `enforce` skill when the subject is one named convention rather than a whole skill or playbook; harden hands enforce each convention it finds.
-argument-hint: "<skill name, playbook name, or path>"
+description: Sorts every step one skill has the agent perform at run time into the cheapest place that does it reliably (code, a typed question to a judgment model, or the agent itself), and rebuilds it on the split the operator approves. Use when a skill has the agent count, sort, parse, match or look things up by hand, when it asks the agent for a narrow judgment that a judgment model (a decision model that answers typed questions such as a choice, a yes-or-no or a score, with a calibrated confidence) could answer, when it leans on rules the agent must remember or runs slow, costly or different every time. Triggers include "/harden", "harden the release skill", "what in this skill could be a script", "make this deterministic", "which of these could be a typed question", or a SKILL.md path with that intent. Prefer the `enforce` skill when the subject is one named convention rather than a whole skill; harden hands enforce each convention it finds.
+argument-hint: "<skill name or path>"
 ---
 
 # Harden
 
-An agent that counts, parses or remembers rules by hand is slow, costly and different on every run. This skill moves each run-time step of one skill or playbook to the cheapest place that does it reliably: code when the answer is computable, a judgment model when it is a narrow typed judgment, and the agent only for open-ended writing and multi-step reasoning.
+An agent that counts, parses or remembers rules by hand is slow, costly and different on every run. This skill moves each run-time step of one skill to the cheapest place that does it reliably: code when the answer is computable, a judgment model when it is a narrow typed judgment, and the agent only for open-ended writing and multi-step reasoning.
 
 ## 1. Resolve the target
 
-Take a path as given. Resolve a name against the playbooks the operator's playbook tool lists, then the skill folders the harness loads (project, operator and installed plugins). A name matching more than one: ask which in one line, because harden rewrites the target and the wrong one costs a revert.
+Take a path as given. Resolve a name against the skill folders the harness loads: project, operator and installed plugins. A name matching more than one: ask which in one line, because harden rewrites the target and the wrong one costs a revert.
 
-Read the target in full: a skill with every file under its `scripts/` and `references/`, a playbook as its tool prints it, with every script a step runs.
+Read the target in full, with every file under its `scripts/` and `references/`.
 
-When the subject is one convention rather than a whole skill or playbook, run the `enforce` skill with it and stop.
+When the subject is one convention rather than a whole skill, run the `enforce` skill with it and stop.
 
 ## 2. List the steps
 
@@ -42,12 +42,12 @@ One row per step: what it does today, where it goes, why, and the sketch. Wait f
 ## 5. Build the approved brief
 
 1. Run the `enforce` skill once per approved rule, with the rule as its argument.
-2. Write each script in the skill's own `scripts/` folder, or for a playbook where its tool keeps scripts. Make it idempotent, have it print what it will change before writing, and end with matched, changed and skipped counts that sum to the total, so a rerun after a crash is safe and its output is auditable.
+2. Write each script in the skill's own `scripts/` folder, so it installs and moves with the skill. Make it idempotent, have it print what it will change before writing, and end with matched, changed and skipped counts that sum to the total, so a rerun after a crash is safe and its output is auditable.
 3. Save every judgment-model answer a script gets to a JSON file beside it, and read it back on rerun, because each call costs money and may answer differently.
-4. Rewrite the prose. Each replaced step becomes one line that runs the script by its full path, and the prose a check replaced goes. Edit a skill you maintain in place. For a playbook, or a skill installed from someone else's plugin, propose the edits and hand them to whatever maintains it, because an installed copy is overwritten on upgrade.
+4. Rewrite the prose. Each replaced step becomes one line that runs the script by its full path, and the prose a check replaced goes. Edit a skill you maintain in place. For a skill installed from someone else's plugin, propose the edits upstream instead, because an installed copy is overwritten on upgrade.
 
 ## 6. Report
 
 Per step, name what changed: the new script, judgment-model question or check, and the prose it replaced, plus the command that reruns each script. Offer tests in one line, and write them only if the operator asks.
 
-One target per run, because a sweep of every skill or playbook produces a brief too long to approve with care.
+One target per run, because a sweep of every skill produces a brief too long to approve with care.
