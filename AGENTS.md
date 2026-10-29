@@ -39,6 +39,10 @@ A plugin named `claudecode-<name>` is built for Claude Code alone, as mods and h
 
 The skills CLI always searches each listed plugin's `skills/` folder and skips only internal skills, so a `SKILL.md` inside a `claudecode-` plugin either hides from it or says up front which harness it needs. It sets `metadata.internal: true`, or it sets a `compatibility` that names Claude Code (such as `Requires Claude Code`) and a `description` that starts with `Claude Code only:`. An unmarked skill would install into harnesses that can't run it, and the lint fails it.
 
+## Formatting
+
+Prettier formats every Markdown file, with `proseWrap: never`, so each paragraph and list item is one line. A diff then shows the sentence that changed instead of a reflowed block, and each reader's editor wraps it to its own width. Run `npm install` once, then `npm run format` before you commit. CI runs `npm run format:check` and fails on any file Prettier would change. Prettier is a dev dependency of the repo only: the Runtimes rule still holds for the skills, which ship no `package.json`. `scripts/lint-fixtures/` is excluded, because each fixture holds the exact Markdown its test expects.
+
 ## Lint
 
 `scripts/lint.mjs` enforces every rule above that a machine can check. The denylists live in `scripts/lint-rules.json`, so they change without code edits. That file is public, so it holds only generic patterns, such as home paths. Names of real people, employers and private packages go in a JSON file outside the repo, shaped `{"patterns": ["regex", ...]}`. Set `STANDARDS_LINT_PRIVATE_DENYLIST` to its path, and the lint adds those patterns to `org-term`. A path it can't read fails the lint instead of passing silently. Standards that the `standards` skill generates for one repo (frontmatter `metadata` holds `generator: standards`) skip the rules in `generatedStandardsExempt`, because they describe that repo and may name the services it runs on. Their blockquoted lines also skip the rules in `generatedQuoteExempt`, because those quote reviewers word for word. A link target is checked even when it holds a space; only a `{{ }}` template placeholder is skipped.
