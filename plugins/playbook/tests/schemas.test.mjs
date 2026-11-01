@@ -38,6 +38,7 @@ test('show, list, locate and check --json match their schemas', () => {
   valid('locate', json(['locate', 'babysit', 'the trunk ruleset']));
   valid('check', json(['check']));
   valid('check', json(['check'], { cwd: w.outside }));
+  valid('map', json(['map', 'babysit']));
 });
 
 test('the schemas reject an output that carries a layer name or a key they do not list', () => {

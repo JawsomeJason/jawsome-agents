@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { CLI, git, PSTACK, tempDir, world } from './helpers.mjs';
 
 const WHEN = 'when: Any request\n';
@@ -18,7 +19,7 @@ function plainPstack() {
   cpSync(PSTACK, dir, { recursive: true });
   writeFileSync(join(dir, 'skills/poteto-mode/scripts/check-playbooks.mjs'), `#!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const BUNDLED = join(dirname(fileURLToPath(import.meta.url)), '../playbooks');
 const root = process.argv[2];
@@ -46,6 +47,12 @@ function source(packs, dir = join(tempDir(), 'source')) {
 }
 
 function writePacks(dir, packs) {
+  writePacksIn(dir, packs);
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '-q', '--allow-empty', '-m', 'packs']);
+}
+
+function writePacksIn(dir, packs) {
   rmSync(join(dir, 'packs'), { recursive: true, force: true });
   for (const [name, pack] of Object.entries(packs)) {
     const root = join(dir, 'packs', name);
@@ -61,21 +68,24 @@ function writePacks(dir, packs) {
       writeFileSync(join(root, 'rules', 'a-rule.md'), '# rule\n');
     }
   }
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '--allow-empty', '-m', 'packs']);
 }
 
-/** A consumer checkout with no team files, a source of packs, and a run bound to both. */
+/**
+ * A consumer checkout with no team files, a source of packs served as the slug `from` through a local mirror, and a run
+ * bound to both. A repo install refuses a local path outside the repo, so the mirror stands in for the forge.
+ */
 function consumer(packs, opts = {}) {
   const w = world({ team: { 'babysitting-an-acme-pr.md': null, 'releasing-web.md': null }, ...opts });
   rmSync(join(w.repo, '.agents'), { recursive: true, force: true });
   // These extend the team files gone from this checkout, which no other context defines.
   for (const path of ['babysitting-an-acme-pr-tester.md', 'releasing-web-tester.md', 'repos/web/babysitting-an-acme-pr-web.md']) rmSync(join(w.config, 'playbooks', path));
   git(w.repo, ['add', '-A']);
-  const from = source(packs);
+  const base = tempDir();
+  const bare = source(packs, join(base, 'acme-eng', 'agents'));
   const dir = join(w.repo, '.agents', 'playbooks');
   const lockPath = join(w.repo, '.agents', 'playbooks.lock');
-  return { ...w, from, dir, lockPath, lock: () => JSON.parse(readFileSync(lockPath, 'utf8')), manifest: () => JSON.parse(readFileSync(join(w.repo, '.agents', 'packs.json'), 'utf8')) };
+  const run = (args, { env = {}, ...rest } = {}) => w.run(args, { ...rest, env: { PLAYBOOKS_GIT_BASE: base, ...env } });
+  return { ...w, run, base, bare, from: 'acme-eng/agents', dir, lockPath, lock: () => JSON.parse(readFileSync(lockPath, 'utf8')), manifest: () => JSON.parse(readFileSync(join(w.repo, '.agents', 'packs.json'), 'utf8')) };
 }
 
 const snapshot = (dir) => {
@@ -98,7 +108,7 @@ test('install copies byte-identical files, writes the manifest and the lock, and
   const r = w.run(['install', 'corp', '--from', w.from]);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal(readFileSync(join(w.dir, 'x-acme.md'), 'utf8'), text);
-  const commit = git(w.from, ['rev-parse', 'HEAD']).trim();
+  const commit = git(w.bare, ['rev-parse', 'HEAD']).trim();
   assert.deepEqual(w.lock().files, { 'x-acme.md': { pack: 'corp', hash: sha(text) } });
   assert.equal(w.lock().packs.corp.commit, commit);
   assert.equal(w.manifest().packs[0].name, 'corp');
@@ -186,7 +196,7 @@ test('update re-fetches, deletes what the pack no longer ships, and refuses to o
   const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT, 'two-acme': patch('feature', '- A note.') } } });
   assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
   const next = patch('babysit', '- **In** "Work the merge frontier" Updated.');
-  writePacks(w.from, { a: { playbooks: { 'one-acme': next } } });
+  writePacks(w.bare, { a: { playbooks: { 'one-acme': next } } });
   const edited = join(w.dir, 'two-acme.md');
   const original = readFileSync(edited, 'utf8');
   writeFileSync(edited, `${original}- Hand edit.\n`);
@@ -199,14 +209,14 @@ test('update re-fetches, deletes what the pack no longer ships, and refuses to o
   assert.equal(readFileSync(join(w.dir, 'one-acme.md'), 'utf8'), next);
   assert.equal(existsSync(edited), false);
   assert.deepEqual(Object.keys(w.lock().files), ['one-acme.md']);
-  assert.equal(w.lock().packs.a.commit, git(w.from, ['rev-parse', 'HEAD']).trim());
+  assert.equal(w.lock().packs.a.commit, git(w.bare, ['rev-parse', 'HEAD']).trim());
   assert.equal(w.run(['update', 'never-installed']).status, 2);
 });
 
 test('update names a pack its source dropped', () => {
   const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
   assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
-  writePacks(w.from, {});
+  writePacks(w.bare, {});
   const r = w.run(['update']);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /packs\/a\/pack\.json/);
@@ -216,7 +226,7 @@ test('an install rerun converges after a crash that wrote the new files but not 
   const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
   assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
   const next = patch('babysit', '- **In** "Work the merge frontier" Updated.');
-  writePacks(w.from, { a: { playbooks: { 'one-acme': next } } });
+  writePacks(w.bare, { a: { playbooks: { 'one-acme': next } } });
   writeFileSync(join(w.dir, 'one-acme.md'), next);
   assert.equal(w.run(['update', 'a']).status, 0);
   assert.equal(w.run(['check', '--locked']).status, 0);
@@ -244,7 +254,7 @@ test('remove leaves zero stale files, and refuses while another pack requires it
 test('check names a hand-edited, a missing and an unlocked pack file, and check --locked needs no pstack and no source', () => {
   const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT, 'two-acme': patch('feature', '- A note.') } } });
   assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
-  rmSync(w.from, { recursive: true });
+  rmSync(w.base, { recursive: true });
   const bare = { PLAYBOOKS_PSTACK_DIR: join(w.root, 'nowhere'), PATH: `${dirname(process.execPath)}:/usr/bin:/bin` };
   const clean = w.run(['check', '--locked'], { env: bare });
   assert.equal(clean.status, 0, clean.stdout + clean.stderr);
@@ -353,7 +363,7 @@ test('a pack may ship a standalone root that another pack chains on', () => {
 
 test('--user installs into the config dir, active everywhere, with its lock there, and a user file may extend it', () => {
   const w = consumer({ mine: { playbooks: { 'user-pack': patch('babysit', '- **After** "Work the merge frontier" Say foo bar.') } } });
-  const r = w.run(['install', 'mine', '--from', w.from, '--user'], { cwd: w.outside });
+  const r = w.run(['install', 'mine', '--from', w.bare, '--user'], { cwd: w.outside });
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal(existsSync(join(w.config, 'playbooks', 'packs', 'mine', 'user-pack.md')), true);
   assert.equal(JSON.parse(readFileSync(join(w.config, 'playbooks.lock'), 'utf8')).files['user-pack.md'].pack, 'mine');
@@ -404,16 +414,11 @@ const RULESYNC = `// Generated copies.
 `;
 const stripJsonc = (text) => JSON.parse(text.replace(/^\s*\/\/.*$/gm, '').replace(/\/\/ the harnesses/, '').replace(/,(\s*[}\]])/g, '$1'));
 
-/** A consumer whose packs come from a forge-shaped slug, served by a local bare repo. */
+/** A consumer with `files` at its root, whose run is `forge` as well. */
 function forgeConsumer(packs, files = {}) {
-  const w = consumer({});
-  const base = tempDir();
-  const bare = join(base, 'acme-eng', 'agents');
-  mkdirSync(dirname(bare), { recursive: true });
-  source(packs, bare);
+  const w = consumer(packs);
   for (const [name, text] of Object.entries(files)) writeFileSync(join(w.repo, name), text);
-  const env = { PLAYBOOKS_GIT_BASE: base };
-  return { ...w, base, bare, slug: 'acme-eng/agents', forge: (args) => w.run(args, { env }) };
+  return { ...w, slug: w.from, forge: (args) => w.run(args) };
 }
 
 test('install from a forge slug fetches with git, records the slug, and writes one rulesync entry per pack, keeping comments', () => {
@@ -464,18 +469,22 @@ test('a rulesync config with no sources key gains one, and a repo with no config
   assert.equal(existsSync(join(bare.repo, 'rulesync.jsonc')), false);
 });
 
-test('a local source cannot reach rulesync, which refuses a local path, so install says so and leaves the config alone', () => {
-  const w = consumer({ p: { skills: true, playbooks: { 'p-acme': IN_BABYSIT } } });
+test('a local source inside the repo cannot reach rulesync, which refuses a local path, so install says so and leaves the config alone', () => {
+  const w = consumer({});
+  writePacksIn(join(w.repo, 'vendor'), { p: { skills: true, playbooks: { 'p-acme': IN_BABYSIT } } });
   writeFileSync(join(w.repo, 'rulesync.jsonc'), RULESYNC);
-  const r = w.run(['install', 'p', '--from', w.from]);
+  const r = w.run(['install', 'p', '--from', 'vendor']);
   assert.equal(r.status, 0, r.stderr);
+  assert.equal(w.manifest().packs[0].source, `.${sep}vendor`);
   assert.match(r.stdout, /info: .*p ships skills or rules.*local/);
   assert.equal(readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8'), RULESYNC);
 });
 
 test('a symlink in a pack is refused, because a copy must be the bytes the source commits', () => {
   const w = consumer({ p: { playbooks: { 'p-acme': IN_BABYSIT } } });
-  symlinkSync('/etc/hosts', join(w.from, 'packs', 'p', 'playbooks', 'link-acme.md'));
+  symlinkSync('/etc/hosts', join(w.bare, 'packs', 'p', 'playbooks', 'link-acme.md'));
+  git(w.bare, ['add', '-A']);
+  git(w.bare, ['commit', '-q', '-m', 'link']);
   const r = w.run(['install', 'p', '--from', w.from]);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /link-acme\.md.*not a plain file/);
@@ -491,4 +500,184 @@ test('the usage lists the pack verbs, and writing flags stay on their commands',
   assert.equal(w.run(['show', 'babysit', '--from', 'x']).status, 2);
   assert.equal(w.run(['install', 'a', '--with', 'x']).status, 2);
   assert.equal(w.run(['update', '--from', 'x']).status, 2);
+});
+
+test('a repo install refuses --link and a local source outside the repo, because a committed manifest cannot name a private folder', () => {
+  const w = consumer({ p: { playbooks: { 'p-acme': IN_BABYSIT } } });
+  const outside = w.run(['install', 'p', '--from', w.bare]);
+  assert.equal(outside.status, 2);
+  assert.match(outside.stderr, /outside the repo/);
+  const link = w.run(['install', 'p', '--from', 'vendor', '--link']);
+  assert.equal(link.status, 2);
+  assert.match(link.stderr, /--link.*--user/);
+  assert.equal(w.run(['install', 'p', '--from', w.from, '--link', '--user']).status, 2, 'a link needs a local folder');
+  assert.equal(existsSync(join(w.repo, '.agents')), false);
+});
+
+test('--user installs from a plain folder with no git and no network', () => {
+  const w = consumer({});
+  const folder = join(tempDir(), 'private');
+  writePacksIn(folder, { mine: { playbooks: { 'mine-pack': IN_BABYSIT } } });
+  const r = w.run(['install', 'mine', '--user', '--from', folder], { env: { PLAYBOOKS_GIT_BASE: null, PATH: `${dirname(process.execPath)}:/usr/bin:/bin` } });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(JSON.parse(readFileSync(join(w.config, 'playbooks.lock'), 'utf8')).packs.mine.commit, null);
+  assert.match(w.run(['show', 'babysit']).stdout, /Read the ruleset/);
+});
+
+test('--link references the source live: edits apply at once, the lock holds the path and no hash, and removing it leaves the source', () => {
+  const w = consumer({});
+  const folder = join(tempDir(), 'private');
+  writePacksIn(folder, { base: { playbooks: { 'base-pack': IN_BABYSIT } }, mine: { requires: ['base'], playbooks: { 'mine-pack': patch('feature', '- A note.') } } });
+  const r = w.run(['install', 'mine', '--user', '--link', '--from', folder]);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const lock = JSON.parse(readFileSync(join(w.config, 'playbooks.lock'), 'utf8'));
+  assert.equal(lock.packs.mine.source, folder);
+  assert.equal(lock.packs.mine.link, true);
+  assert.equal(lock.packs.base.link, true, 'a required pack links too');
+  assert.deepEqual(lock.files, {});
+  assert.match(w.run(['show', 'babysit']).stdout, /Read the ruleset/);
+  const edit = patch('babysit', '- **In** "Work the merge frontier" Edited live.');
+  writeFileSync(join(folder, 'packs', 'base', 'playbooks', 'base-pack.md'), edit);
+  writeFileSync(join(folder, 'packs', 'base', 'playbooks', 'new-pack.md'), patch('babysit', '- **In** "Work the merge frontier" Added live.'));
+  const shown = w.run(['show', 'babysit']).stdout;
+  assert.match(shown, /Edited live\./);
+  assert.match(shown, /Added live\./);
+  const check = w.run(['check']);
+  assert.equal(check.status, 0, check.stdout);
+  const locked = w.run(['check', '--locked', '--user']);
+  assert.equal(locked.status, 0, locked.stdout);
+  assert.match(locked.stdout, /linked/);
+  assert.equal(w.run(['update', '--user']).status, 0);
+  assert.equal(w.run(['remove', 'mine', '--user']).status, 0);
+  assert.equal(w.run(['remove', 'base', '--user']).status, 0);
+  assert.equal(existsSync(join(w.config, 'playbooks', 'packs')), false);
+  assert.equal(readFileSync(join(folder, 'packs', 'base', 'playbooks', 'base-pack.md'), 'utf8'), edit);
+});
+
+test('a linked pack whose folder is gone is a named problem in both checks, and the pack can switch to a copy and back', () => {
+  const w = consumer({});
+  const folder = join(tempDir(), 'private');
+  writePacksIn(folder, { mine: { playbooks: { 'mine-pack': IN_BABYSIT } } });
+  assert.equal(w.run(['install', 'mine', '--user', '--link', '--from', folder]).status, 0);
+  const copied = w.run(['install', 'mine', '--user', '--from', folder]);
+  assert.equal(copied.status, 0, copied.stdout + copied.stderr);
+  assert.equal(lstatSync(join(w.config, 'playbooks', 'packs', 'mine')).isSymbolicLink(), false);
+  assert.equal(w.run(['check']).status, 0);
+  const linked = w.run(['install', 'mine', '--user', '--link', '--from', folder]);
+  assert.equal(linked.status, 0, linked.stdout + linked.stderr);
+  assert.equal(lstatSync(join(w.config, 'playbooks', 'packs', 'mine')).isSymbolicLink(), true);
+  assert.deepEqual(JSON.parse(readFileSync(join(w.config, 'playbooks.lock'), 'utf8')).files, {});
+  rmSync(folder, { recursive: true });
+  assert.match(w.run(['check']).stdout, /broken link/);
+  const locked = w.run(['check', '--locked', '--user']);
+  assert.equal(locked.status, 1);
+  assert.match(locked.stdout, /mine.*links to .*missing/);
+});
+
+const SAME_NAME_SKILL = { skills: true };
+test('install refuses a pack skill or rule named like the repo\'s own or another pack\'s, which rulesync would drop with exit 0', () => {
+  const w = forgeConsumer({ one: SAME_NAME_SKILL, two: SAME_NAME_SKILL, ruled: { rules: true }, ruled2: { rules: true } }, { 'rulesync.jsonc': '{\n  "sources": []\n}\n' });
+  const both = w.forge(['install', 'one', 'two', '--from', w.slug]);
+  assert.equal(both.status, 1);
+  assert.match(both.stderr, /packs\/two\/skills\/a-skill.*pack one/);
+  assert.equal(w.forge(['install', 'one', '--from', w.slug]).status, 0);
+  const later = w.forge(['install', 'two', '--from', w.slug]);
+  assert.equal(later.status, 1);
+  assert.match(later.stderr, /packs\/two\/skills\/a-skill.*pack one/);
+  assert.equal(w.forge(['install', 'one', '--from', w.slug]).status, 0, 'a pack never collides with itself');
+  const own = join(w.repo, '.rulesync', 'rules');
+  mkdirSync(own, { recursive: true });
+  writeFileSync(join(own, 'a-rule.md'), '# mine\n');
+  const rule = w.forge(['install', 'ruled', '--from', w.slug]);
+  assert.equal(rule.status, 1);
+  assert.match(rule.stderr, /packs\/ruled\/rules\/a-rule\.md.*\.rulesync\/rules\/a-rule\.md/);
+  mkdirSync(join(w.repo, '.rulesync', 'skills', 'a-skill'), { recursive: true });
+  writeFileSync(join(w.repo, '.rulesync', 'skills', 'a-skill', 'SKILL.md'), '---\nname: a-skill\n---\n');
+  const skill = w.forge(['update', 'one']);
+  assert.equal(skill.status, 1);
+  assert.match(skill.stderr, /\.rulesync\/skills\/a-skill/);
+});
+
+test('rulesync\'s own vendored copy of a pack skill is no collision, so a rerun passes', () => {
+  const w = forgeConsumer({ one: SAME_NAME_SKILL }, { 'rulesync.jsonc': '{\n  "sources": []\n}\n' });
+  assert.equal(w.forge(['install', 'one', '--from', w.slug]).status, 0);
+  mkdirSync(join(w.repo, '.rulesync', 'skills', '.curated', 'a-skill'), { recursive: true });
+  assert.equal(w.forge(['update']).status, 0);
+});
+
+test('install warns when pstack is missing, naming how to get it, and still succeeds', () => {
+  const w = consumer({ p: { playbooks: { 'p-acme': IN_BABYSIT } } });
+  const r = w.run(['install', 'p', '--from', w.from], { env: { PLAYBOOKS_PSTACK_DIR: null } });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /warning: .*pstack.*poteto-mode/);
+  assert.match(r.stdout, /pstack@pstack-claude/);
+  assert.equal(existsSync(join(w.dir, 'p-acme.md')), true);
+  assert.equal(w.run(['check', '--locked'], { env: { PLAYBOOKS_PSTACK_DIR: null } }).status, 0);
+  assert.equal(w.run(['remove', 'p'], { env: { PLAYBOOKS_PSTACK_DIR: null } }).status, 0);
+});
+
+/** A source repo holding `packs`, with `extra` files, for the pack linter. */
+function sourceRepo(packs, extra = {}) {
+  const root = join(tempDir(), 'source');
+  mkdirSync(root);
+  writePacksIn(root, packs);
+  for (const [path, text] of Object.entries(extra)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
+  return root;
+}
+const lintPacks = (root, args = []) => spawnSync(process.execPath, [CLI, 'check', '--packs', root, ...args], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: root } });
+
+test('check --packs passes a clean source with no pstack, and returns the check shape as JSON', () => {
+  const root = sourceRepo({ a: { playbooks: { 'a-one': IN_BABYSIT, 'a-two': standaloneBody('Do it.') } }, b: { requires: ['a'], playbooks: { 'b-one': patch('a-one', '- **In** "Read the ruleset" More.') } } });
+  const r = lintPacks(root);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /check --packs passed: 2 packs, 3 playbooks/);
+  assert.deepEqual(JSON.parse(lintPacks(root, ['--json']).stdout).problems, []);
+});
+
+test('check --packs names each broken rule with its file and line', () => {
+  const noWhen = '---\nextends: babysit\n---\n\n- A note.\n';
+  const layered = `---\nextends: babysit\n${WHEN}layer: org\n---\n\n- A note.\n`;
+  const root = sourceRepo({
+    a: { requires: ['ghost', 'c1'], playbooks: { 'no-when': noWhen, layered, same: IN_BABYSIT, unquoted: patch('babysit', '- **In** Work the merge frontier x'), edits: standaloneBody('Step.').replace('1. Step.', '- **In** "x" y\n\n1. Step.') } },
+    b: { playbooks: { same: IN_BABYSIT, 'reaches-up': patch('no-when', '- A note.'), 'p-one': patch('p-two', '- A note.'), 'p-two': patch('p-one', '- A note.') } },
+    c1: { requires: ['c2'] },
+    c2: { requires: ['c1'] },
+  }, { 'packs/wrong/pack.json': '{"name":"other"}' });
+  const r = lintPacks(root);
+  assert.equal(r.status, 1);
+  for (const line of [
+    /packs\/a\/playbooks\/no-when\.md:1: missing when:/,
+    /packs\/a\/playbooks\/layered\.md:4: layer: is retired/,
+    /packs\/b\/playbooks\/same\.md:1: .*packs\/a\/playbooks\/same\.md/,
+    /packs\/a\/pack\.json:1: requires ghost, which no pack here defines/,
+    /packs\/c[12]\/pack\.json:1: requires a cycle: /,
+    /packs\/wrong\/pack\.json:1: "name" must be wrong/,
+    /packs\/a\/playbooks\/unquoted\.md:\d+: a change has no straight-quoted/,
+    /packs\/a\/playbooks\/edits\.md:\d+: standalone playbook cannot carry edits/,
+    /packs\/b\/playbooks\/reaches-up\.md:\d+: extends no-when, in pack a, which pack b does not require/,
+    /packs\/b\/playbooks\/p-[a-z]+\.md:\d+: extends a cycle: /,
+  ]) assert.match(r.stdout, line);
+});
+
+test('check --packs takes its name words from the source repo, never from the tool', () => {
+  const packs = { a: { playbooks: { 'opening-a-pr-acme': IN_BABYSIT, 'plain-name': IN_BABYSIT.replace('ruleset', 'book') } } };
+  assert.equal(lintPacks(sourceRepo(packs)).status, 0, 'no config, no name rule');
+  const r = lintPacks(sourceRepo(packs, { 'packs/config.json': '{"nameWords":["acme","corp"]}' }));
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /packs\/a\/playbooks\/plain-name\.md:1: .*acme or corp/);
+  assert.doesNotMatch(r.stdout, /opening-a-pr-acme/);
+});
+
+test('check --packs fails where there are no packs, and on a root that is no folder', () => {
+  assert.equal(lintPacks(tempDir()).status, 1);
+  assert.equal(lintPacks(join(tempDir(), 'nope')).status, 2);
+  assert.equal(world().run(['check', '--packs', '.', '--locked']).status, 2);
+});
+
+test('this repo\'s own packs pass the linter', () => {
+  const r = lintPacks(fileURLToPath(new URL('../../..', import.meta.url)));
+  assert.equal(r.status, 0, r.stdout);
 });

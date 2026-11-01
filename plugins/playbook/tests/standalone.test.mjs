@@ -46,6 +46,20 @@ test('doctor passes a skill-only install as complete, where no plugin exists, an
   }
 });
 
+test('doctor offers chmod when a skill install lost the script\'s mode, as rulesync does', () => {
+  const w = standalone();
+  chmodSync(w.script, 0o644);
+  const cli = JSON.parse(w.run(['doctor', '--json']).stdout).findings.find((f) => f.id === 'cli');
+  assert.ok(cli.fixes.some((f) => f.command.startsWith('chmod +x ')), JSON.stringify(cli.fixes));
+});
+
+test('doctor says pstack is needed and how to get it, when it is missing', () => {
+  const w = standalone();
+  const r = w.run(['doctor'], { PLAYBOOKS_PSTACK_DIR: '' });
+  assert.match(r.stdout, /pstack-claude not found.*poteto-mode/);
+  assert.match(r.stdout, /pstack@pstack-claude/);
+});
+
 test('doctor accepts a link on PATH straight to the skill script', () => {
   const w = standalone();
   const bin = join(w.root, 'bin');

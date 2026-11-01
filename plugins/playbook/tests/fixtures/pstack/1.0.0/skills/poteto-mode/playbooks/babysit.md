@@ -7,6 +7,7 @@
 3. **Order is conflicts, then threads, then CI.** Batch fixes into one push.
 
    On a conflict, report it and stop.
+
 4. **Stop at the human's line.** Babysitting never authorizes merging.
 
 `drive` ends at merge-ready.

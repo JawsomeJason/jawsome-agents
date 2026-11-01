@@ -1,6 +1,2 @@
 # Each fixture holds the exact Markdown its lint test expects.
 scripts/lint-fixtures/
-# Fixtures hold the exact Markdown their tests quote.
-plugins/playbook/tests/fixtures/
-# A pack file is a copy of its source, byte for byte.
-packs/*/playbooks/

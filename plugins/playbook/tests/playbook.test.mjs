@@ -106,8 +106,7 @@ test('a playbook with no numbered steps takes each bold-lead paragraph as a step
 
 1. **Commits.** Commit in small units.   [opening-a-pr]
 2. Sign every commit.   [opening-a-pr-tester]
-3. **Titles.** Use a typed subject line.   [opening-a-pr ~ opening-a-pr-tester]
-Keep it short. Name the scope.
+3. **Titles.** Use a typed subject line. Keep it short. Name the scope.   [opening-a-pr ~ opening-a-pr-tester]
 4. **Readiness.** Open every PR ready.   [opening-a-pr]
 
 Family: opening-a-pr (pstack), opening-a-pr-tester (user)
