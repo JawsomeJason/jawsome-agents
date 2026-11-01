@@ -3,15 +3,13 @@
 ## Run the checks
 
 ```sh
-node --test 'tests/*.test.mjs'
-claude plugin validate .
+node --test 'plugins/playbook/tests/*.test.mjs' 'plugins/claudecode-playbook-guard/tests/*.test.mjs'
+claude plugin validate plugins/playbook
 ```
 
 The tests in `tests/playbook.test.mjs` run playbook against a fake pstack in `tests/fixtures/pstack/` and a config dir in `tests/fixtures/config/`. That config dir has user files in every scope folder, including a three-deep chain, and `tests/fixtures/team/` holds the team files that `world()` in `tests/helpers.mjs` commits into a checkout's `.agents/playbooks`. Together they use all four edit verbs.
 
 `tests/readme-harnesses.test.mjs` reads pstack-claude's README from `PSTACK_CLAUDE_README`, or from the pstack-claude marketplace clone under `$HOME/.*/plugins/marketplaces/`. Without either, the test skips and says why. CI clones pstack-claude, so the test always runs there.
-
-If you have Muse, also run `muse plugins validate .` to check the Muse bundle.
 
 ## Write the failing test first
 
@@ -19,25 +17,20 @@ Commit a test that fails for the reason you expect, then the change that turns i
 
 ## Use the Node standard library only
 
-playbook and the tests import nothing outside Node, so they run wherever Node runs, with no install step. `package.json` exists only because Pi reads its `pi` field.
+Playbook and the tests import nothing outside Node, so they run wherever Node runs, with no install step.
 
 ## Stay compatible with pstack
 
 - Use pstack's playbook format and edit grammar, and add no verbs. Team files live in a repo's `.agents/playbooks/`, where pstack reads them as project playbooks and its `check-playbooks.mjs` checks them. A verb that pstack lacks would break them there.
-- Never pin a pstack version. playbook reads whichever pstack the harness installed, and `playbook check` names each quote that an upgrade broke. A pin would hold users on an old pstack.
+- Never pin a pstack version. Playbook reads whichever pstack the harness installed, and `playbook check` names each quote that an upgrade broke. A pin would hold users on an old pstack.
 
 ## Cover every harness pstack-claude supports
 
 Each README install step has one table with a row per harness, in the order pstack-claude's README lists them. `tests/readme-harnesses.test.mjs` fails when a table drops a harness or changes the order. When pstack-claude adds a harness, add its row to every table. Mark the row untested until someone runs it.
 
-Each harness reads its own manifest:
+Claude Code reads `.claude-plugin/` and Codex reads `.codex-plugin/`, with the repo-level `.agents/plugins/marketplace.json`. Every other harness installs the skills alone with a skills CLI or rulesync, so the skill folder must work with nothing around it. `tests/standalone.test.mjs` proves it.
 
-- Claude Code and GitHub Copilot read `.claude-plugin/`.
-- Codex reads `.agents/plugins/marketplace.json` and `.codex-plugin/`.
-- Pi reads the `pi` field of `package.json`.
-- Muse reads `.muse-plugin/`.
-
-Five files carry the version: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.codex-plugin/plugin.json`, `.muse-plugin/plugin.json`, and `package.json`. Change all five together. `tests/manifests.test.mjs` fails when they disagree. When a new version reaches `main`, the `release` workflow tags it `v<version>` and publishes a GitHub release, so bump the version in any PR that changes what users install. `main` takes changes only through a pull request with the `test` check passing, merged by rebase. Keep the repo free of symlinks, because Muse refuses to install a plugin that contains one and Codex drops them when it copies a plugin.
+Three files carry the version: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and the entry in the repo's `.claude-plugin/marketplace.json`. Change all three together. `tests/manifests.test.mjs` fails when they disagree. Keep the plugin free of symlinks, because Codex drops them when it copies a plugin.
 
 ## Write Conventional Commits
 
@@ -45,4 +38,4 @@ Use [Conventional Commits](https://www.conventionalcommits.org/), as the history
 
 ## License
 
-jawsome-playbooks is MIT-licensed. See [LICENSE](LICENSE). [NOTICE](NOTICE) lists the text adapted from pstack-claude.
+Playbook is MIT-licensed, under the repo's `LICENSE`. [NOTICE](NOTICE) lists the text adapted from pstack-claude.

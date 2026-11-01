@@ -1,7 +1,4 @@
-jawsome-playbooks
-Copyright (c) 2026 Jason Featheringham
-
-jawsome-playbooks includes short excerpts adapted from pstack-claude
+This plugin includes short excerpts adapted from pstack-claude
 (https://github.com/michael-denyer/pstack-claude), a port of pstack
 (https://github.com/cursor/plugins/tree/main/pstack).
 

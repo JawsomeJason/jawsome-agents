@@ -1,6 +1,6 @@
 ---
 name: playbook
-description: Lists, computes, and checks poteto-mode playbooks extended by team and personal files, with the playbook command. show, also spelled compute, prints one playbook family with every file that extends it applied over pstack's bundled steps in extends order, tags each step with the file that wrote it, and names every override. locate names the step a quote finds and the file an edit to it belongs in. check validates every playbook file against the installed pstack. Use when running a poteto-mode playbook through jawsome-playbooks, when a mode skill asks for `playbook show`, when writing or editing a playbook file, or after a pstack upgrade.
+description: Lists, computes, and checks poteto-mode playbooks extended by team and personal files, with the playbook command. show, also spelled compute, prints one playbook family with every file that extends it applied over pstack's bundled steps in extends order, tags each step with the file that wrote it, and names every override. locate names the step a quote finds and the file an edit to it belongs in. check validates every playbook file against the installed pstack. Use when running a poteto-mode playbook through this plugin, when a mode skill asks for `playbook show`, when writing or editing a playbook file, or after a pstack upgrade.
 argument-hint: "<list|show|compute|locate|extend|new|check|doctor> [playbook] [--repo <repo>]"
 compatibility: Requires Node and the pstack plugin's poteto-mode skill.
 license: MIT
@@ -8,7 +8,7 @@ license: MIT
 
 # Playbook
 
-jawsome-playbooks applies the operator's personal and team playbook files over pstack's bundled poteto-mode playbooks, in the order their `extends` chains give: parents first, team files before personal ones. This skill runs playbook and shows the result, so the agent copies one computed step list instead of merging files by hand, which drops or misplaces edits.
+Playbook applies the operator's personal and team playbook files over pstack's bundled poteto-mode playbooks, in the order their `extends` chains give: parents first, team files before personal ones. This skill runs playbook and shows the result, so the agent copies one computed step list instead of merging files by hand, which drops or misplaces edits.
 
 ## Run it
 

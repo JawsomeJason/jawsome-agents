@@ -394,7 +394,7 @@ export function lint(target) {
         continue;
       }
       // The install manifests must name their author, so those objects are blanked.
-      if (/(^|\/)\.claude-plugin\/[^/]+\.json$/.test(rel)) {
+      if (/(^|\/)\.(?:claude|codex)-plugin\/[^/]+\.json$/.test(rel)) {
         const keys = RULES.manifestIdentityKeys.join('|');
         text = text.replace(new RegExp(`"(?:${keys})"\\s*:\\s*\\{[^}]*\\}`, 'g'), (m) => m.replace(/[^\n]/g, ' '));
       }

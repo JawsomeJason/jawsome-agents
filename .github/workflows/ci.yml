@@ -22,3 +22,7 @@ jobs:
       - run: node scripts/lint.mjs
       - run: node --test 'scripts/*.test.mjs'
       - run: node --test 'plugins/standards/tests/*.test.mjs'
+      - run: git clone --depth 1 https://github.com/michael-denyer/pstack-claude "$RUNNER_TEMP/pstack-claude"
+      - run: node --test 'plugins/playbook/tests/*.test.mjs' 'plugins/claudecode-playbook-guard/tests/*.test.mjs'
+        env:
+          PSTACK_CLAUDE_README: ${{ runner.temp }}/pstack-claude/README.md

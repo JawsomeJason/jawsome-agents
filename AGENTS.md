@@ -6,6 +6,8 @@ These rules apply to every agent and person who edits this repo, in any harness.
 
 - `plugins/<name>/skills/<skill>/` holds each skill: `SKILL.md`, plus optional `references/`, `scripts/` and `assets/`.
 - `plugins/<name>/.claude-plugin/plugin.json` and the root `.claude-plugin/marketplace.json` are thin install wrappers. They live outside `skills/`, and skills never depend on them.
+- `plugins/<name>/.codex-plugin/plugin.json` and the root `.agents/plugins/marketplace.json` are the Codex install wrappers, for a plugin that ships them.
+- `packs/<name>/` holds a shared pack for the `playbook` command: `pack.json` and `playbooks/*.md`, with optional `skills/` and `rules/`. Pack text follows the Identity rule, because a pack installs into any repo.
 - `scripts/` holds repo tooling: the lint with its rules file and fixtures, and `test-harnesses.mjs`, each with its tests.
 - Users of other harnesses install portable skills with the skills CLI, which reads `.claude-plugin/marketplace.json`. Each portable plugin's entry lists its skills under `skills`, so the CLI finds and groups them from the manifest. Only a search that finds nothing, or a run with `--full-depth`, walks the whole tree, where the lint fixtures' `SKILL.md` files would show up too.
 
@@ -31,7 +33,7 @@ Skills must keep working as harnesses, models, vendors and runtimes change aroun
 - **Links.** The only external URL a skill may carry is the spec. Examples live in `references/`, and every relative link stays inside its own skill folder.
 - **Time.** Prose carries no time-relative words and no absolute dates. Words like `currently`, `latest` and `recently` go stale. Dates belong in data files.
 - **Reasons.** Every rule states why it exists. A rule with its reason still generalizes after the tools change.
-- **Identity.** No person, company, domain or private path appears anywhere, except the authorship fields in the install manifests and `LICENSE`, which must name the author. Skills work for any user at any company.
+- **Identity.** No person, company, domain or private path appears anywhere, except the authorship fields in the install manifests and `LICENSE`, which must name the author, and a third-party license in a `NOTICE` or a third-party install slug, which must name its holder. Skills work for any user at any company.
 
 ## Claude Code-only plugins
 
@@ -52,6 +54,7 @@ node scripts/lint.mjs                 # this repo
 node scripts/lint.mjs path/to/folder  # any folder of skills, such as generated standards
 node --test 'scripts/*.test.mjs'     # the lint's own tests
 node --test 'plugins/standards/tests/*.test.mjs'  # the standards scripts
+node --test 'plugins/playbook/tests/*.test.mjs' 'plugins/claudecode-playbook-guard/tests/*.test.mjs'  # the playbook CLI and its guard hooks
 ```
 
 Errors print as `file:line rule message`, and the lint exits non-zero when it finds any. Every check has a violating fixture in `scripts/lint-fixtures/`, and `scripts/lint.test.mjs` proves each fixture fails its rule and the clean fixture passes. Add a fixture and a test with every check you add.

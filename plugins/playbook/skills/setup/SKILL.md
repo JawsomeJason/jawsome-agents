@@ -1,13 +1,13 @@
 ---
 name: setup
-description: Sets up jawsome-playbooks for one operator, and is safe to rerun. Asks for a handle and a mode trigger, runs pstack's automate-me to write or update the operator's <handle>-mode skill so it computes playbooks through the playbook command, scaffolds the config dir and config.json, records the operator's org and its forge owners, records each named repo's main checkout, and links the mode skill into the skill folders the operator's harness loads. Use when installing jawsome-playbooks, adding an org or a repo to it, changing the mode trigger, or repairing a config that playbook check reports broken.
+description: Sets up the playbook plugin for one operator, and is safe to rerun. Asks for a handle and a mode trigger, runs pstack's automate-me to write or update the operator's <handle>-mode skill so it computes playbooks through the playbook command, scaffolds the config dir and config.json, records the operator's org and its forge owners, records each named repo's main checkout, and links the mode skill into the skill folders the operator's harness loads. Use when installing the playbook plugin, adding an org or a repo to it, changing the mode trigger, or repairing a config that playbook check reports broken.
 compatibility: Requires git, Node, and the pstack plugin with its automate-me and poteto-mode skills.
 license: MIT
 ---
 
 # Setup
 
-This skill turns a fresh install into a working jawsome-playbooks install. It produces a `<handle>-mode` skill that computes playbooks through the playbook command, a config dir for the operator's playbook files, and a record of each repo's checkout. Every step reads what exists and changes only what differs, so a rerun after a crash or a change of mind converges on the same result.
+This skill turns a fresh install into a working playbook install. It produces a `<handle>-mode` skill that computes playbooks through the playbook command, a config dir for the operator's playbook files, and a record of each repo's checkout. Every step reads what exists and changes only what differs, so a rerun after a crash or a change of mind converges on the same result.
 
 ## Rules
 
@@ -22,7 +22,7 @@ This skill turns a fresh install into a working jawsome-playbooks install. It pr
 2. Find the config dir: `$PLAYBOOKS_CONFIG`, else `.jawsome-playbooks` in the home directory. Read `config.json` when it exists, and use its `handle`, `modeTrigger`, and `orgs` as defaults.
 3. Ask for the handle. Propose the saved handle, a short form of `git config user.name`, and the logged-in user of the forge CLI when one is installed, then a last letter to type one. The handle names the mode skill, `<handle>-mode`.
 4. Ask for the trigger: A manual, B on a matching ask, C every session. Each pick's meaning is in [references/mode-contract.md](references/mode-contract.md).
-5. Run pstack's automate-me skill to write the mode skill to `<config>/mode/<handle>-mode/`, or to update it when one exists. One copy in the config dir serves every harness step 10 links it into. Give it the handle, the trigger, and the rules in [references/mode-contract.md](references/mode-contract.md) as fixed requirements. If automate-me is not installed, stop and tell the operator to install pstack, because jawsome-playbooks builds on its poteto-mode playbooks.
+5. Run pstack's automate-me skill to write the mode skill to `<config>/mode/<handle>-mode/`, or to update it when one exists. One copy in the config dir serves every harness step 10 links it into. Give it the handle, the trigger, and the rules in [references/mode-contract.md](references/mode-contract.md) as fixed requirements. If automate-me is not installed, stop and tell the operator to install pstack, because playbook builds on its poteto-mode playbooks.
 6. Ask for the org: its name, and the forge owners whose repos belong to it, such as an organization login. Offer "none" for an operator with no team files. An org scopes `playbooks/orgs/<org>/` files to repos with a listed owner, so rules for one employer never reach a side project.
 7. Scaffold the config dir and `config.json` per [references/scaffold.md](references/scaffold.md). Record the handle, the trigger as `manual`, `auto`, or `session`, and the org. Leave `pstack` out of a new file. Step 9's check records the version that playbook resolves, so the file names the same pstack that every later `show` uses. A version read by hand can name a different install than the one playbook picks.
 8. Ask which repos to record, as checkout paths. For each one, find its main checkout and key, and record it as `repos.<repo>.checkout` in `config.json`, per [references/scaffold.md](references/scaffold.md). Team playbooks are files the repo commits in `.agents/playbooks`, where pstack reads them, so setup links nothing into the checkout. `playbook check` reads the recorded checkouts to find team playbooks from any directory, and `playbook doctor` reads them to check each repo.

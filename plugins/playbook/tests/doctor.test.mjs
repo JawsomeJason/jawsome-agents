@@ -5,12 +5,12 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { CLI, PLAYBOOK, PSTACK, git, world } from './helpers.mjs';
 
-const PLUGIN = { id: 'jawsome-playbooks@jawsome-playbooks', version: '0.1.0', scope: 'user', enabled: true };
-const MARKET = { name: 'jawsome-playbooks', source: 'github', repo: 'JawsomeJason/jawsome-playbooks' };
+const PLUGIN = { id: 'playbook@jawsome-agents', version: '0.1.0', scope: 'user', enabled: true };
+const MARKET = { name: 'jawsome-agents', source: 'github', repo: 'JawsomeJason/jawsome-agents' };
 
 /**
- * A healthy jawsome-playbooks install in a fake home: a stub `claude` on PATH that logs every call and lists `plugins`,
- * playbook on PATH, the mode skill linked into ~/.claude/skills, and the web checkout recorded in
+ * A healthy playbook install in a fake home: a stub `claude` on PATH that logs every call and lists `plugins`,
+ * playbook on PATH, the mode skill linked into the home .claude/skills, and the web checkout recorded in
  * config.json with its team playbooks committed. Tests remove one piece at a time.
  */
 function doctorWorld({ plugins = [PLUGIN], marketplaces = [MARKET], claude = true, ...opts } = {}) {
@@ -51,7 +51,7 @@ esac
 }
 
 const HEALTHY = (w) => `✓ pstack-claude 1.0.0: ${PSTACK}
-✓ jawsome-playbooks 0.1.0 installed in Claude Code (user scope)
+✓ playbook 0.1.0 installed in Claude Code (user scope)
 ✓ playbook: ${w.bin}/playbook -> ${realpathSync(PLAYBOOK)}
 ✓ config ${w.config}: config.json parses, handle tester
 ✓ mode skill ${w.config}/mode/tester-mode is linked into ${w.home}/.claude/skills
@@ -92,9 +92,9 @@ test('each failing check prints the exact commands that fix it, and doctor exits
   assert.equal(
     r.stdout,
     `✓ pstack-claude 1.0.0: ${PSTACK}
-✗ jawsome-playbooks is not installed in Claude Code
-    claude plugin marketplace add JawsomeJason/jawsome-playbooks
-    claude plugin install jawsome-playbooks@jawsome-playbooks -s user
+✗ playbook is not installed in Claude Code
+    claude plugin marketplace add JawsomeJason/jawsome-agents
+    claude plugin install playbook@jawsome-agents -s user
 ✗ playbook is not on PATH
     mkdir -p ${w.home}/.local/bin
     ln -s ${realpathSync(PLAYBOOK)} ${w.home}/.local/bin/playbook
@@ -132,9 +132,9 @@ test('doctor --json carries each finding with its status and fixes', () => {
   assert.deepEqual(out.findings[1], {
     id: 'plugin',
     status: 'fail',
-    message: 'jawsome-playbooks is not installed in Claude Code',
+    message: 'playbook is not installed in Claude Code',
     details: [],
-    fixes: [{ command: 'claude plugin install jawsome-playbooks@jawsome-playbooks -s user', run: true }],
+    fixes: [{ command: 'claude plugin install playbook@jawsome-agents -s user', run: true }],
   });
 });
 
@@ -146,14 +146,14 @@ test('without claude on PATH, doctor reads install records and prints every harn
   assert.ok(at('✗ pstack-claude not found') >= 0, r.stdout);
   assert.equal(out[at('✗ pstack-claude not found') + 1], '    Claude Code: claude plugin marketplace add michael-denyer/pstack-claude, then claude plugin install pstack@pstack-claude -s user');
   assert.ok(out.includes('    Pi: pi install git:github.com/michael-denyer/pstack-claude'), r.stdout);
-  assert.ok(at('✗ jawsome-playbooks is not installed in any harness install record') >= 0, r.stdout);
-  assert.ok(out.includes('    Codex: codex plugin marketplace add JawsomeJason/jawsome-playbooks, then codex plugin add jawsome-playbooks@jawsome-playbooks'), r.stdout);
+  assert.ok(at('✗ playbook is not installed in any harness install record') >= 0, r.stdout);
+  assert.ok(out.includes('    Codex: codex plugin marketplace add JawsomeJason/jawsome-agents, then codex plugin add playbook@jawsome-agents'), r.stdout);
   assert.equal(r.status, 1);
 
   const record = join(w.home, '.someharness', 'plugins');
   mkdirSync(record, { recursive: true });
-  writeFileSync(join(record, 'installed_plugins.json'), JSON.stringify({ plugins: { 'jawsome-playbooks@market': [{ scope: 'user', version: '0.2.0' }] } }));
-  assert.ok(w.doctor().stdout.includes(`✓ jawsome-playbooks 0.2.0 in ${record}/installed_plugins.json\n`));
+  writeFileSync(join(record, 'installed_plugins.json'), JSON.stringify({ plugins: { 'playbook@market': [{ scope: 'user', version: '0.2.0' }] } }));
+  assert.ok(w.doctor().stdout.includes(`✓ playbook 0.2.0 in ${record}/installed_plugins.json\n`));
 });
 
 test('a playbook on PATH that is not ours fails with no command to run', () => {
@@ -165,7 +165,7 @@ test('a playbook on PATH that is not ours fails with no command to run', () => {
   assert.deepEqual(out.findings.find((f) => f.id === 'cli'), {
     id: 'cli',
     status: 'fail',
-    message: `playbook on PATH is ${w.bin}/playbook, which is not jawsome-playbooks'`,
+    message: `playbook on PATH is ${w.bin}/playbook, which is not this tool`,
     details: [],
     fixes: [{ command: `move ${w.bin}/playbook aside, then: ln -s ${realpathSync(PLAYBOOK)} ${w.home}/.local/bin/playbook`, run: false }],
   });
@@ -175,7 +175,7 @@ test('a missing config dir fails and names the setup command', () => {
   const w = doctorWorld();
   rmSync(w.config, { recursive: true });
   const r = w.doctor();
-  assert.ok(r.stdout.includes(`✗ no config dir at ${w.config}\n    /jawsome-playbooks:setup\n`), r.stdout);
+  assert.ok(r.stdout.includes(`✗ no config dir at ${w.config}\n    /playbook:setup\n`), r.stdout);
   assert.ok(r.stdout.includes('✓ playbook check passed\n'), r.stdout);
   assert.equal(r.status, 1);
 });
@@ -245,7 +245,7 @@ test('doctor --fix asks per fix on the terminal and runs only the ones answered 
   });
   assert.equal(
     w.calls(),
-    'plugin list --json\nplugin marketplace list --json\nplugin marketplace add JawsomeJason/jawsome-playbooks\nplugin install jawsome-playbooks@jawsome-playbooks -s user\nplugin list --json\nplugin marketplace list --json\n',
+    'plugin list --json\nplugin marketplace list --json\nplugin marketplace add JawsomeJason/jawsome-agents\nplugin install playbook@jawsome-agents -s user\nplugin list --json\nplugin marketplace list --json\n',
     r.stdout,
   );
   assert.equal(existsSync(join(w.home, '.local', 'bin', 'playbook')), false);

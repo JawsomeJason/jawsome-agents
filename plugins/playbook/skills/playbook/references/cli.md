@@ -1,17 +1,17 @@
 # playbook reference
 
 ```sh
-playbook list [--repo <repo>] [--json] [--pstack <dir-or-version>]
-playbook show <playbook> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-playbook locate <playbook> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-playbook extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
-playbook new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
-playbook check [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
-playbook doctor [--fix | --json]
+Playbook list [--repo <repo>] [--json] [--pstack <dir-or-version>]
+Playbook show <playbook> [--repo <repo>] [--json] [--pstack <dir-or-version>]
+Playbook locate <playbook> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
+Playbook extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
+Playbook new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
+Playbook check [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
+Playbook doctor [--fix | --json]
 playbook --help
 ```
 
-playbook is `scripts/playbook.mjs` in this skill. It needs Node and nothing else. The plugin's `bin/playbook` imports the script, so one symlink puts the command on `PATH`. `show` is the main name of the command that prints a playbook, and `compute` stays as an alias of it.
+Playbook is `scripts/playbook.mjs` in this skill. It needs Node and nothing else. A plugin install's `bin/playbook` imports the script, and a skill install links the script itself, so one symlink puts the command on `PATH`. `show` is the main name of the command that prints a playbook, and `compute` stays as an alias of it.
 
 `--help` and `-h` print the usage and exit 0. Any other word in place of a command, such as `help`, prints the usage and exits 2.
 
@@ -45,15 +45,15 @@ playbook is `scripts/playbook.mjs` in this skill. It needs Node and nothing else
 | `PLAYBOOKS_PSTACK_DIR` | The pstack plugin folder, the one that holds `skills/poteto-mode/`. | The search order below. |
 | `PLAYBOOKS_STATE` | The folder that holds `usage.jsonl`, the read log that `telemetry` turns on. | `jawsome-playbooks` in `$XDG_STATE_HOME`, else in `.local/state` in the home directory. |
 
-playbook picks the pstack folder in this order, and uses the first one that holds poteto-mode's playbooks:
+Playbook picks the pstack folder in this order, and uses the first one that holds poteto-mode's playbooks:
 
 1. `PLAYBOOKS_PSTACK_DIR`.
-2. The install record. playbook reads `plugins/installed_plugins.json` in every dot-folder of the home directory and takes the `installPath` of each `pstack@<marketplace>` entry that has no `projectPath`. When several qualify, the highest version by semver wins. A harness loads the version its record names, and its cache keeps older and newer versions next to it, so the record is what keeps playbook on the pstack the session runs.
-3. The cache. playbook looks in every dot-folder of the home directory for `plugins/cache/*/pstack/<version>/` and takes the highest version by semver. Codex has no install record and needs none. It keeps one version of each plugin in its cache and replaces it on each install, upgrade, or downgrade, so the cache names the version Codex runs.
+2. The install record. Playbook reads `plugins/installed_plugins.json` in every dot-folder of the home directory and takes the `installPath` of each `pstack@<marketplace>` entry that has no `projectPath`. When several qualify, the highest version by semver wins. A harness loads the version its record names, and its cache keeps older and newer versions next to it, so the record is what keeps playbook on the pstack the session runs.
+3. The cache. Playbook looks in every dot-folder of the home directory for `plugins/cache/*/pstack/<version>/` and takes the highest version by semver. Codex has no install record and needs none. It keeps one version of each plugin in its cache and replaces it on each install, upgrade, or downgrade, so the cache names the version Codex runs.
 
 Both searches use the layout that plugin harnesses share, so they find pstack without naming any one harness. A pstack in any other place needs `PLAYBOOKS_PSTACK_DIR`.
 
-playbook reads the version from the first of `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.muse-plugin/plugin.json`, and `package.json` in the pstack folder that has a semver `version`. Without one, it uses the folder name when that is a semver, as plugin caches name their folders. When neither gives a version, output names pstack by its path and `--json` gives `null`. playbook then records nothing in `config.json`, because that field holds a version.
+Playbook reads the version from the first plugin manifest or `package.json` in the pstack folder that has a semver `version`. Without one, it uses the folder name when that is a semver, as plugin caches name their folders. When neither gives a version, output names pstack by its path and `--json` gives `null`. Playbook then records nothing in `config.json`, because that field holds a version.
 
 ## compute
 
@@ -97,7 +97,7 @@ With `"telemetry": true` in `config.json`, `compute` appends one JSON line per p
 **Work the merge frontier.** The lowest open PR matters first.   [babysit]
 
 babysit wrote the quoted words. Write the edit in:
-- /home/sam/.jawsome-playbooks/playbooks/babysit-sam.md (exists), extending babysit
+- /tmp/sam/.jawsome-playbooks/playbooks/babysit-sam.md (exists), extending babysit
 ```
 
 A file's quotes see only what its ancestors wrote, so the new edit must extend the file that wrote the words. When several files wrote them, `locate` drops any that another writer descends from, and the file extends the rest. The suggested file is `<writer>-<handle>` in `playbooks/`. When one user file wrote the words, the line names that file with `exists; it wrote these words, so change its text there`, because an edit line cannot anchor on its own file's text.
@@ -109,7 +109,7 @@ A quote that names no step or more than one prints the same message `check` prin
 `extend` writes one edit line into a user file, and refuses an edit that would break `check`. It is the way to change a playbook from a terminal or an agent, because it accepts only the grammar that [the playbooks page](playbooks.md#file-format) defines and adds no verb to the files.
 
 ```sh
-playbook extend babysit babysit-sam replace "Never require Graphite" --with - --when "Babysitting a PR" <<'TEXT'
+Playbook extend babysit babysit-sam replace "Never require Graphite" --with - --when "Babysitting a PR" <<'TEXT'
 Use `gh pr view --json "state"` first.
 TEXT
 ```
@@ -178,8 +178,8 @@ These print `info:` lines and do not fail the check:
 | Check | Passes when |
 | --- | --- |
 | pstack-claude | playbook finds a pstack, by the search order under [Environment](#environment). The line names the version and folder. |
-| jawsome-playbooks plugin | `claude plugin list --json` lists a `jawsome-playbooks@` plugin. Without `claude` on `PATH`, an `installed_plugins.json` in a dot-folder of the home directory lists one. |
-| cli | `playbook` on `PATH` resolves to a jawsome-playbooks `bin/` script. A missing link fails. |
+| install | The running script is a skill with no plugin around it, `claude plugin list --json` lists a `playbook@` plugin, or, without `claude` on `PATH`, an `installed_plugins.json` in a dot-folder of the home directory lists one. A `skills/playbook` folder in a dot-folder of the home directory or the checkout passes too, because a skill alone is a complete install. |
+| cli | `playbook` on `PATH` resolves to a plugin's `bin/` script or the skill's own script. A missing link fails in a plugin install, and prints a `-` line in a skill install, where agents run the script by path. |
 | config | The config dir exists, and `config.json` parses and has a `handle`. |
 | mode skill | `<config>/mode/<handle>-mode/SKILL.md` exists, and a `skills` folder in a dot-folder of the home directory links to it. |
 | each repo | For each repo in `config.json` `repos`, the checkout's `.agents/playbooks` is a folder that git tracks. An untracked folder prints a `-` line, because only the operator sees it. A missing folder prints a `-` line. A link into the config dir, the retired layout, fails with an `rm` command shown as advice. |
@@ -191,8 +191,8 @@ doctor writes nothing without `--fix`. It runs `check` with `--pstack` set to th
 
 The fixes depend on the harness:
 
-- With `claude` on `PATH`, a missing plugin gets Claude Code's install commands from the README's tables. doctor leaves out `claude plugin marketplace add` when `claude plugin marketplace list --json` already lists that marketplace.
-- Without `claude`, doctor prints the row of every harness from the README's table for that install step. jawsome-playbooks cannot run another harness's installer.
+- With `claude` on `PATH`, a missing plugin gets that harness's install commands from the README's tables. doctor leaves out `claude plugin marketplace add` when `claude plugin marketplace list --json` already lists that marketplace.
+- Without `claude`, doctor prints the row of every harness from the README's table for that install step. Playbook cannot run another harness's installer.
 - A missing command link gets an `ln -s` command.
 - A fix that would replace a file prints as advice, such as `move <path> aside, then: ln -s ...`, because the file in the way may be the operator's own work.
 

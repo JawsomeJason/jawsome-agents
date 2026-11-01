@@ -4,10 +4,10 @@ import { readFileSync, renameSync, symlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { PSTACK, withoutNulls, world } from './helpers.mjs';
+import { PLAYBOOK, PSTACK, tempDir, withoutNulls, world } from '../../playbook/tests/helpers.mjs';
 
 const HOOK = fileURLToPath(new URL('../hooks/playbook-reads.mjs', import.meta.url));
-const BUNDLED = '/home/sam/.claude/plugins/cache/pstack-claude/pstack/1.0.0/skills/poteto-mode/playbooks/feature.md';
+const BUNDLED = '/tmp/sam/.claude/plugins/cache/pstack-claude/pstack/1.0.0/skills/poteto-mode/playbooks/feature.md';
 const hook = (tool_name, tool_input) => spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ tool_name, tool_input }), encoding: 'utf8' });
 
 test('reading an installed pstack playbook is blocked with the compute command to run', () => {
@@ -20,9 +20,9 @@ test('reading an installed pstack playbook is blocked with the compute command t
 
 test('layer files, pstack checkouts, listings and playbook itself pass', () => {
   for (const [tool, input] of [
-    ['Read', { file_path: '/home/sam/.jawsome-playbooks/playbooks/feature-sam.md' }],
-    ['Read', { file_path: '/home/sam/code/pstack/skills/poteto-mode/playbooks/feature.md' }],
-    ['Bash', { command: 'ls /home/sam/.claude/plugins/cache/pstack-claude/pstack/1.0.0/skills/poteto-mode/playbooks/' }],
+    ['Read', { file_path: '/tmp/sam/.jawsome-playbooks/playbooks/feature-sam.md' }],
+    ['Read', { file_path: '/tmp/sam/code/pstack/skills/poteto-mode/playbooks/feature.md' }],
+    ['Bash', { command: 'ls /tmp/sam/.claude/plugins/cache/pstack-claude/pstack/1.0.0/skills/poteto-mode/playbooks/' }],
     ['Bash', { command: `PLAYBOOKS_PSTACK_DIR=x playbook check # ${BUNDLED}` }],
     ['Bash', { command: `playbook show feature # ${BUNDLED}` }],
     ['Edit', { file_path: BUNDLED }],
@@ -39,12 +39,16 @@ test('the plugin registers the hook for Read and Bash', () => {
 
 const EDIT_HOOK = fileURLToPath(new URL('../hooks/playbook-edits.mjs', import.meta.url));
 
+// The hook finds the command on PATH, because this plugin installs apart from the playbook plugin.
+const bin = tempDir();
+symlinkSync(PLAYBOOK, join(bin, 'playbook'));
+
 const editHook = (w, file, env = {}) =>
   spawnSync(process.execPath, [EDIT_HOOK], {
     cwd: w.repo,
     input: JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: file } }),
     encoding: 'utf8',
-    env: withoutNulls({ ...process.env, HOME: w.home, PLAYBOOKS_CONFIG: w.config, PLAYBOOKS_PSTACK_DIR: PSTACK, ...env }),
+    env: withoutNulls({ ...process.env, HOME: w.home, PLAYBOOKS_CONFIG: w.config, PATH: `${bin}:${process.env.PATH}`, PLAYBOOKS_PSTACK_DIR: PSTACK, ...env }),
   });
 
 test('edit hook blocks an Edit of a user playbook file in any scope, through a symlink too, and lets other files pass', () => {

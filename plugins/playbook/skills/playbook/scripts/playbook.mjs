@@ -1289,8 +1289,12 @@ function runList(ctx, opts) {
 const SCRIPT = fileURLToPath(import.meta.url);
 const README = fileURLToPath(new URL('../../../README.md', import.meta.url));
 const SELF_BIN = fileURLToPath(new URL('../../../bin/playbook', import.meta.url));
+// A plugin wraps the skill folder in a manifest; an install of the skill alone (a skills CLI, rulesync) has none.
+const PLUGIN_MANIFEST = fileURLToPath(new URL('../../../.claude-plugin/plugin.json', import.meta.url));
+const SKILL_SCRIPT = join('skills', 'playbook', 'scripts', 'playbook.mjs');
+const MARKETPLACE = 'jawsome-agents';
 const MARKS = { ok: '✓', fail: '✗', info: '-' };
-const PLUGIN = 'jawsome-playbooks';
+const PLUGIN = 'playbook';
 
 const shellQuote = (s) => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replaceAll("'", "'\\''")}'`);
 const sh = (...words) => words.map(shellQuote).join(' ');
@@ -1316,11 +1320,17 @@ function onPath(name) {
   return null;
 }
 
-/** True when the command at `path` resolves to a bin/ script of a jawsome-playbooks checkout or install. */
+/** True when the command at `path` resolves to a plugin's bin/ script, or to the skill's own script. */
 const isOurs = (path) => {
   const real = realOr(path);
-  return Boolean(real) && isFile(join(dirname(real), '..', 'skills', 'playbook', 'scripts', 'playbook.mjs'));
+  return Boolean(real) && (isFile(join(dirname(real), '..', SKILL_SCRIPT)) || real.endsWith(join(sep, 'scripts', 'playbook.mjs')));
 };
+
+/** The dot-folder skill installs of playbook in the home directory and the current checkout, such as a skills CLI writes. */
+function skillInstalls(home, cwd) {
+  const root = findCheckout(cwd)?.root;
+  return [home, root].filter(Boolean).flatMap((base) => listDir(base).filter((e) => e.startsWith('.')).map((dot) => join(base, dot, SKILL_SCRIPT)).filter(isFile).map((path) => dirname(dirname(path))));
+}
 
 /** The `| Harness |` table rows of README install step `step`, as { harness, cell } with the Commands cell. */
 function readmeRows(step) {
@@ -1346,6 +1356,12 @@ function readmeRows(step) {
  * The operator's harness, as far as doctor can drive it. With `claude` on PATH, fixes are Claude Code's own
  * commands; every other harness gets each README row printed, because playbook cannot run its installer.
  */
+const NO_README_FIXES = {
+  1: 'install pstack-claude, or set PLAYBOOKS_PSTACK_DIR to the folder that holds skills/poteto-mode',
+  2: 'install the playbook skill or plugin as the README of its source repo says',
+  5: 'run the setup skill',
+};
+
 function harnessOf(home) {
   const claude = onPath('claude');
   const claudeJson = (args) => {
@@ -1360,7 +1376,7 @@ function harnessOf(home) {
   const knownMarketplaces = () => (marketplaces ??= new Set((claudeJson(['plugin', 'marketplace', 'list', '--json']) ?? []).map((m) => m.name)));
   const fixes = (step, { run }) => {
     const rows = readmeRows(step);
-    if (!rows) return [showFix('see https://github.com/JawsomeJason/jawsome-playbooks#install-and-set-up-jawsome-playbooks')];
+    if (!rows) return [showFix(NO_README_FIXES[step])];
     if (!claude) return rows.map((r) => showFix(`${r.harness}: ${r.cell.replaceAll('`', '')}`));
     const commands = [...(rows.find((r) => r.harness === 'Claude Code')?.cell ?? '').matchAll(/`([^`]+)`/g)].map((m) => m[1]);
     const market = commands.map((c) => /^claude plugin install \S+@(\S+)/.exec(c)?.[1]).find(Boolean);
@@ -1383,12 +1399,16 @@ function checkPstack(h) {
 }
 
 function checkPlugin(h) {
+  const asSkill = !isFile(PLUGIN_MANIFEST);
+  if (asSkill) return finding('plugin', 'ok', `playbook skill at ${dirname(dirname(SCRIPT))}, installed without a plugin, which is complete`);
+  const skills = skillInstalls(h.home, process.cwd());
+  const skillOnly = () => skills.length && finding('plugin', 'ok', `playbook skill at ${skills[0]}, installed without a plugin, which is complete`);
   if (h.claude) {
     const plugins = h.claudeJson(['plugin', 'list', '--json']);
     if (!Array.isArray(plugins)) return finding('plugin', 'fail', 'claude plugin list --json failed', { fixes: [showFix('claude plugin list --json')] });
     const ours = plugins.find((p) => typeof p.id === 'string' && p.id.startsWith(`${PLUGIN}@`));
     if (ours) return finding('plugin', 'ok', `${PLUGIN} ${ours.version} installed in Claude Code (${ours.scope} scope)`);
-    return finding('plugin', 'fail', `${PLUGIN} is not installed in Claude Code`, { fixes: h.fixes(2, { run: true }) });
+    return skillOnly() || finding('plugin', 'fail', `${PLUGIN} is not installed in Claude Code`, { fixes: h.fixes(2, { run: true }) });
   }
   for (const plugins of pluginDirs()) {
     const path = join(plugins, 'installed_plugins.json');
@@ -1401,15 +1421,16 @@ function checkPlugin(h) {
     const [, installs] = Object.entries(record?.plugins ?? {}).find(([key]) => key.startsWith(`${PLUGIN}@`)) ?? [];
     if (Array.isArray(installs) && installs.length) return finding('plugin', 'ok', `${PLUGIN} ${installs[0].version} in ${path}`);
   }
-  return finding('plugin', 'fail', `${PLUGIN} is not installed in any harness install record`, { fixes: h.fixes(2, { run: false }) });
+  return skillOnly() || finding('plugin', 'fail', `${PLUGIN} is not installed in any harness install record`, { fixes: h.fixes(2, { run: false }) });
 }
 
 function checkCommands(h) {
   const binDir = join(h.home, '.local', 'bin');
   const out = [];
   for (const name of ['playbook']) {
-    const clone = join(h.home, '.claude', 'plugins', 'marketplaces', PLUGIN, 'bin', name);
-    const source = h.claude && isFile(clone) ? clone : join(dirname(SELF_BIN), name);
+    const clone = join(h.home, '.claude', 'plugins', 'marketplaces', MARKETPLACE, 'plugins', PLUGIN, 'bin', name);
+    const asSkill = !isFile(SELF_BIN);
+    const source = asSkill ? SCRIPT : h.claude && isFile(clone) ? clone : SELF_BIN;
     const dest = join(binDir, name);
     const link = sh('ln', '-s', source, dest);
     const found = onPath(name);
@@ -1418,9 +1439,11 @@ function checkCommands(h) {
         ? []
         : [...(isDir(binDir) ? [] : [runFix(sh('mkdir', '-p', binDir))]), runFix(link)];
       if (!(process.env.PATH ?? '').split(delimiter).includes(binDir)) fixes.push(showFix(`add ${binDir} to PATH`));
-      out.push(finding('cli', 'fail', `${name} is not on PATH`, { fixes }));
+      // The skill runs its script by path, so a link only adds the short command for the operator.
+      if (asSkill) out.push(finding('cli', 'info', `${name} is not on PATH; agents run node ${SCRIPT}`, { fixes }));
+      else out.push(finding('cli', 'fail', `${name} is not on PATH`, { fixes }));
     } else if (!isOurs(found)) {
-      out.push(finding('cli', 'fail', `${name} on PATH is ${found}, which is not jawsome-playbooks'`, { fixes: [showFix(`move ${found} aside, then: ${link}`)] }));
+      out.push(finding('cli', 'fail', `${name} on PATH is ${found}, which is not this tool`, { fixes: [showFix(`move ${found} aside, then: ${link}`)] }));
     } else {
       const real = realOr(found);
       out.push(finding('cli', 'ok', `${name}: ${found}${real === found ? '' : ` -> ${real}`}`));

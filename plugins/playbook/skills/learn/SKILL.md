@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Turns what a session taught into proposed edits to the operator's jawsome-playbooks playbook files. Collects the operator's corrections and repeated instructions, finds the playbook step each one changes, picks the parent and file with playbook locate, and shows each edit line for the operator to pick before anything is written. Use when the operator says "learn from this", "update my playbooks", "what should my playbooks learn", "remember this for next time" about how a playbook runs, or after a correction that should hold in every later run. Prefer it over pstack's reflect when a lesson changes a playbook step, because reflect edits skills.
+description: Turns what a session taught into proposed edits to the operator's playbook playbook files. Collects the operator's corrections and repeated instructions, finds the playbook step each one changes, picks the parent and file with playbook locate, and shows each edit line for the operator to pick before anything is written. Use when the operator says "learn from this", "update my playbooks", "what should my playbooks learn", "remember this for next time" about how a playbook runs, or after a correction that should hold in every later run. Prefer it over pstack's reflect when a lesson changes a playbook step, because reflect edits skills.
 argument-hint: "[what to focus on]"
 compatibility: Requires Node, playbook, and the pstack plugin's poteto-mode skill.
 license: MIT
@@ -33,10 +33,11 @@ A correction the operator gives in one session is gone in the next unless it lan
    - The team: a team file in the repo's `.agents/playbooks`, or in the org's playbook source, through a pull request. A team file extends only bundled playbooks and quotes only pstack's text, because pstack reads it without personal files, and carries the org or repo word in its name.
 
    The operator's words decide between personal and team. "I want" or "my" is personal. "We require" or "the team" is a team rule, so propose the team file and offer the personal file as the other letter.
+
 5. Draft the edit line in pstack's grammar: `- **After|Before|Replace|In** "<quote>" <change>`. Use `In` to add to a step, `Replace` to change words in it, and `After` or `Before` to add a step. Write the change as a plain instruction with its reason, so the rule still makes sense when the tools around it change.
 6. Show every proposal in one lettered list. Each entry gives the lesson, its evidence, the playbook and step, the file and its parent, and the edit line. After it, list the lessons that went to the mode skill, another skill, an enforcement candidate, or memory. Wait for the operator's picks.
 7. Write each picked edit. For a personal file, run `playbook extend <parent> [<file-name>] <verb> "<quote>" --with -` with the text on stdin, which appends to the file or creates it with `extends:` and a `--when` sentence. For a standalone playbook run `playbook new <name> --when "<sentence>" --from-file -`. Both refuse a bad quote and undo a write that fails `check`. A team file is written by hand in a branch, with frontmatter first: `extends:` naming bundled playbooks, or empty for a standalone playbook, and a `when:` sentence, then opened as a pull request.
 8. Run `playbook check`. When it fails on a line this run wrote, remove that line and report the failure. Then run `playbook show <playbook>` and show the changed step with its stem tags, so the operator sees the edit applied where they meant it.
 9. Report what was written, where, and what went elsewhere.
 
-When `playbook` is not on `PATH`, run `node scripts/playbook.mjs` from the `playbook` skill's folder instead. [The playbook reference](../playbook/references/cli.md#locate) describes `locate`, and [the playbooks page](../playbook/references/playbooks.md) gives the file format and the apply order.
+When `playbook` is not on `PATH`, run `node scripts/playbook.mjs` from the `playbook` skill's folder instead. The `playbook` skill's `references/cli.md` describes `locate`, and its `references/playbooks.md` gives the file format and the apply order.

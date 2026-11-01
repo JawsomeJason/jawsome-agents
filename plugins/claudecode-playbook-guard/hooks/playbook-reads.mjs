@@ -16,7 +16,7 @@ const target = tool === 'Read' ? args.file_path : tool === 'Bash' ? args.command
 const m = typeof target === 'string' ? BUNDLED.exec(target) : null;
 if (!m || (tool === 'Bash' && /\b(?:playbook\.mjs|playbook\s+(?:show|compute|list|locate|check|doctor))\b/.test(target))) process.exit(0);
 process.stderr.write(
-  `Read the ${m[1]} playbook through jawsome-playbooks instead: run \`playbook show ${m[1]}\`. ` +
+  `Read the ${m[1]} playbook through the playbook command instead: run \`playbook show ${m[1]}\`. ` +
     "The bundled file holds only pstack's steps, so reading it skips the operator's team and personal edits.\n",
 );
 process.exit(2);

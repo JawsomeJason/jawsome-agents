@@ -6,7 +6,6 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 if (process.env.PLAYBOOKS_ALLOW_EDITS === '1') process.exit(0);
 
@@ -41,11 +40,9 @@ const isUserFile = [[resolve(file), config], [real(file), real(config)]].some(([
 });
 if (!isUserFile) process.exit(0);
 
-const CLI = fileURLToPath(new URL('../skills/playbook/scripts/playbook.mjs', import.meta.url));
-
 /** The paths `check` reports a problem in, in every context, or null when the check cannot run. */
 function pathsWithProblems() {
-  const r = spawnSync(process.execPath, [CLI, 'check', '--every-repo', '--json'], { encoding: 'utf8', timeout: 25000 });
+  const r = spawnSync('playbook', ['check', '--every-repo', '--json'], { encoding: 'utf8', timeout: 25000 });
   if (r.status !== 0 && r.status !== 1) return null;
   try {
     return JSON.parse(r.stdout).problems.map((p) => p.path);
@@ -56,14 +53,14 @@ function pathsWithProblems() {
 
 const paths = pathsWithProblems();
 if (!paths) {
-  const message = `jawsome-playbooks could not run \`playbook check\`, so the direct edit of ${file} is not blocked. Run \`playbook check --every-repo\` after it.`;
+  const message = `playbook could not run \`playbook check\`, so the direct edit of ${file} is not blocked. Run \`playbook check --every-repo\` after it.`;
   process.stderr.write(`${message}\n`);
   process.stdout.write(`${JSON.stringify({ systemMessage: message })}\n`);
   process.exit(0);
 }
 if (paths.some((path) => real(path) === real(file))) process.exit(0);
 process.stderr.write(
-  `${file} is a jawsome-playbooks user playbook file. Change it through the CLI so that only valid grammar lands: ` +
+  `${file} is a playbook user playbook file. Change it through the CLI so that only valid grammar lands: ` +
     '`playbook extend <parent> [<file-name>] after|before|replace|in "<quote>" --with <text|->` edits a playbook, ' +
     'and `playbook new <name> --when "<sentence>" --from-file <path|->` adds a standalone one. Both run `check` and undo an edit that adds a problem. A file that has a `check` problem can be edited directly, to repair it. ' +
     'To edit the file by hand anyway, set PLAYBOOKS_ALLOW_EDITS=1.\n',
