@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -489,6 +489,144 @@ test('a symlink in a pack is refused, because a copy must be the bytes the sourc
   const r = w.run(['install', 'p', '--from', w.from]);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /link-acme\.md.*not a plain file/);
+});
+
+const NO_STACK = /\n\s+at /;
+const editLock = (w, change) => writeFileSync(w.lockPath, JSON.stringify(change(w.lock())));
+
+test('a lock or manifest that names a path outside its folder is refused, and update deletes nothing', () => {
+  const VICTIM = 'keep me\n';
+  const hostile = {
+    'a files key that climbs': (l) => ({ ...l, files: { ...l.files, '../../victim.md': { pack: 'a', hash: sha(VICTIM) } } }),
+    'a files key in a subfolder': (l) => ({ ...l, files: { ...l.files, 'sub/victim.md': { pack: 'a', hash: sha(VICTIM) } } }),
+    'a files key that is no markdown': (l) => ({ ...l, files: { ...l.files, 'victim.txt': { pack: 'a', hash: sha(VICTIM) } } }),
+    'a file entry whose pack climbs': (l) => ({ ...l, files: { 'victim.md': { pack: '../..', hash: sha(VICTIM) } } }),
+    'a packs key that climbs': (l) => ({ ...l, packs: { ...l.packs, '../../evil': { source: 'acme-eng/agents', commit: 'x' } } }),
+    'a flat lock whose key climbs': () => ({ source: 'acme-eng/agents', commit: 'x', files: { '../../victim.md': sha(VICTIM) } }),
+  };
+  for (const [what, change] of Object.entries(hostile)) {
+    const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
+    assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
+    writeFileSync(join(w.repo, 'victim.md'), VICTIM);
+    editLock(w, change);
+    const updated = w.run(['update']);
+    assert.equal(updated.status, 1, what);
+    assert.match(updated.stderr, /\.agents\/playbooks\.lock: not a valid lock: /, what);
+    assert.equal(readFileSync(join(w.repo, 'victim.md'), 'utf8'), VICTIM, what);
+    const checked = w.run(['check', '--locked']);
+    assert.equal(checked.status, 1, what);
+    assert.match(checked.stdout, /\.agents\/playbooks\.lock:1: not a valid lock: /, what);
+  }
+  const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
+  assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
+  writeFileSync(join(w.repo, '.agents', 'packs.json'), JSON.stringify({ packs: [{ name: '../../../evil', source: w.from }] }));
+  const r = w.run(['update']);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /\.agents\/packs\.json: not a valid manifest: .*\.\.\/\.\.\/\.\.\/evil/);
+});
+
+test('a symlink that carries a pack folder out of its source is refused by install and by the linter, and one that stays inside is not', () => {
+  const stray = tempDir();
+  mkdirSync(join(stray, 'playbooks'), { recursive: true });
+  writeFileSync(join(stray, 'pack.json'), JSON.stringify({ name: 'p', description: 'd', requires: [] }));
+  writeFileSync(join(stray, 'playbooks', 'leak-acme.md'), IN_BABYSIT);
+  const plant = {
+    'packs/p': (root) => {
+      rmSync(root, { recursive: true });
+      symlinkSync(stray, root);
+    },
+    'packs/p/playbooks': (root) => {
+      rmSync(join(root, 'playbooks'), { recursive: true });
+      symlinkSync(join(stray, 'playbooks'), join(root, 'playbooks'));
+    },
+    'packs/p/skills': (root) => symlinkSync(stray, join(root, 'skills')),
+    'packs/p/rules': (root) => symlinkSync(stray, join(root, 'rules')),
+  };
+  for (const [shown, make] of Object.entries(plant)) {
+    const w = consumer({ p: { playbooks: { 'p-acme': IN_BABYSIT } } });
+    make(join(w.bare, 'packs', 'p'));
+    git(w.bare, ['add', '-A']);
+    git(w.bare, ['commit', '-q', '-m', 'link']);
+    const r = w.run(['install', 'p', '--from', w.from]);
+    assert.equal(r.status, 1, shown);
+    assert.ok(r.stderr.includes(`${shown}: a symlink leaves`), `${shown}: ${r.stderr}`);
+    assert.equal(existsSync(w.dir), false, shown);
+    const lint = lintPacks(w.bare);
+    assert.equal(lint.status, 1, shown);
+    assert.ok(lint.stdout.includes(`${shown}:1: a symlink leaves`), `${shown}: ${lint.stdout}`);
+    assert.doesNotMatch(lint.stdout, /leak-acme/, shown);
+  }
+  const w = consumer({ p: { playbooks: { 'p-acme': IN_BABYSIT } } });
+  mkdirSync(join(w.bare, 'shared'));
+  writeFileSync(join(w.bare, 'shared', 'q-acme.md'), IN_BABYSIT);
+  rmSync(join(w.bare, 'packs', 'p', 'playbooks'), { recursive: true });
+  symlinkSync(join('..', '..', 'shared'), join(w.bare, 'packs', 'p', 'playbooks'));
+  git(w.bare, ['add', '-A']);
+  git(w.bare, ['commit', '-q', '-m', 'inside']);
+  const inside = w.run(['install', 'p', '--from', w.from]);
+  assert.equal(inside.status, 0, inside.stdout + inside.stderr);
+  assert.equal(existsSync(join(w.dir, 'q-acme.md')), true);
+});
+
+test('a slug always comes from the forge, so a repo folder of that name cannot stand in for it', () => {
+  const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
+  const shadow = join(w.repo, 'acme-eng', 'agents', 'packs', 'a', 'playbooks');
+  mkdirSync(shadow, { recursive: true });
+  writeFileSync(join(w.repo, 'acme-eng', 'agents', 'packs', 'a', 'pack.json'), JSON.stringify({ name: 'a', description: 'd', requires: [] }));
+  writeFileSync(join(shadow, 'one-acme.md'), patch('babysit', '- **In** "Work the merge frontier" Shadowed.'));
+  const r = w.run(['install', 'a', '--from', w.from]);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(w.manifest().packs[0].source, w.from);
+  assert.equal(readFileSync(join(w.dir, 'one-acme.md'), 'utf8'), IN_BABYSIT);
+  assert.equal(w.run(['update']).status, 0);
+  assert.equal(readFileSync(join(w.dir, 'one-acme.md'), 'utf8'), IN_BABYSIT);
+  assert.equal(w.lock().packs.a.commit, git(w.bare, ['rev-parse', 'HEAD']).trim());
+});
+
+test('a repo lock may not link, because the link would point at a folder only one person has', () => {
+  const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
+  assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
+  rmSync(w.dir, { recursive: true });
+  editLock(w, () => ({ packs: { a: { source: w.from, commit: null, link: true } }, files: {} }));
+  const r = w.run(['update']);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /\.agents\/playbooks\.lock: a has "link", and only a --user pack may link/);
+  assert.equal(lstatSync(w.dir, { throwIfNoEntry: false }), undefined);
+  const checked = w.run(['check', '--locked']);
+  assert.equal(checked.status, 1);
+  assert.match(checked.stdout, /\.agents\/playbooks\.lock:1: a has "link", and only a --user pack may link/);
+});
+
+test('a symlink where a pack file lands is a file the repo owns: no stack, and nothing written through it', () => {
+  const outside = join(tempDir(), 'outside.md');
+  const targets = { dangling: outside, 'to a folder': tempDir() };
+  for (const [what, to] of Object.entries(targets)) {
+    const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
+    mkdirSync(w.dir, { recursive: true });
+    symlinkSync(to, join(w.dir, 'one-acme.md'));
+    const r = w.run(['install', 'a', '--from', w.from]);
+    assert.equal(r.status, 1, what);
+    assert.match(r.stderr, /\.agents\/playbooks\/one-acme\.md: a file this repo owns/, what);
+    assert.doesNotMatch(r.stderr, NO_STACK, what);
+    assert.equal(existsSync(outside), false, what);
+  }
+  const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
+  assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
+  rmSync(join(w.dir, 'one-acme.md'));
+  symlinkSync(outside, join(w.dir, 'one-acme.md'));
+  writePacks(w.bare, { a: { playbooks: { 'one-acme': patch('babysit', '- **In** "Work the merge frontier" New.') } } });
+  for (const args of [['update'], ['remove', 'a']]) {
+    const r = w.run(args);
+    assert.equal(r.status, 1, args[0]);
+    assert.match(r.stderr, /\.agents\/playbooks\/one-acme\.md: hand-edited/, args[0]);
+    assert.doesNotMatch(r.stderr, NO_STACK, args[0]);
+    assert.equal(existsSync(outside), false, args[0]);
+  }
+  unlinkSync(join(w.dir, 'one-acme.md'));
+  symlinkSync(tempDir(), join(w.dir, 'one-acme.md'));
+  const locked = w.run(['check', '--locked']);
+  assert.equal(locked.status, 1);
+  assert.doesNotMatch(locked.stderr, NO_STACK);
 });
 
 test('the usage lists the pack verbs, and writing flags stay on their commands', () => {

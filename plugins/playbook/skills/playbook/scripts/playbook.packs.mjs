@@ -2,27 +2,30 @@
 // never needs a pstack, so `check --locked` runs on it alone.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export class PackError extends Error {}
 
 export const PACK_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const LOCKED_FILE = /^[^/\\]+\.md$/;
 const SLUG = /^[\w][\w.-]*\/[\w][\w.-]*$/;
 const isDir = (path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false;
+/** Never follows a link, so a symlink at a pack file's path is not one, and nothing reads or writes through it. */
+export const isPlainFile = (path) => lstatSync(path, { throwIfNoEntry: false })?.isFile() ?? false;
 
 export const hashOf = (bytes) => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 export const isForgeSource = (source) => SLUG.test(source) && !source.startsWith('.');
 
 /** A `--from` value as the manifest records it: a slug stays one, and a folder becomes a path relative to `base`. */
 export function sourceId(from, base) {
+  if (isForgeSource(from)) return from;
   const abs = resolve(from);
   if (isDir(abs)) {
     const rel = relative(base, abs);
     return isAbsolute(rel) ? abs : rel.startsWith('..') ? rel : `.${sep}${rel}`;
   }
-  if (isForgeSource(from)) return from;
   throw new PackError(`--from ${from}: not a folder, and not an owner/repo`);
 }
 
@@ -55,7 +58,7 @@ export function fetcher(base) {
     get(source) {
       if (clones.has(source)) return clones.get(source);
       let found;
-      if (isForgeSource(source) && !isDir(resolve(base, source))) {
+      if (isForgeSource(source)) {
         const temp = mkdtempSync(join(tmpdir(), 'playbook-pack-'));
         temps.push(temp);
         const dir = join(temp, 'source');
@@ -85,8 +88,25 @@ const plainMarkdown = (dir, shown) => {
   return out;
 };
 
+/** The first of a pack's paths that a symlink carries out of its source, because a clone must not copy from the installer's disk. */
+export function packEscape(sourceDir, name) {
+  const top = realpathSync(sourceDir);
+  for (const sub of ['', '/pack.json', '/playbooks', '/skills', '/rules']) {
+    const shown = `packs/${name}${sub}`;
+    try {
+      const real = realpathSync(join(sourceDir, shown));
+      if (real !== top && !real.startsWith(`${top}${sep}`)) return shown;
+    } catch (e) {
+      if (e.code === 'ELOOP') return shown;
+    }
+  }
+  return null;
+}
+
 /** One pack as its source holds it. Paths in errors are source-relative, so they name the file to fix. */
 export function readPack(sourceDir, name, source) {
+  const escape = packEscape(sourceDir, name);
+  if (escape) throw new PackError(`${escape}: a symlink leaves ${source}, so the pack cannot ship it`);
   const root = join(sourceDir, 'packs', name);
   const manifest = `packs/${name}/pack.json`;
   let meta;
@@ -140,6 +160,16 @@ export function resolvePacks(names, sourceOf, fetch, locked) {
   return order;
 }
 
+/** What is wrong with a lock's names, since `update` and `remove` build paths from them and delete there. */
+function lockNameProblem(packs, files) {
+  for (const [name, pack] of Object.entries(packs)) if (!PACK_NAME.test(name) || typeof pack !== 'object' || pack === null) return `${JSON.stringify(name)} is not a pack name with an entry`;
+  for (const [name, entry] of Object.entries(files)) {
+    if (!LOCKED_FILE.test(name)) return `${JSON.stringify(name)} is not a plain .md file name`;
+    if (entry?.pack !== null && !PACK_NAME.test(entry?.pack ?? '')) return `${JSON.stringify(name)} names no valid pack`;
+  }
+  return null;
+}
+
 /**
  * A lock as { packs, files, legacy }, or { error }. The flat shape from before packs, { source, commit, files: { name: hash } },
  * reads with a null pack per file, so its hashes still verify. A linked pack has no files here, only `link` and its path.
@@ -153,22 +183,33 @@ export function readLock(path) {
     return { error: e.message };
   }
   if (!raw || typeof raw.files !== 'object' || raw.files === null) return { error: '"files" must be an object' };
-  if (raw.packs) return { packs: raw.packs, files: raw.files, legacy: false };
-  return { packs: {}, files: Object.fromEntries(Object.entries(raw.files).map(([name, hash]) => [name, { pack: null, hash }])), legacy: true };
+  const lock = raw.packs
+    ? { packs: raw.packs, files: raw.files, legacy: false }
+    : { packs: {}, files: Object.fromEntries(Object.entries(raw.files).map(([name, hash]) => [name, { pack: null, hash }])), legacy: true };
+  const error = lockNameProblem(lock.packs, lock.files);
+  return error ? { error } : lock;
 }
 
 export function readManifest(path) {
   if (!existsSync(path)) return { packs: [] };
   try {
     const raw = JSON.parse(readFileSync(path, 'utf8'));
-    return Array.isArray(raw?.packs) ? raw : { packs: [], error: '"packs" must be an array' };
+    if (!Array.isArray(raw?.packs)) return { packs: [], error: '"packs" must be an array' };
+    const bad = raw.packs.find((p) => typeof p?.name !== 'string' || !PACK_NAME.test(p.name));
+    return bad ? { packs: [], error: `${JSON.stringify(bad?.name)} is not a pack name` } : raw;
   } catch (e) {
     return { packs: [], error: e.message };
   }
 }
 
+/** A repo's lock reaches people who do not have the linked folder, and an update would link to a clone it then deletes. */
+export const repoLinkProblem = (lock) => {
+  const name = Object.keys(lock.packs).find((n) => lock.packs[n]?.link);
+  return name ? `${name} has "link", and only a --user pack may link; delete it from the lock and the manifest, then run playbook update` : null;
+};
+
 /** Offline: each locked file holds its locked bytes, and the manifest and the lock name the same packs. */
-export function lockProblems({ lockPath, lockShown, manifestPath, manifestShown, fileOf, shownOf }) {
+export function lockProblems({ lockPath, lockShown, manifestPath, manifestShown, fileOf, shownOf, user }) {
   const lock = readLock(lockPath);
   if (!lock) return { problems: [], info: [], count: 0, found: false };
   if (lock.error) return { problems: [{ path: lockShown, line: 1, message: `not a valid lock: ${lock.error}` }], info: [], count: 0, found: true };
@@ -177,9 +218,11 @@ export function lockProblems({ lockPath, lockShown, manifestPath, manifestShown,
   for (const [name, entry] of Object.entries(lock.files).sort()) {
     const path = fileOf(name, entry);
     if (!existsSync(path)) problems.push({ path: shownOf(name, entry), line: 1, message: `the lock pins it, but it is missing; run playbook update` });
-    else if (hashOf(readFileSync(path)) !== entry.hash) problems.push({ path: shownOf(name, entry), line: 1, message: `hand-edited: its bytes differ from the lock${entry.pack ? ` (pack ${entry.pack})` : ''}; change it in the pack's source, or restore it` });
+    else if (!isPlainFile(path) || hashOf(readFileSync(path)) !== entry.hash) problems.push({ path: shownOf(name, entry), line: 1, message: `hand-edited: its bytes differ from the lock${entry.pack ? ` (pack ${entry.pack})` : ''}; change it in the pack's source, or restore it` });
   }
-  const links = Object.entries(lock.packs).filter(([, p]) => p.link);
+  const repoLink = user ? null : repoLinkProblem(lock);
+  if (repoLink) problems.push({ path: lockShown, line: 1, message: repoLink });
+  const links = Object.entries(lock.packs).filter(([, p]) => user && p.link);
   for (const [name, pack] of links) {
     const target = join(pack.source, 'packs', name, 'playbooks');
     if (!existsSync(target)) problems.push({ path: lockShown, line: 1, message: `${name} links to ${target}, which is missing` });

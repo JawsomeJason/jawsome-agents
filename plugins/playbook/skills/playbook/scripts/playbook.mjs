@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { addSource, fetcher, hashOf, isForgeSource, lockProblems, PACK_NAME, PackError, parseJsonc, readLock, readManifest, removeSource, resolvePacks, rulesyncEntry, rulesyncKeys, sourceId } from './playbook.packs.mjs';
+import { addSource, fetcher, hashOf, isForgeSource, isPlainFile, lockProblems, PACK_NAME, packEscape, PackError, parseJsonc, readLock, readManifest, removeSource, repoLinkProblem, resolvePacks, rulesyncEntry, rulesyncKeys, sourceId } from './playbook.packs.mjs';
 
 class UsageError extends Error {
   /** `usage` adds a pointer to help: true for the general usage, or a command's name for its own line. */
@@ -965,6 +965,7 @@ const teamLockOf = (root) => ({
 });
 
 const userLockOf = (configDir) => ({
+  user: true,
   lockPath: join(configDir, 'playbooks.lock'),
   lockShown: join(configDir, 'playbooks.lock'),
   manifestPath: join(configDir, 'packs.json'),
@@ -1032,8 +1033,12 @@ function runPackLint(opts) {
   const packsDir = join(root, 'packs');
   const problems = [];
   const problem = (path, line, message) => problems.push({ path, line, message });
-  const names = listDir(packsDir).filter((name) => isDir(join(packsDir, name)));
-  if (names.length === 0) problem('packs', 1, 'no pack here: a source repo holds packs/<name>/pack.json');
+  const names = listDir(packsDir).filter((name) => {
+    const escape = packEscape(root, name);
+    if (escape) problem(escape, 1, 'a symlink leaves the source, so the pack cannot ship it');
+    return !escape && isDir(join(packsDir, name));
+  });
+  if (names.length === 0 && problems.length === 0) problem('packs', 1, 'no pack here: a source repo holds packs/<name>/pack.json');
   const packs = new Map();
   const files = [];
   for (const name of names) {
@@ -1493,6 +1498,8 @@ const sorted = (entries) => Object.fromEntries([...entries].sort(([a], [b]) => (
 function packState(target) {
   const lock = readLock(target.lockPath);
   if (lock?.error) throw packFail(`${target.lockShown}: not a valid lock: ${lock.error}`);
+  const repoLink = lock && !target.user ? repoLinkProblem(lock) : null;
+  if (repoLink) throw packFail(`${target.lockShown}: ${repoLink}`);
   const manifest = readManifest(target.manifestPath);
   if (manifest.error) throw packFail(`${target.manifestShown}: not a valid manifest: ${manifest.error}`);
   return { lock: lock ?? { packs: {}, files: {}, legacy: false }, manifest };
@@ -1512,8 +1519,8 @@ function writePackState(batch, target, lockPacks, lockFiles, manifestPacks) {
 function assertUnedited(target, name, entry, incoming) {
   const path = entry.pack ? target.fileOf(name, entry) : join(target.base, TEAM_DIR, name);
   if (!lexists(path)) return;
-  const hash = hashOf(readFileSync(path));
-  if (hash !== entry.hash && hash !== incoming) throw packFail(`${target.shownOf(name, entry)}: hand-edited, so playbook will not overwrite it; move the change to the pack's source, then restore the file or delete it`);
+  const hash = isPlainFile(path) ? hashOf(readFileSync(path)) : null;
+  if (hash === null || (hash !== entry.hash && hash !== incoming)) throw packFail(`${target.shownOf(name, entry)}: hand-edited, so playbook will not overwrite it; move the change to the pack's source, then restore the file or delete it`);
 }
 
 /**
@@ -1577,7 +1584,7 @@ function syncPacks(ctx, opts, packs, fetch, target, state) {
       continue;
     }
     const dest = join(target.dirOf(next.pack), name);
-    if (!next.linked && !lock.packs[next.pack]?.link && lexists(dest) && hashOf(readFileSync(dest)) !== next.hash) throw packFail(`${target.user ? dest : `.agents/playbooks/${name}`}: a file this ${target.user ? 'config' : 'repo'} owns, and pack ${next.pack} ships ${name}; rename or delete one`);
+    if (!next.linked && !lock.packs[next.pack]?.link && lexists(dest) && !(isPlainFile(dest) && hashOf(readFileSync(dest)) === next.hash)) throw packFail(`${target.user ? dest : `.agents/playbooks/${name}`}: a file this ${target.user ? 'config' : 'repo'} owns, and pack ${next.pack} ships ${name}; rename or delete one`);
   }
   const stale = Object.entries(lock.files).filter(([name, e]) => e.pack && names.has(e.pack) && (!incoming.has(name) || incoming.get(name).linked));
   for (const [name, entry] of stale) assertUnedited(target, name, entry, null);

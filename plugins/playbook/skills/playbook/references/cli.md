@@ -164,7 +164,7 @@ A lock pack entry also carries `requires` when it has any, so `remove` can refus
 
 ### install
 
-`install <pack>... --from <owner/repo|path>` resolves `requires` from the same source, copies each pack's playbooks, and writes the lock and the manifest. A rerun changes nothing unless the source moved. `--from` can be left out for a pack the manifest lists. A slug fetches with `gh` when it is installed, else `git` over ssh, so a person's own login is the only auth. `PLAYBOOKS_GIT_BASE` points `git` at another forge or a mirror, as `<base>/<owner>/<repo>`. A path reads that folder's working tree, and the manifest records it relative to the repo.
+`install <pack>... --from <owner/repo|path>` resolves `requires` from the same source, copies each pack's playbooks, and writes the lock and the manifest. A rerun changes nothing unless the source moved. `--from` can be left out for a pack the manifest lists. A slug always comes from the forge, even when a folder of that name exists, so a repo cannot stand in for its own source. Write a folder with a leading `./`. A slug fetches with `gh` when it is installed, else `git` over ssh, so a person's own login is the only auth. `PLAYBOOKS_GIT_BASE` points `git` at another forge or a mirror, as `<base>/<owner>/<repo>`. A path reads that folder's working tree, and the manifest records it relative to the repo.
 
 In a linked worktree, the pack verbs and `check --locked` act on that worktree, because the change reaches others through its branch. `check` and `show` read the main checkout, as they do for all team files.
 
@@ -176,9 +176,12 @@ These fail with exit 1, name the file, and write nothing:
 | A cycle in `requires` | `packs/<name>/pack.json`, with the cycle |
 | Two packs ship one stem | `packs/<name>/playbooks/<file>`, with the other pack |
 | A stem is a bundled playbook's | `packs/<name>/playbooks/<file>` |
-| A different file the repo owns has that name | `.agents/playbooks/<file>` |
+| A different file the repo owns has that name, or a symlink does, dangling or not | `.agents/playbooks/<file>` |
 | A locked file was edited by hand | `.agents/playbooks/<file>` |
 | A symlink in a pack | `packs/<name>/playbooks/<file>` |
+| A symlink that carries a pack, its `pack.json`, or its `playbooks`, `skills` or `rules` out of the source, because a clone must not copy from the installer's disk | that path, such as `packs/<name>/playbooks` |
+| A lock key that is no plain `*.md` name, a lock or manifest pack that is no pack name, because `update` deletes at the paths they build | the lock or the manifest |
+| A repo lock with `link` | `.agents/playbooks.lock` |
 | A cycle in `extends`, a stale quote, or two files replacing the same words | the file, from the same validation as `check` |
 
 A file the repo owns with the same bytes as the pack's is adopted into the lock. A flat lock from before packs is read and verified, and `install` rewrites it. Files it pinned that no pack ships become repo-owned.
@@ -221,7 +224,7 @@ rulesync drops a pack's skill or rule with exit 0 when the repo's own `.rulesync
 playbook check --packs .
 ```
 
-It fails, naming the file and line, on a `pack.json` that is missing, has the wrong `name`, or lacks `description`, `requires` that name no pack or form a cycle, a playbook with no `when:`, a `layer:` key, a change with no straight-quoted anchor, a standalone playbook with edits, a stem two packs share, a cycle in `extends`, a parent in a pack the file's pack does not require, and a symlink. To require a word in every stem, such as an org name, add `packs/config.json` holding `{"nameWords": ["acme"]}`. With no such file there is no name rule. `--json` follows the check schema. Stale quotes need a pstack, so run `playbook check` in a repo that installs the pack.
+It fails, naming the file and line, on a `pack.json` that is missing, has the wrong `name`, or lacks `description`, `requires` that name no pack or form a cycle, a playbook with no `when:`, a `layer:` key, a change with no straight-quoted anchor, a standalone playbook with edits, a stem two packs share, a cycle in `extends`, a parent in a pack the file's pack does not require, and a symlink, in a pack file or on a pack folder that leaves the source. To require a word in every stem, such as an org name, add `packs/config.json` holding `{"nameWords": ["acme"]}`. With no such file there is no name rule. `--json` follows the check schema. Stale quotes need a pstack, so run `playbook check` in a repo that installs the pack.
 
 ### check --locked
 
