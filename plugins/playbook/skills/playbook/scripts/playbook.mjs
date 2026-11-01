@@ -1252,7 +1252,7 @@ function commitWrite(ctx, path, prior, next) {
 function packTarget(ctx, opts) {
   if (opts.user) {
     const lock = userLockOf(ctx.configDir);
-    return { ...lock, contexts: everyContext(ctx), ctx, base: process.cwd(), dirOf: (pack) => join(ctx.configDir, USER_DIR, PACK_DIR, pack), rulesync: null, user: true };
+    return { ...lock, contexts: everyContext(ctx), ctx, base: ctx.configDir, dirOf: (pack) => join(ctx.configDir, USER_DIR, PACK_DIR, pack), rulesync: null, user: true };
   }
   const root = opts.repo && opts.repo !== findCheckout(process.cwd())?.name ? ctx.repo.root : gitOut(process.cwd(), ['rev-parse', '--show-toplevel']);
   if (!root) throw new UsageError('not in a git checkout; run from the repo, or pass --user');

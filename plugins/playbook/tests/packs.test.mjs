@@ -364,6 +364,7 @@ test('--user installs into the config dir, active everywhere, with its lock ther
     assert.match(shown.stdout, /~~foo bar~~ free beer/, cwd);
   }
   assert.equal(w.run(['check']).status, 0);
+  assert.equal(w.run(['update', '--user'], { cwd: w.repo }).status, 0, 'a local source resolves from the config dir, wherever update runs');
   const packFile = join(w.config, 'playbooks', 'packs', 'mine', 'user-pack.md');
   const text = readFileSync(packFile, 'utf8');
   writeFileSync(packFile, `${text}- Hand edit.\n`);
