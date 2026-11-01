@@ -1,0 +1,23 @@
+{
+  "name": "jawsome-agents",
+  "interface": {
+    "displayName": "jawsome-agents"
+  },
+  "plugins": [
+    {
+      "name": "playbook",
+      "source": {
+        "source": "local",
+        "path": "./plugins/playbook"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+        "products": [
+          "CODEX"
+        ]
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

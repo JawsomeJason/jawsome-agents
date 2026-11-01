@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -183,4 +183,17 @@ test('hooks declared in plugin.json also need the Claude Code-only name prefix',
   } finally {
     rmSync(copy, { recursive: true, force: true });
   }
+});
+
+test('a pack playbook answers to the identity rule alone, and other repo docs keep the time rule', () => {
+  const root = mkdtempSync(join(tmpdir(), 'lint-pack-'));
+  mkdirSync(join(root, '.claude-plugin'));
+  writeFileSync(join(root, '.claude-plugin', 'marketplace.json'), '{"plugins":[]}');
+  mkdirSync(join(root, 'packs', 'p', 'playbooks'), { recursive: true });
+  writeFileSync(join(root, 'packs', 'p', 'playbooks', 'time.md'), 'Cut it from the latest remote.\n');
+  writeFileSync(join(root, 'packs', 'p', 'playbooks', 'who.md'), `Ask ${'Ja'}son.\n`);
+  writeFileSync(join(root, 'packs', 'p', 'NOTES.md'), 'The latest notes.\n');
+  const rules = lint(root).map((e) => `${e.file.split('/').pop()} ${e.rule}`);
+  rmSync(root, { recursive: true, force: true });
+  assert.deepEqual(rules.sort(), ['NOTES.md time-word', 'who.md org-term']);
 });

@@ -26,10 +26,27 @@
       ]
     },
     {
+      "name": "playbook",
+      "description": "Extends pstack's poteto-mode playbooks with team and personal playbook files, ordered by their extends chains, delivers shared packs of them to any repo, and validates them against each pstack release.",
+      "version": "0.10.0",
+      "source": "./plugins/playbook",
+      "skills": [
+        "./skills/playbook",
+        "./skills/setup",
+        "./skills/learn"
+      ]
+    },
+    {
       "name": "claudecode-smart-usage",
       "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
       "version": "0.1.0",
       "source": "./plugins/claudecode-smart-usage"
+    },
+    {
+      "name": "claudecode-playbook-guard",
+      "description": "Blocks a direct read of an installed pstack playbook and a direct edit of a personal playbook file, and names the playbook command to run instead.",
+      "version": "0.1.0",
+      "source": "./plugins/claudecode-playbook-guard"
     }
   ]
 }
