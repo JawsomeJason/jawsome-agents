@@ -105,6 +105,8 @@ export function readPack(sourceDir, name, source) {
     playbooks: plainMarkdown(join(root, 'playbooks'), `packs/${name}/playbooks`),
     hasSkills: isDir(join(root, 'skills')),
     hasRules: isDir(join(root, 'rules')),
+    skillNames: isDir(join(root, 'skills')) ? readdirSync(join(root, 'skills')).filter((n) => isDir(join(root, 'skills', n))).sort() : [],
+    ruleNames: isDir(join(root, 'rules')) ? readdirSync(join(root, 'rules')).filter((n) => n.endsWith('.md')).map((n) => n.slice(0, -3)).sort() : [],
   };
 }
 
@@ -140,7 +142,7 @@ export function resolvePacks(names, sourceOf, fetch, locked) {
 
 /**
  * A lock as { packs, files, legacy }, or { error }. The flat shape from before packs, { source, commit, files: { name: hash } },
- * reads with a null pack per file, so its hashes still verify.
+ * reads with a null pack per file, so its hashes still verify. A linked pack has no files here, only `link` and its path.
  */
 export function readLock(path) {
   if (!existsSync(path)) return null;
@@ -177,6 +179,11 @@ export function lockProblems({ lockPath, lockShown, manifestPath, manifestShown,
     if (!existsSync(path)) problems.push({ path: shownOf(name, entry), line: 1, message: `the lock pins it, but it is missing; run playbook update` });
     else if (hashOf(readFileSync(path)) !== entry.hash) problems.push({ path: shownOf(name, entry), line: 1, message: `hand-edited: its bytes differ from the lock${entry.pack ? ` (pack ${entry.pack})` : ''}; change it in the pack's source, or restore it` });
   }
+  const links = Object.entries(lock.packs).filter(([, p]) => p.link);
+  for (const [name, pack] of links) {
+    const target = join(pack.source, 'packs', name, 'playbooks');
+    if (!existsSync(target)) problems.push({ path: lockShown, line: 1, message: `${name} links to ${target}, which is missing` });
+  }
   if (lock.legacy) info.push({ path: lockShown, line: 1, message: 'holds no packs, so it is the flat shape from before them; playbook install <pack> rewrites it' });
   else {
     const manifest = readManifest(manifestPath);
@@ -185,7 +192,7 @@ export function lockProblems({ lockPath, lockShown, manifestPath, manifestShown,
     for (const name of listed.filter((n) => !lock.packs[n])) problems.push({ path: manifestShown, line: 1, message: `lists ${name}, which the lock does not; run playbook install ${name}` });
     for (const name of Object.keys(lock.packs).filter((n) => !manifest.error && !listed.includes(n))) problems.push({ path: lockShown, line: 1, message: `pins ${name}, which the manifest does not list; run playbook remove ${name}` });
   }
-  return { problems, info, count: Object.keys(lock.files).length, found: true };
+  return { problems, info, count: Object.keys(lock.files).length, linked: links.length, found: true };
 }
 
 /** The text with comments blanked and, when `strings` is set, string contents too, keeping every offset. */

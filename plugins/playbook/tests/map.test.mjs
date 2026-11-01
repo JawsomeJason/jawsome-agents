@@ -12,8 +12,9 @@ test('map prints the root and every active descendant as a tree, each labelled w
 
 babysit [pstack] <= asked
 ├── babysit-tester [user]
+│   └── babysitting-an-acme-pr-tester [user] (also extends babysitting-an-acme-pr)
 └── babysitting-an-acme-pr [pack acme]
-    ├── babysitting-an-acme-pr-tester [user]
+    ├── babysitting-an-acme-pr-tester [user] (also extends babysit-tester; shown above)
     └── babysitting-an-acme-pr-web [user]
 `);
 });
@@ -36,7 +37,7 @@ test('a file with two parents shows under each, with the others named and its su
   const w = world({ files: { 'playbooks/both-tester.md': patch('babysit-tester, babysitting-an-acme-pr'), 'playbooks/under-both.md': patch('both-tester') } });
   const r = w.run(['map', 'both-tester']);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /babysit-tester \[user\]\n[│ ]+└── both-tester \[user\] <= asked \(also extends babysitting-an-acme-pr\)\n[│ ]+└── under-both \[user\]/);
+  assert.match(r.stdout, /└── both-tester \[user\] <= asked \(also extends babysitting-an-acme-pr\)\n[│ ]+└── under-both \[user\]/);
   assert.match(r.stdout, /── both-tester \[user\] <= asked \(also extends babysit-tester; shown above\)/);
   assert.equal(r.stdout.match(/under-both/g).length, 1);
 });

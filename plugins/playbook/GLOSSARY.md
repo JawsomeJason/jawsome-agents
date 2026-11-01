@@ -32,7 +32,7 @@ Terms the playbook plugin's docs and skills use, in alphabetical order. Each ent
 
 **Playbook.** A numbered step list that poteto-mode follows for one kind of recurring work, such as babysitting a PR. Each one is either a bundled playbook or a standalone playbook. [pstack-claude]
 
-**`playbook`.** The command, `scripts/playbook.mjs` in the `playbook` skill, which needs only Node. Its commands are `list`, `show`, `locate`, `extend`, `new`, `install`, `update`, `remove`, `check` and `doctor`. [playbook]
+**`playbook`.** The command, `scripts/playbook.mjs` in the `playbook` skill, which needs only Node. Its commands are `list`, `show`, `locate`, `map`, `extend`, `new`, `install`, `update`, `remove`, `check`, `doctor` and `help`. [playbook]
 
 **`playbook check`.** Validates every team file and active user file against the installed pstack, after running pstack-claude's `check-playbooks.mjs` when the repo has `.agents/playbooks`. It reports stale or ambiguous quotes, missing parents, cycles, repeated stems, sibling `Replace` clashes, unresolved handoffs and step references, retired `layer:` keys and numbered folders, and broken links, and notes dormant files. A pass records the checked pstack version in `config.json`. [playbook]
 

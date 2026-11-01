@@ -143,8 +143,8 @@ test('without claude on PATH, doctor reads install records and prints every harn
   const r = w.doctor([], { env: { PLAYBOOKS_PSTACK_DIR: '' } });
   const out = r.stdout.split('\n');
   const at = (line) => out.indexOf(line);
-  assert.ok(at('✗ pstack-claude not found') >= 0, r.stdout);
-  assert.equal(out[at('✗ pstack-claude not found') + 1], '    Claude Code: claude plugin marketplace add michael-denyer/pstack-claude, then claude plugin install pstack@pstack-claude -s user');
+  assert.ok(at('✗ pstack-claude not found; playbooks need its poteto-mode to run') >= 0, r.stdout);
+  assert.equal(out[at('✗ pstack-claude not found; playbooks need its poteto-mode to run') + 1], '    Claude Code: claude plugin marketplace add michael-denyer/pstack-claude, then claude plugin install pstack@pstack-claude -s user');
   assert.ok(out.includes('    Pi: pi install git:github.com/michael-denyer/pstack-claude'), r.stdout);
   assert.ok(at('✗ playbook is not installed in any harness install record') >= 0, r.stdout);
   assert.ok(out.includes('    Codex: codex plugin marketplace add JawsomeJason/jawsome-agents, then codex plugin add playbook@jawsome-agents'), r.stdout);

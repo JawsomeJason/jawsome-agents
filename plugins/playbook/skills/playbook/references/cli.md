@@ -2,21 +2,22 @@
 
 ```sh
 playbook list [--repo <repo>] [--json] [--pstack <dir-or-version>]
-playbook show <playbook> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-playbook locate <playbook> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
+playbook show <name> [--repo <repo>] [--json] [--pstack <dir-or-version>]
+playbook locate <name> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
+playbook map <name> [--repo <repo>] [--json] [--pstack <dir-or-version>]
 playbook extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
 playbook new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
-playbook install <pack>... [--from <owner/repo|path>] [--user] [--repo <repo>] [--pstack <dir-or-version>]
+playbook install <pack>... [--from <owner/repo|path>] [--user] [--link] [--repo <repo>] [--pstack <dir-or-version>]
 playbook update [<pack>...] [--user] [--repo <repo>] [--pstack <dir-or-version>]
 playbook remove <pack> [--user] [--repo <repo>] [--pstack <dir-or-version>]
-playbook check [--locked] [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
+playbook check [--locked | --packs <root>] [--user] [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
 playbook doctor [--fix | --json]
-playbook --help
+playbook help [<command>]
 ```
 
 Playbook is `scripts/playbook.mjs` in this skill. It needs Node and nothing else. A plugin install's `bin/playbook` imports the script, and a skill install links the script itself, so one symlink puts the command on `PATH`. `show` is the main name of the command that prints a playbook, and `compute` stays as an alias of it.
 
-`--help` and `-h` print the usage and exit 0. Any other word in place of a command, such as `help`, prints the usage and exits 2.
+Bare `playbook`, `playbook help` and `--help` print the usage and exit 0. `playbook <command> --help`, `-h` and `playbook help <command>` print that command's page, with its synopsis, options and examples. An unknown command or option exits 2 and points at help. One table in the script drives parsing, the usage and every page, on Node's built-in `parseArgs`, so they cannot drift and the script stays free of dependencies.
 
 ## Options
 
@@ -107,6 +108,24 @@ A file's quotes see only what its ancestors wrote, so the new edit must extend t
 
 A quote that names no step or more than one prints the same message `check` prints and exits 1. `--json` follows [schemas/playbook.locate.schema.json](schemas/playbook.locate.schema.json).
 
+## map
+
+`map` draws a family as a tree: the root at the top, every file below the parent it extends, each labelled with its origin.
+
+```
+# babysit (web · acme-eng · pstack 1.2.3)
+
+babysit [pstack]
+├── babysit-sam [user]
+│   └── both-sam [user] (also extends babysitting-an-acme-pr)
+└── babysitting-an-acme-pr [pack acme] <= asked
+    ├── both-sam [user] (also extends babysit-sam; shown above)
+    ├── releasing-web [repo web]
+    └── waiting-sam [user] (dormant: extends only-other, which only playbooks/repos/other defines)
+```
+
+The origin is `pstack`, `pack <name>`, `repo <name>`, `user` or `user pack <name>`. `<= asked` marks the file you named, which any member of the family can be, so the lines above it are its ancestors and the lines below it are its descendants. A file with several parents appears under each, naming the others, and its subtree prints once. A file in two families prints both trees. A dormant file shows under its active parent with what it waits on, and you can ask for one by name. `--json` gives each file once, following [schemas/playbook.map.schema.json](schemas/playbook.map.schema.json).
+
 ## extend
 
 `extend` writes one edit line into a user file, and refuses an edit that would break `check`. It is the way to change a playbook from a terminal or an agent, because it accepts only the grammar that [the playbooks page](playbooks.md#file-format) defines and adds no verb to the files.
@@ -179,6 +198,30 @@ A file the repo owns with the same bytes as the pack's is adopted into the lock.
 ### --user
 
 `--user` installs into `<config>/playbooks/packs/<pack>/`, with the lock and manifest in the config dir. Those files are active everywhere, as user files, so a user file may extend them. A team file may not, because teammates do not have them.
+
+### --link
+
+`install <pack> --user --link --from <folder>` references the folder live instead of copying, so private playbooks stay in their own repo and edits apply at once, with no network. `<config>/playbooks/packs/<pack>` becomes a symlink to `<folder>/packs/<pack>/playbooks`. The lock records the path and `"link": true`, with no commit and no file hashes, so there is nothing for `--locked` to compare. A folder that goes missing is a problem in `check` and `check --locked --user`. Rerun `install` without `--link` to switch to a copy.
+
+A repo install refuses `--link`, and refuses a local source outside the repo, because a committed manifest cannot point at a private folder.
+
+### Same names under rulesync
+
+rulesync drops a pack's skill or rule with exit 0 when the repo's own `.rulesync` has that name, where the repo wins, or when an earlier source already fetched it, where the first wins. `--frozen` passes either way. Because that loss is silent, `install` and `update` fail naming both sides, including other sources in `rulesync.lock`, and a rename resolves it.
+
+### Without pstack
+
+`install`, `update` and `remove` still work with no pstack, and print a `warning:` line naming how to install it, because playbooks need pstack's poteto-mode to run. Nothing validates the files against pstack on that run.
+
+### check --packs
+
+`check --packs <root>` is the linter for a repo that holds packs, for its CI, with no pstack and no install:
+
+```sh
+playbook check --packs .
+```
+
+It fails, naming the file and line, on a `pack.json` that is missing, has the wrong `name`, or lacks `description`, `requires` that name no pack or form a cycle, a playbook with no `when:`, a `layer:` key, a change with no straight-quoted anchor, a standalone playbook with edits, a stem two packs share, a cycle in `extends`, a parent in a pack the file's pack does not require, and a symlink. To require a word in every stem, such as an org name, add `packs/config.json` holding `{"nameWords": ["acme"]}`. With no such file there is no name rule. `--json` follows the check schema. Stale quotes need a pstack, so run `playbook check` in a repo that installs the pack.
 
 ### check --locked
 

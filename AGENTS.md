@@ -7,7 +7,7 @@ These rules apply to every agent and person who edits this repo, in any harness.
 - `plugins/<name>/skills/<skill>/` holds each skill: `SKILL.md`, plus optional `references/`, `scripts/` and `assets/`.
 - `plugins/<name>/.claude-plugin/plugin.json` and the root `.claude-plugin/marketplace.json` are thin install wrappers. They live outside `skills/`, and skills never depend on them.
 - `plugins/<name>/.codex-plugin/plugin.json` and the root `.agents/plugins/marketplace.json` are the Codex install wrappers, for a plugin that ships them.
-- `packs/<name>/` holds a shared pack for the `playbook` command: `pack.json` and `playbooks/*.md`, with optional `skills/` and `rules/`. Pack text follows the Identity rule, because a pack installs into any repo.
+- `packs/<name>/` holds a shared pack for the `playbook` command: `pack.json` and `playbooks/*.md`, with optional `skills/` and `rules/`. Pack text follows the Identity rule, because a pack installs into any repo. CI lints packs with `playbook check --packs .`, which any repo that holds packs can run, and `packs/config.json` may name words every stem must carry.
 - `scripts/` holds repo tooling: the lint with its rules file and fixtures, and `test-harnesses.mjs`, each with its tests.
 - Users of other harnesses install portable skills with the skills CLI, which reads `.claude-plugin/marketplace.json`. Each portable plugin's entry lists its skills under `skills`, so the CLI finds and groups them from the manifest. Only a search that finds nothing, or a run with `--full-depth`, walks the whole tree, where the lint fixtures' `SKILL.md` files would show up too.
 

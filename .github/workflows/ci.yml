@@ -20,6 +20,7 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: node scripts/lint.mjs
+      - run: node plugins/playbook/skills/playbook/scripts/playbook.mjs check --packs .
       - run: node --test 'scripts/*.test.mjs'
       - run: node --test 'plugins/standards/tests/*.test.mjs'
       - run: git clone --depth 1 https://github.com/michael-denyer/pstack-claude "$RUNNER_TEMP/pstack-claude"

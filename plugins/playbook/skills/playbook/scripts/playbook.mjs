@@ -1,28 +1,16 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { accessSync, appendFileSync, constants, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { accessSync, appendFileSync, constants, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { addSource, fetcher, hashOf, isForgeSource, lockProblems, PACK_NAME, PackError, parseJsonc, readLock, readManifest, removeSource, resolvePacks, rulesyncEntry, rulesyncKeys, sourceId } from './playbook.packs.mjs';
 
-const WRITE_USAGE = `extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]`;
-const NEW_USAGE = 'new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]';
-const USAGE = `usage: playbook list [--repo <repo>] [--json] [--pstack <dir-or-version>]
-       playbook show <name> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-       playbook locate <name> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-       playbook ${WRITE_USAGE}
-       playbook ${NEW_USAGE}
-       playbook install <pack>... [--from <owner/repo|path>] [--user] [--repo <repo>] [--pstack <dir-or-version>]
-       playbook update [<pack>...] [--user] [--repo <repo>] [--pstack <dir-or-version>]
-       playbook remove <pack> [--user] [--repo <repo>] [--pstack <dir-or-version>]
-       playbook check [--locked] [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
-       playbook doctor [--fix | --json]
-       (compute is an alias of show)`;
-
 class UsageError extends Error {
+  /** `usage` adds a pointer to help: true for the general usage, or a command's name for its own line. */
   constructor(message, { usage = false } = {}) {
-    super(usage ? `${message ? `${message}\n` : ''}${USAGE}` : message);
+    super(usage ? [message, ...usageHint(usage)].filter(Boolean).join('\n') : message);
   }
 }
 
@@ -742,7 +730,10 @@ function logRead(ctx, name) {
   } catch {}
 }
 
-function loadContext(opts) {
+const PSTACK_HELP = "playbooks need pstack's poteto-mode to run; install it with: claude plugin marketplace add michael-denyer/pstack-claude, then claude plugin install pstack@pstack-claude -s user. Other harnesses: see the pstack-claude README, or set PLAYBOOKS_PSTACK_DIR";
+
+/** `pstackOptional` lets a pack verb run without pstack: ctx.pstack is null, and the verb warns and skips what needs it. */
+function loadContext(opts, { pstackOptional = false } = {}) {
   const configDir = configDirPath();
   const settings = readSettings(configDir);
   const configProblems = [];
@@ -756,7 +747,12 @@ function loadContext(opts) {
       message: 'numbered layer folders are retired; move each file into playbooks/ (playbooks/orgs/<org>/ or playbooks/repos/<repo>/ to limit where it applies) under a unique name, as playbooks.md describes',
     });
   }
-  const pstack = resolvePstack(opts.pstack);
+  let pstack = null;
+  try {
+    pstack = resolvePstack(opts.pstack);
+  } catch (e) {
+    if (!(e instanceof UsageError) || !pstackOptional || opts.pstack) throw e;
+  }
   const repo = resolveRepo(opts, configDir, settings);
   return { configDir, settings, configProblems, pstack, repo, pinned: Boolean(opts.pstack) };
 }
@@ -886,6 +882,7 @@ function stemUniverse(ctx) {
 }
 
 function readBundled(ctx) {
+  if (!ctx.pstack) return new Map();
   const dir = join(ctx.pstack.dir, PLAYBOOKS);
   return new Map(mdFiles(dir).map((f) => [basename(f, '.md'), parsePlaybook(readFileSync(join(dir, f), 'utf8'))]));
 }
@@ -1017,14 +1014,94 @@ function everyRepoReport(ctx) {
 /** `check --locked`: only the committed hashes, so CI needs neither pstack nor the pack's source. A worktree checks itself. */
 function runLockedCheck(opts) {
   const root = gitOut(process.cwd(), ['rev-parse', '--show-toplevel']) ?? process.cwd();
-  const report = lockProblems(teamLockOf(root));
+  const report = lockProblems(opts.user ? userLockOf(configDirPath()) : teamLockOf(root));
   const passed = report.problems.length === 0;
   if (opts.json) {
     const out = { pstack: null, problems: report.problems, info: report.info, pstackCheck: { status: 'skipped', lines: ['not run: --locked'] }, recorded: false };
     return { out, status: passed ? 0 : 1 };
   }
-  const end = !report.found ? 'check --locked passed: no .agents/playbooks.lock to verify' : passed ? `check --locked passed: ${report.count} ${report.count === 1 ? 'file matches' : 'files match'} the lock` : `check --locked failed: ${report.problems.length} ${report.problems.length === 1 ? 'problem' : 'problems'}`;
+  const linked = report.linked ? `; ${report.linked} linked ${report.linked === 1 ? 'pack' : 'packs'} carry no hash` : '';
+  const end = !report.found ? `check --locked passed: no ${opts.user ? 'playbooks.lock in the config dir' : '.agents/playbooks.lock'} to verify` : passed ? `check --locked passed: ${report.count} ${report.count === 1 ? 'file matches' : 'files match'} the lock${linked}` : `check --locked failed: ${report.problems.length} ${report.problems.length === 1 ? 'problem' : 'problems'}`;
   return { out: [...report.problems.map(problemLine), ...report.info.map((p) => `info: ${problemLine(p)}`), end].join('\n'), status: passed ? 0 : 1 };
+}
+
+/** Every pack in a source repo, for that repo's CI: the rules a machine can check with no pstack and no install. */
+function runPackLint(opts) {
+  const root = resolve(opts.packs);
+  if (!isDir(root)) throw new UsageError(`--packs ${opts.packs}: not a folder`);
+  const packsDir = join(root, 'packs');
+  const problems = [];
+  const problem = (path, line, message) => problems.push({ path, line, message });
+  const names = listDir(packsDir).filter((name) => isDir(join(packsDir, name)));
+  if (names.length === 0) problem('packs', 1, 'no pack here: a source repo holds packs/<name>/pack.json');
+  const packs = new Map();
+  const files = [];
+  for (const name of names) {
+    const manifest = `packs/${name}/pack.json`;
+    let meta = {};
+    try {
+      meta = JSON.parse(readFileSync(join(packsDir, name, 'pack.json'), 'utf8'));
+    } catch (e) {
+      problem(manifest, 1, e.code === 'ENOENT' ? 'a pack needs a pack.json' : e.message);
+    }
+    if (!PACK_NAME.test(name)) problem(manifest, 1, `${name}: a pack name is lowercase letters, digits and dashes`);
+    if (meta.name !== undefined && meta.name !== name) problem(manifest, 1, `"name" must be ${name}`);
+    if (Object.keys(meta).length && typeof meta.description !== 'string') problem(manifest, 1, 'needs a "description"');
+    const requires = Array.isArray(meta.requires) ? meta.requires.filter((r) => typeof r === 'string') : [];
+    if (meta.requires !== undefined && requires.length !== (meta.requires?.length ?? -1)) problem(manifest, 1, '"requires" must be an array of pack names');
+    packs.set(name, { name, manifest, requires });
+    const dir = join(packsDir, name, 'playbooks');
+    for (const entry of listDir(dir).filter((f) => f.endsWith('.md'))) {
+      const shown = `packs/${name}/playbooks/${entry}`;
+      if (!lstatSync(join(dir, entry)).isFile()) {
+        problem(shown, 1, 'not a plain file, so the pack cannot ship it');
+        continue;
+      }
+      files.push({ ...readPlaybookFile(join(dir, entry), shown, 'team', null), pack: name });
+    }
+  }
+  for (const pack of packs.values()) {
+    for (const req of pack.requires.filter((r) => !packs.has(r))) problem(pack.manifest, 1, `requires ${req}, which no pack here defines`);
+    const walk = (at, path) => {
+      if (at === pack.name && path.length) return [...path, at];
+      if (path.includes(at)) return null;
+      for (const next of packs.get(at)?.requires ?? []) {
+        const hit = walk(next, [...path, at]);
+        if (hit) return hit;
+      }
+      return null;
+    };
+    const cycle = walk(pack.name, []);
+    if (cycle) problem(pack.manifest, 1, `requires a cycle: ${cycle.join(' -> ')}`);
+  }
+  const reach = (name, seen = new Set()) => {
+    if (seen.has(name)) return seen;
+    seen.add(name);
+    for (const next of packs.get(name)?.requires ?? []) reach(next, seen);
+    return seen;
+  };
+  const words = readJson(join(packsDir, 'config.json'))?.nameWords ?? [];
+  const byStem = new Map();
+  for (const file of files) {
+    const other = byStem.get(file.stem);
+    if (other) problem(file.display, 1, `${file.stem} is also ${other.display}; every stem is unique, because packs install flat`);
+    else byStem.set(file.stem, file);
+    if (words.length && !words.some((w) => file.stem.split('-').includes(w))) problem(file.display, 1, `a pack file name carries one of this source's name words (${words.length > 1 ? `${words.slice(0, -1).join(', ')} or ${words.at(-1)}` : words[0]}), as packs/config.json asks`);
+  }
+  for (const file of files) {
+    for (const p of file.problems) problem(file.display, p.line, p.message);
+    if (file.extends.length === 0) for (const edit of file.edits) problem(file.display, edit.line, 'standalone playbook cannot carry edits');
+    for (const cycle of cycleFrom(file, byStem)) problem(file.display, file.extendsLine, `extends a cycle: ${cycle.join(' -> ')}`);
+    for (const stem of file.extends) {
+      const parent = byStem.get(stem);
+      if (parent && !reach(file.pack).has(parent.pack)) problem(file.display, file.extendsLine, `extends ${stem}, in pack ${parent.pack}, which pack ${file.pack} does not require`);
+    }
+  }
+  const passed = problems.length === 0;
+  if (opts.json) return { out: { pstack: null, problems, info: [], pstackCheck: { status: 'skipped', lines: ['not run: --packs'] }, recorded: false }, status: passed ? 0 : 1 };
+  const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const end = passed ? `check --packs passed: ${count(packs.size, 'pack')}, ${count(files.length, 'playbook')}` : `check --packs failed: ${count(problems.length, 'problem')}`;
+  return { out: [...problems.map(problemLine), end].join('\n'), status: passed ? 0 : 1 };
 }
 
 function runCheck(ctx, opts) {
@@ -1125,6 +1202,80 @@ function runCompute(ctx, opts, name) {
   };
 }
 
+/** Where a file came from, as a reader would name it: pstack, a pack, a repo, or the operator. */
+function originOf(ctx, kind, file) {
+  if (kind === 'pstack') return 'pstack';
+  if (kind === 'team') {
+    const pack = ctx.repo.root ? readLock(join(ctx.repo.root, TEAM_LOCK))?.files?.[`${file.stem}.md`]?.pack : null;
+    return pack ? `pack ${pack}` : `repo ${ctx.repo.name}`;
+  }
+  const rel = relative(join(ctx.configDir, USER_DIR, PACK_DIR), file.path).split(sep);
+  return rel[0] === '..' ? 'user' : `user pack ${rel[0]}`;
+}
+
+/** Every file the context knows, active or dormant, as the graph the tree draws: parents are those it can draw. */
+function familyGraph(ctx, analysis) {
+  const { nodes, dormant } = analysis.graph;
+  const all = new Map();
+  for (const n of nodes.values()) all.set(n.stem, { stem: n.stem, kind: n.kind, file: n.file, parents: n.parents, dormant: null });
+  for (const file of dormant) {
+    const why = file.info.find((i) => i.line === file.extendsLine && /^extends /.test(i.message))?.message ?? `extends ${file.extends.join(', ')}, which is not active here`;
+    all.set(file.stem, { stem: file.stem, kind: file.kind, file, parents: [], dormant: why.replace(/, so this file (?:is dormant here|is too)$/, '') });
+  }
+  for (const file of dormant) all.get(file.stem).parents = file.extends.filter((s) => all.has(s));
+  for (const node of all.values()) {
+    node.origin = originOf(ctx, node.kind, node.file);
+    node.children = [];
+  }
+  for (const node of all.values()) for (const parent of node.parents) all.get(parent).children.push(node.stem);
+  for (const node of all.values()) node.children.sort();
+  return all;
+}
+
+function runMap(ctx, opts, name) {
+  const analysis = analyze(ctx, { pstackCheck: false });
+  const all = familyGraph(ctx, analysis);
+  const asked = analysis.index.resolve(name) ?? name;
+  if (!all.has(asked)) throw new UsageError(`no playbook named ${name}`);
+  const rootsOf = (stem, seen = new Set()) => {
+    if (seen.has(stem)) return [];
+    seen.add(stem);
+    const { parents } = all.get(stem);
+    return parents.length ? [...new Set(parents.flatMap((p) => rootsOf(p, seen)))] : [stem];
+  };
+  const roots = rootsOf(asked).sort();
+  const printed = new Set();
+  const label = (node, parent) => {
+    const notes = [...(node.dormant ? [`dormant: ${node.dormant}`] : [])];
+    const others = node.parents.filter((p) => p !== parent);
+    const also = [...(others.length && parent ? [`also extends ${others.join(', ')}`] : []), ...(printed.has(node.stem) ? ['shown above'] : [])];
+    if (also.length) notes.push(also.join('; '));
+    return `${node.stem} [${node.origin}]${node.stem === asked ? ' <= asked' : ''}${notes.length ? ` (${notes.join('; ')})` : ''}`;
+  };
+  const lines = [];
+  const walk = (stem, parent, lead, branch) => {
+    const node = all.get(stem);
+    lines.push(`${lead}${branch}${label(node, parent)}`);
+    if (printed.has(stem)) return;
+    printed.add(stem);
+    const under = lead + (branch === '└── ' ? '    ' : branch === '├── ' ? '│   ' : '');
+    node.children.forEach((child, i) => walk(child, stem, under, i === node.children.length - 1 ? '└── ' : '├── '));
+  };
+  roots.forEach((root, i) => {
+    if (i) lines.push('');
+    walk(root, null, '', '');
+  });
+  if (opts.json) {
+    const { repo } = ctx;
+    const nodes = [...printed].map((stem) => {
+      const { kind, origin, parents, children, dormant } = all.get(stem);
+      return { stem, kind, origin, parents, children, dormant, asked: stem === asked };
+    });
+    return { out: { asked, roots, repo: repo.name, owner: repo.owner, org: repo.org, pstack: ctx.pstack.version, nodes }, status: 0 };
+  }
+  return { out: [`# ${roots.join(', ')} (${headerParts(ctx).join(' · ')})`, '', ...lines].join('\n'), status: 0 };
+}
+
 /**
  * Where an edit to words `writers` wrote goes. A user file's own words change in that file. Anything else gets a user
  * file that extends the writers, named <writer>-<handle>, since a file's quotes see only what its ancestors wrote.
@@ -1162,8 +1313,6 @@ function runLocate(ctx, opts, name, quote) {
     status: 0,
   };
 }
-
-const WRITE_FLAGS = ['with', 'withFile', 'when', 'fromFile', 'scope'];
 
 const readStdin = () => {
   try {
@@ -1261,50 +1410,61 @@ function packTarget(ctx, opts) {
   return { ...teamLockOf(root), contexts: [here], ctx: here, base: root, dirOf: () => join(root, TEAM_DIR), rulesync: join(root, 'rulesync.jsonc'), user: false };
 }
 
-/** Tracks every path a pack verb changes, so a refusal puts back the prior bytes and removes what it created. */
+/** Tracks every path a pack verb changes, so a refusal puts back the prior bytes or link and removes what it created. */
 function fileBatch() {
   const prior = new Map();
   const remember = (path) => {
-    if (!prior.has(path)) prior.set(path, lexists(path) ? readFileSync(path) : null);
+    if (prior.has(path)) return;
+    const stat = lstatSync(path, { throwIfNoEntry: false });
+    prior.set(path, !stat ? null : stat.isSymbolicLink() ? { link: readlinkSync(path) } : readFileSync(path));
   };
   const madeDirs = [];
   const emptyDirs = [];
   const dropEmpty = (dir) => {
-    for (let d = dir; listDir(d).length === 0 && lexists(d); d = dirname(d)) {
+    for (let d = dir; lexists(d) && listDir(d).length === 0; d = dirname(d)) {
       emptyDirs.push(d);
       rmSync(d, { recursive: true });
     }
   };
+  const makeParents = (path) => {
+    for (let d = dirname(path); !lexists(d); d = dirname(d)) madeDirs.push(d);
+    mkdirSync(dirname(path), { recursive: true });
+  };
   return {
     write(path, bytes) {
       remember(path);
-      for (let d = dirname(path); !lexists(d); d = dirname(d)) madeDirs.push(d);
-      mkdirSync(dirname(path), { recursive: true });
+      makeParents(path);
       writeFileSync(path, bytes);
+    },
+    link(path, target) {
+      remember(path);
+      makeParents(path);
+      symlinkSync(target, path);
     },
     remove(path, { upTo } = {}) {
       remember(path);
-      rmSync(path, { force: true });
+      if (lexists(path)) unlinkSync(path);
       if (upTo && isDir(dirname(path)) && dirname(path) !== upTo && dirname(path).startsWith(upTo)) dropEmpty(dirname(path));
     },
     dropEmpty,
     undo() {
       for (const dir of emptyDirs.reverse()) mkdirSync(dir, { recursive: true });
-      for (const [path, bytes] of prior) {
-        if (bytes === null) rmSync(path, { force: true });
-        else {
-          mkdirSync(dirname(path), { recursive: true });
-          writeFileSync(path, bytes);
-        }
+      for (const [path, was] of [...prior].reverse()) {
+        rmSync(path, { recursive: true, force: true });
+        if (was === null) continue;
+        mkdirSync(dirname(path), { recursive: true });
+        if (was.link) symlinkSync(was.link, path);
+        else writeFileSync(path, was);
       }
       for (const dir of madeDirs.reverse()) if (lexists(dir) && listDir(dir).length === 0) rmSync(dir, { recursive: true });
     },
   };
 }
 
-/** Runs `change`, then refuses it, with every byte put back, when it adds a check problem in any context of the target. */
+/** Runs `change`, then refuses it, with every byte put back, when it adds a check problem in any context of the target. With no pstack, nothing can check it. */
 function guardedChange(target, change) {
-  const lines = (contexts) => contextLines(contexts.map((c) => withAgents(c)));
+  const checking = Boolean(target.ctx.pstack);
+  const lines = (contexts) => (checking ? contextLines(contexts.map((c) => withAgents(c))) : []);
   const before = new Set(lines(target.contexts).map(sameProblem));
   const batch = fileBatch();
   let committed = false;
@@ -1356,7 +1516,42 @@ function assertUnedited(target, name, entry, incoming) {
   if (hash !== entry.hash && hash !== incoming) throw packFail(`${target.shownOf(name, entry)}: hand-edited, so playbook will not overwrite it; move the change to the pack's source, then restore the file or delete it`);
 }
 
-/** Copies `packs` into the target, deletes what they no longer ship, and rewrites the lock, the manifest and rulesync. */
+/**
+ * rulesync 15 drops a pack's skill or rule, with exit 0, when the repo's own .rulesync holds that name (the repo wins) or
+ * an earlier source already fetched it (the first wins). A pack that silently loses a skill is worse than a failed install.
+ */
+function assertNoRulesyncClash(target, packs, lock) {
+  const root = dirname(target.rulesync);
+  const names = new Set(packs.map((p) => p.name));
+  const owners = { skills: new Map(), rules: new Map() };
+  for (const [name, entry] of Object.entries(lock.packs)) {
+    if (names.has(name)) continue;
+    for (const kind of ['skills', 'rules']) for (const item of entry[kind] ?? []) owners[kind].set(item, `pack ${name}`);
+  }
+  const ours = new Set(packs.flatMap((p) => rulesyncKeys(p.source, p.name)).map((k) => k.toLowerCase()));
+  const vendored = readJson(join(root, 'rulesync.lock'))?.sources ?? {};
+  for (const [key, entry] of Object.entries(vendored)) {
+    if (ours.has(key.toLowerCase())) continue;
+    for (const kind of ['skills', 'rules']) for (const item of Object.keys(entry?.[kind] ?? {})) if (!owners[kind].has(item)) owners[kind].set(item, `rulesync source ${key}`);
+  }
+  const clash = (pack, kind, item) => {
+    const shown = kind === 'skills' ? `packs/${pack.name}/skills/${item}` : `packs/${pack.name}/rules/${item}.md`;
+    const own = kind === 'skills' ? join('.rulesync', 'skills', item) : join('.rulesync', 'rules', `${item}.md`);
+    if (lexists(join(root, own))) throw packFail(`${shown}: the repo's own ${own} has this name, and rulesync would keep the repo's and drop the pack's with exit 0; rename one`);
+    const other = owners[kind].get(item);
+    if (other) throw packFail(`${shown}: ${other} also ships ${item}, and rulesync would keep only the first with exit 0; rename one`);
+    owners[kind].set(item, `pack ${pack.name}`);
+  };
+  for (const pack of packs) {
+    if (!isForgeSource(pack.source)) continue;
+    for (const item of pack.skillNames) clash(pack, 'skills', item);
+    for (const item of pack.ruleNames) clash(pack, 'rules', item);
+  }
+}
+
+const linkSource = (pack) => join(pack.dir, 'packs', pack.name, 'playbooks');
+
+/** Copies `packs` into the target, or links them, deletes what they no longer ship, and rewrites the lock, the manifest and rulesync. */
 function syncPacks(ctx, opts, packs, fetch, target, state) {
   const { lock, manifest } = state;
   const names = new Set(packs.map((p) => p.name));
@@ -1364,42 +1559,71 @@ function syncPacks(ctx, opts, packs, fetch, target, state) {
   const keptFiles = new Map(Object.entries(lock.files).filter(([, e]) => e.pack && !names.has(e.pack)));
   const incoming = new Map();
   for (const pack of packs) {
+    pack.dir = fetch.get(pack.source).dir;
+    pack.linked = opts.link || (Boolean(lock.packs[pack.name]?.link) && opts.from === null);
     for (const [name, bytes] of pack.playbooks) {
       const shown = `packs/${pack.name}/playbooks/${name}`;
       const other = incoming.get(name)?.pack ?? keptFiles.get(name)?.pack;
       if (other) throw packFail(`${shown}: pack ${other} also ships ${name}; rename one`);
       const stem = basename(name, '.md');
       if (bundled.has(stem)) throw packFail(`${shown}: ${stem} is a bundled playbook's name; rename the file`);
-      incoming.set(name, { pack: pack.name, bytes, hash: hashOf(bytes) });
+      incoming.set(name, { pack: pack.name, bytes, hash: hashOf(bytes), linked: pack.linked });
     }
   }
   for (const [name, next] of incoming) {
-    const dest = join(target.dirOf(next.pack), name);
     const entry = lock.files[name];
-    if (entry) assertUnedited(target, name, entry, next.hash);
-    else if (lexists(dest) && hashOf(readFileSync(dest)) !== next.hash) throw packFail(`${target.user ? dest : `.agents/playbooks/${name}`}: a file this ${target.user ? 'config' : 'repo'} owns, and pack ${next.pack} ships ${name}; rename or delete one`);
+    if (entry) {
+      assertUnedited(target, name, entry, next.hash);
+      continue;
+    }
+    const dest = join(target.dirOf(next.pack), name);
+    if (!next.linked && !lock.packs[next.pack]?.link && lexists(dest) && hashOf(readFileSync(dest)) !== next.hash) throw packFail(`${target.user ? dest : `.agents/playbooks/${name}`}: a file this ${target.user ? 'config' : 'repo'} owns, and pack ${next.pack} ships ${name}; rename or delete one`);
   }
-  const stale = Object.entries(lock.files).filter(([name, e]) => e.pack && names.has(e.pack) && !incoming.has(name));
+  const stale = Object.entries(lock.files).filter(([name, e]) => e.pack && names.has(e.pack) && (!incoming.has(name) || incoming.get(name).linked));
   for (const [name, entry] of stale) assertUnedited(target, name, entry, null);
+  if (target.rulesync && isFile(target.rulesync)) assertNoRulesyncClash(target, packs, lock);
   const notes = [];
   const lockPacks = { ...lock.packs };
   const manifestPacks = [...manifest.packs];
   for (const pack of packs) {
     const fetched = fetch.get(pack.source);
-    if (fetched.dirty) notes.push(`${pack.name}: ${pack.source} has uncommitted changes under packs, so the locked commit does not describe these bytes`);
-    lockPacks[pack.name] = { source: pack.source, commit: fetched.commit, ...(pack.requires.length ? { requires: pack.requires } : {}) };
+    if (fetched.dirty && !pack.linked) notes.push(`${pack.name}: ${pack.source} has uncommitted changes under packs, so the locked commit does not describe these bytes`);
+    lockPacks[pack.name] = {
+      source: pack.source,
+      commit: pack.linked ? null : fetched.commit,
+      ...(pack.linked ? { link: true } : {}),
+      ...(pack.requires.length ? { requires: pack.requires } : {}),
+      ...(pack.skillNames.length ? { skills: pack.skillNames } : {}),
+      ...(pack.ruleNames.length ? { rules: pack.ruleNames } : {}),
+    };
     const at = manifestPacks.findIndex((p) => p.name === pack.name);
-    if (at === -1) manifestPacks.push({ name: pack.name, source: pack.source });
-    else manifestPacks[at] = { ...manifestPacks[at], source: pack.source };
+    const listed = { name: pack.name, source: pack.source, ...(pack.linked ? { link: true } : {}) };
+    if (at === -1) manifestPacks.push(listed);
+    else manifestPacks[at] = listed;
   }
-  const lockFiles = sorted([...keptFiles, ...[...incoming].map(([name, { pack, hash }]) => [name, { pack, hash }])]);
+  const lockFiles = sorted([...keptFiles, ...[...incoming].filter(([, v]) => !v.linked).map(([name, { pack, hash }]) => [name, { pack, hash }])]);
   const summary = [];
   guardedChange(target, (batch) => {
     for (const [name, entry] of stale) {
       batch.remove(target.fileOf(name, entry), { upTo: target.base });
       summary.push(`deleted ${target.shownOf(name, entry)}`);
     }
-    for (const [name, { pack, bytes, hash }] of incoming) {
+    for (const pack of packs) {
+      const dest = target.dirOf(pack.name);
+      const wasLink = target.user && lstatSync(dest, { throwIfNoEntry: false })?.isSymbolicLink();
+      if (pack.linked) {
+        const source = linkSource(pack);
+        if (wasLink && readlinkSync(dest) === source) continue;
+        if (wasLink) batch.remove(dest);
+        if (lexists(dest)) throw packFail(`${dest}: holds files the lock does not pin, so playbook cannot link it; move them first`);
+        if (isDir(source)) {
+          batch.link(dest, source);
+          summary.push(`linked ${dest} -> ${source}`);
+        }
+      } else if (wasLink) batch.remove(dest);
+    }
+    for (const [name, { pack, bytes, hash, linked }] of incoming) {
+      if (linked) continue;
       const dest = join(target.dirOf(pack), name);
       if (lexists(dest) && hashOf(readFileSync(dest)) === hash) continue;
       batch.write(dest, bytes);
@@ -1408,9 +1632,11 @@ function syncPacks(ctx, opts, packs, fetch, target, state) {
     writePackState(batch, target, lockPacks, lockFiles, manifestPacks);
     syncRulesync(batch, target, packs, notes);
   });
-  const end = packs.map((p) => `${p.name} ${lockPacks[p.name].commit?.slice(0, 12) ?? 'no commit'}`).join(', ');
-  return { out: [...summary, `installed ${end}`, ...notes.map((n) => `info: ${n}`)].join('\n'), status: 0 };
+  const end = packs.map((p) => `${p.name} ${p.linked ? 'linked' : (lockPacks[p.name].commit?.slice(0, 12) ?? 'no commit')}`).join(', ');
+  return { out: [...summary, `installed ${end}`, ...notes.map((n) => `info: ${n}`), ...pstackWarning(ctx)].join('\n'), status: 0 };
 }
+
+const pstackWarning = (ctx) => (ctx.pstack ? [] : [`warning: no pstack found, so nothing checked these playbooks. ${PSTACK_HELP}`]);
 
 /** One rulesync source per pack that ships skills or rules, in a target that can take it. Comments in the file survive. */
 function syncRulesync(batch, target, packs, notes) {
@@ -1449,12 +1675,25 @@ function requireInstalled(state, target, name) {
   if (!state.manifest.packs.some((p) => p.name === name)) throw new UsageError(`${name} is not installed in ${target.manifestShown}`);
 }
 
+/** A repo's manifest is committed, so a local source must be a folder in the repo, which every teammate has. */
+function assertSourceAllowed(target, source) {
+  if (target.user || isForgeSource(source)) return;
+  const root = realOr(target.base) ?? target.base;
+  const abs = resolve(target.base, source);
+  const rel = relative(root, realOr(abs) ?? abs);
+  if (rel.startsWith('..') || resolve(rel) === rel) throw new UsageError(`${source} is outside the repo, and a committed manifest cannot point at a private folder; use an owner/repo source, or install with --user`);
+}
+
 function runPackFetch(ctx, opts, names, target, state) {
   const listed = (name) => state.manifest.packs.find((p) => p.name === name)?.source ?? null;
   const fetch = fetcher(target.base);
   try {
-    const from = opts.from === null ? null : sourceId(opts.from, target.base);
-    const sourceOf = (name) => (names.includes(name) && from) || listed(name);
+    const from = opts.from === null ? null : opts.link ? resolve(opts.from) : sourceId(opts.from, target.base);
+    const sourceOf = (name) => {
+      const source = (names.includes(name) && from) || listed(name);
+      if (source) assertSourceAllowed(target, source);
+      return source;
+    };
     const packs = resolvePacks(names, sourceOf, fetch, new Set(Object.keys(state.lock.packs)));
     return syncPacks(ctx, opts, packs, fetch, target, state);
   } catch (e) {
@@ -1471,6 +1710,8 @@ function checkPackNames(names) {
 
 function runInstall(ctx, opts, names) {
   checkPackNames(names);
+  if (opts.link && !opts.user) throw new UsageError('--link needs --user, because a committed manifest cannot point at a private folder');
+  if (opts.link && (opts.from === null || !isDir(resolve(opts.from)))) throw new UsageError('--link needs --from <local folder>');
   const target = packTarget(ctx, opts);
   const state = packState(target);
   for (const name of names) {
@@ -1517,10 +1758,11 @@ function runRemove(ctx, opts, [name]) {
     }
     const top = target.user ? join(ctx.configDir, USER_DIR, PACK_DIR) : dirname(target.lockPath);
     const leaf = target.dirOf(name);
-    if (isDir(leaf) && listDir(leaf).length === 0) batch.dropEmpty(leaf);
+    if (lstatSync(leaf, { throwIfNoEntry: false })?.isSymbolicLink()) batch.remove(leaf);
+    else if (isDir(leaf) && listDir(leaf).length === 0) batch.dropEmpty(leaf);
     if (isDir(top) && listDir(top).length === 0) batch.dropEmpty(top);
   });
-  return { out: [`removed ${name}: ${owned.length} ${owned.length === 1 ? 'file' : 'files'}`, ...notes.map((n) => `info: ${n}`)].join('\n'), status: 0 };
+  return { out: [`removed ${name}: ${owned.length} ${owned.length === 1 ? 'file' : 'files'}`, ...notes.map((n) => `info: ${n}`), ...pstackWarning(ctx)].join('\n'), status: 0 };
 }
 
 const remainingNote = (remaining) => (remaining.length ? ['', 'this edit added no problems, but check still reports:', ...remaining] : []);
@@ -1589,7 +1831,6 @@ function runExtend(ctx, opts, args) {
 function runNew(ctx, opts, [name]) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) throw new UsageError(`${name}: a playbook name is lowercase letters, digits and dashes`);
   if (opts.fromFile === null) throw new UsageError('give the steps with --from-file <path|->');
-  if (opts.with !== null || opts.withFile !== null) throw new UsageError('--with and --with-file belong to extend');
   const when = opts.when === null ? '' : oneLine(opts.when);
   if (!when) throw new UsageError('give --when "<one sentence naming the requests it serves>"');
   const dir = writeDir(ctx, opts);
@@ -1646,6 +1887,15 @@ const realOr = (path) => {
   }
 };
 
+const isExecutable = (path) => {
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 function onPath(name) {
   for (const dir of (process.env.PATH ?? '').split(delimiter).filter(Boolean)) {
     const path = join(dir, name);
@@ -1694,7 +1944,7 @@ function readmeRows(step) {
  * commands; every other harness gets each README row printed, because playbook cannot run its installer.
  */
 const NO_README_FIXES = {
-  1: 'install pstack-claude, or set PLAYBOOKS_PSTACK_DIR to the folder that holds skills/poteto-mode',
+  1: 'claude plugin marketplace add michael-denyer/pstack-claude, then claude plugin install pstack@pstack-claude -s user; or set PLAYBOOKS_PSTACK_DIR to the folder that holds skills/poteto-mode',
   2: 'install the playbook skill or plugin as the README of its source repo says',
   5: 'run the setup skill',
 };
@@ -1731,7 +1981,7 @@ function checkPstack(h) {
     if (!(e instanceof UsageError)) throw e;
     const env = envVar('PSTACK_DIR');
     if (env) return { finding: finding('pstack', 'fail', `PLAYBOOKS_PSTACK_DIR=${env} holds no pstack`, { fixes: [showFix('unset PLAYBOOKS_PSTACK_DIR, or set it to the folder that holds skills/poteto-mode')] }) };
-    return { finding: finding('pstack', 'fail', 'pstack-claude not found', { fixes: h.fixes(1, { run: true }) }) };
+    return { finding: finding('pstack', 'fail', "pstack-claude not found; playbooks need its poteto-mode to run", { fixes: h.fixes(1, { run: true }) }) };
   }
 }
 
@@ -1774,7 +2024,7 @@ function checkCommands(h) {
     if (!found) {
       const fixes = lexists(dest)
         ? []
-        : [...(isDir(binDir) ? [] : [runFix(sh('mkdir', '-p', binDir))]), runFix(link)];
+        : [...(isDir(binDir) ? [] : [runFix(sh('mkdir', '-p', binDir))]), ...(asSkill && !isExecutable(SCRIPT) ? [runFix(sh('chmod', '+x', SCRIPT))] : []), runFix(link)];
       if (!(process.env.PATH ?? '').split(delimiter).includes(binDir)) fixes.push(showFix(`add ${binDir} to PATH`));
       // The skill runs its script by path, so a link only adds the short command for the operator.
       if (asSkill) out.push(finding('cli', 'info', `${name} is not on PATH; agents run node ${SCRIPT}`, { fixes }));
@@ -1933,78 +2183,211 @@ function runDoctor(opts) {
   return { out: `\nafter fixes:\n${renderDoctor(after)}`, status: status(after) };
 }
 
+// One table drives parsing, the usage and every help page, so none of them can drift. It is plain node:util parseArgs in
+// non-strict mode, because strict mode refuses a text value that starts with a dash, such as --with "-v means verbose".
+const OPTIONS = {
+  repo: { value: '<repo>', help: 'Use this repo key. Away from its checkout, read the checkout config.json records.' },
+  pstack: { value: '<dir-or-version>', help: 'Use this pstack, and write nothing to config.json.' },
+  json: { help: 'Print JSON that follows the schema in references/schemas/.' },
+  with: { value: '<text|->', dashText: true, help: 'The change text, or - for stdin.' },
+  'with-file': { value: '<path>', help: 'Read the change text from a file.' },
+  when: { value: '<sentence>', dashText: true, help: 'The when: sentence, naming the requests the file serves.' },
+  'from-file': { value: '<path|->', help: 'Read the numbered steps from a file, or - for stdin.' },
+  scope: { value: 'everywhere|org|repo', help: 'Where the file is active.' },
+  from: { value: '<owner/repo|path>', help: 'Where the pack comes from. Not needed for a pack the manifest lists.' },
+  user: { help: 'Act on packs in the config dir, active everywhere, instead of this repo.' },
+  link: { help: 'With --user and a local folder: reference the folder live instead of copying.' },
+  locked: { help: 'Verify only the lock, offline, with no pstack and no source. With --user, the config dir lock.' },
+  packs: { value: '<root>', help: "Lint every pack in a source repo, with no pstack: pack.json, stems, requires, when, layer." },
+  'every-repo': { help: 'Check with no repo and in each repo config.json records.' },
+  fix: { help: 'Ask before each fix, then run it.' },
+  help: { short: 'h', help: 'Print this page.' },
+};
+
 const COMMANDS = {
-  'playbook list': { arity: 0, run: (opts) => runList(loadContext(opts), opts) },
-  'playbook show': { arity: 1, run: (opts, [name]) => runCompute(loadContext(opts), opts, name) },
-  'playbook locate': { arity: 2, run: (opts, [name, quote]) => runLocate(loadContext(opts), opts, name, quote) },
-  'playbook extend': { arity: [3, 4], writes: true, run: (opts, args) => runExtend(loadContext(opts), opts, args) },
-  'playbook new': { arity: 1, writes: true, run: (opts, args) => runNew(loadContext(opts), opts, args) },
-  'playbook install': { arity: (n) => n >= 1, packs: true, run: (opts, args) => runInstall(loadContext(opts), opts, args) },
-  'playbook update': { arity: () => true, packs: true, run: (opts, args) => runUpdate(loadContext(opts), opts, args) },
-  'playbook remove': { arity: 1, packs: true, run: (opts, args) => runRemove(loadContext(opts), opts, args) },
-  check: { arity: 0, run: (opts) => (opts.locked ? runLockedCheck(opts) : runCheck(loadContext(opts), opts)) },
-  doctor: { arity: 0, run: (opts) => runDoctor(opts) },
+  list: {
+    summary: 'List each playbook active here, with its kind and family.',
+    options: ['repo', 'json', 'pstack'],
+    examples: ['playbook list', 'playbook list --repo web --json'],
+    run: (opts) => runList(loadContext(opts), opts),
+  },
+  show: {
+    operands: '<name>',
+    min: 1,
+    max: 1,
+    aliases: ['compute'],
+    summary: 'Print one playbook family with every file applied, tagging each step. compute is an alias of show.',
+    options: ['repo', 'json', 'pstack'],
+    examples: ['playbook show babysit', 'playbook show opening-an-acme-pr --json'],
+    run: (opts, [name]) => runCompute(loadContext(opts), opts, name),
+  },
+  locate: {
+    operands: '<name> <quote>',
+    min: 2,
+    max: 2,
+    summary: 'Name the step a quote finds, who wrote it, and the file an edit to it belongs in.',
+    options: ['repo', 'json', 'pstack'],
+    examples: ['playbook locate babysit "Work the merge frontier"'],
+    run: (opts, [name, quote]) => runLocate(loadContext(opts), opts, name, quote),
+  },
+  map: {
+    operands: '<name>',
+    min: 1,
+    max: 1,
+    summary: 'Draw a playbook family as a tree, each file labelled with its origin. Marks the file you asked for, a second parent, and dormant files.',
+    options: ['repo', 'json', 'pstack'],
+    examples: ['playbook map babysit', 'playbook map babysitting-an-acme-pr --json'],
+    run: (opts, [name]) => runMap(loadContext(opts), opts, name),
+  },
+  extend: {
+    operands: '<parent> [<file-name>] after|before|replace|in "<quote>"',
+    min: 3,
+    max: 4,
+    summary: 'Write one edit line into a user file, refusing an edit that breaks check.',
+    options: ['with', 'with-file', 'when', 'scope', 'repo', 'pstack'],
+    required: [['with', 'with-file']],
+    examples: ['playbook extend babysit replace "Never merge" --with "Merge once green."', 'playbook extend babysit babysit-sam in "Work the merge frontier" --with - --when "Babysitting a PR"'],
+    run: (opts, args) => runExtend(loadContext(opts), opts, args),
+  },
+  new: {
+    operands: '<name>',
+    min: 1,
+    max: 1,
+    summary: 'Write a standalone user playbook.',
+    options: ['when', 'from-file', 'scope', 'repo', 'pstack'],
+    required: [['when'], ['from-file']],
+    examples: ['playbook new triaging --when "Triaging a report" --from-file steps.md'],
+    run: (opts, args) => runNew(loadContext(opts), opts, args),
+  },
+  install: {
+    operands: '<pack>...',
+    min: 1,
+    max: Infinity,
+    summary: 'Install packs and what they require, as copies pinned in a lock. Warns when pstack is missing.',
+    options: ['from', 'user', 'link', 'repo', 'pstack'],
+    examples: ['playbook install acme --from acme-eng/agents', 'playbook install mine --user --link --from ../private'],
+    run: (opts, args) => runInstall(loadContext(opts, { pstackOptional: true }), opts, args),
+  },
+  update: {
+    operands: '[<pack>...]',
+    min: 0,
+    max: Infinity,
+    summary: 'Re-fetch packs, and delete files they no longer ship.',
+    options: ['user', 'repo', 'pstack'],
+    examples: ['playbook update', 'playbook update acme'],
+    run: (opts, args) => runUpdate(loadContext(opts, { pstackOptional: true }), opts, args),
+  },
+  remove: {
+    operands: '<pack>',
+    min: 1,
+    max: 1,
+    summary: 'Remove a pack and every file it put here. Refuses while another pack requires it.',
+    options: ['user', 'repo', 'pstack'],
+    examples: ['playbook remove acme'],
+    run: (opts, args) => runRemove(loadContext(opts, { pstackOptional: true }), opts, args),
+  },
+  check: {
+    summary: 'Validate every playbook file against the installed pstack, and each locked file against the lock.',
+    options: ['locked', 'packs', 'user', 'repo', 'every-repo', 'json', 'pstack'],
+    oneOf: [['locked', 'packs'], ['repo', 'every-repo']],
+    examples: ['playbook check', 'playbook check --locked', 'playbook check --packs .'],
+    validate: (o) => {
+      if (o.packs !== null && (o.user || o.repo || o.everyRepo || o.pstack)) return '--packs takes only --json';
+      if (o.locked && (o.repo || o.everyRepo || o.pstack)) return '--locked reads only the lock';
+      if (o.user && !o.locked) return '--user needs --locked here';
+      return null;
+    },
+    run: (opts) => (opts.packs !== null ? runPackLint(opts) : opts.locked ? runLockedCheck(opts) : runCheck(loadContext(opts), opts)),
+  },
+  doctor: {
+    summary: 'Check the whole install, and print the commands that fix each failure.',
+    options: ['fix', 'json'],
+    oneOf: [['fix', 'json']],
+    examples: ['playbook doctor', 'playbook doctor --fix'],
+    run: (opts) => runDoctor(opts),
+  },
+  help: {
+    operands: '[<command>]',
+    min: 0,
+    max: 1,
+    summary: 'Print the usage, or one command\'s page.',
+    options: [],
+    examples: ['playbook help', 'playbook help install'],
+    run: (opts, [name]) => ({ out: name ? helpPage(commandNamed(name)) : usageText(), status: 0 }),
+  },
 };
 
-const WRITE_OPTIONS = {
-  '--with': { key: 'with', dashText: true },
-  '--when': { key: 'when', dashText: true },
-  '--with-file': { key: 'withFile' },
-  '--from-file': { key: 'fromFile' },
-  '--scope': { key: 'scope' },
-};
-const GROUP_VERBS = new Set(['list', 'show', 'compute', 'locate', 'extend', 'new', 'install', 'update', 'remove']);
-const VERB_ALIASES = { compute: 'show' };
+const optKey = (name) => name.replace(/-(\w)/g, (_, c) => c.toUpperCase());
+const flagText = (name) => `--${name}${OPTIONS[name].value ? ` ${OPTIONS[name].value}` : ''}`;
+const commandNamed = (word) => Object.keys(COMMANDS).find((name) => name === word || COMMANDS[name].aliases?.includes(word)) ?? null;
 
-function parseArgs(argv) {
-  const opts = { json: false, fix: false, help: false, everyRepo: false, repo: null, pstack: null, with: null, withFile: null, when: null, fromFile: null, scope: null, from: null, user: false, locked: false };
-  const words = [];
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--json') opts.json = true;
-    else if (arg === '--fix') opts.fix = true;
-    else if (arg === '--every-repo') opts.everyRepo = true;
-    else if (arg === '--user') opts.user = true;
-    else if (arg === '--locked') opts.locked = true;
-    else if (arg === '--from') {
-      const value = argv[++i];
-      if (!value || value.startsWith('-')) throw new UsageError(`${arg} needs a value`, { usage: true });
-      opts.from = value;
+function synopsis(name) {
+  const { operands, options, oneOf = [], required = [] } = COMMANDS[name];
+  const groups = [...oneOf, ...required];
+  const parts = [];
+  for (const option of options) {
+    const group = groups.find((g) => g.includes(option));
+    if (!group) parts.push(`[${flagText(option)}]`);
+    else if (group[0] === option) {
+      const body = group.map(flagText).join(' | ');
+      parts.push(!required.includes(group) ? `[${body}]` : group.length > 1 ? `(${body})` : body);
     }
-    else if (arg === '--help' || arg === '-h') opts.help = true;
-    else if (arg === '--repo' || arg === '--pstack') {
-      const value = argv[++i];
-      if (!value || value.startsWith('-')) throw new UsageError(`${arg} needs a value`, { usage: true });
-      opts[arg.slice(2)] = value;
-    } else if (WRITE_OPTIONS[arg]) {
-      const value = argv[++i];
-      if (value === undefined || (value.startsWith('-') && value !== '-' && !WRITE_OPTIONS[arg].dashText)) throw new UsageError(`${arg} needs a value`, { usage: true });
-      opts[WRITE_OPTIONS[arg].key] = value;
-    } else if (arg.startsWith('-')) throw new UsageError(`unknown option ${arg}`, { usage: true });
-    else words.push(arg);
   }
-  if (opts.help) return { opts };
-  const [head, ...rest] = words;
-  const command = COMMANDS[GROUP_VERBS.has(head) ? `playbook ${VERB_ALIASES[head] ?? head}` : head];
-  const args = rest;
-  const fits = (arity) => (typeof arity === 'function' ? arity(args.length) : [arity].flat().includes(args.length));
-  if (!command || !fits(command.arity)) throw new UsageError('', { usage: true });
-  if (command.packs && (WRITE_FLAGS.some((f) => opts[f] !== null) || opts.json || opts.fix)) throw new UsageError('', { usage: true });
-  if (opts.user && !command.packs) throw new UsageError('', { usage: true });
-  if (opts.from !== null && command !== COMMANDS['playbook install']) throw new UsageError('', { usage: true });
-  if (opts.locked && (command !== COMMANDS.check || opts.everyRepo || opts.repo || opts.pstack)) throw new UsageError('', { usage: true });
-  if (!command.writes && WRITE_FLAGS.some((f) => opts[f] !== null)) throw new UsageError('', { usage: true });
-  if (opts.everyRepo && (command !== COMMANDS.check || opts.repo)) throw new UsageError('', { usage: true });
-  if (command.writes && (opts.json || opts.fix)) throw new UsageError('', { usage: true });
-  if (command === COMMANDS.doctor ? opts.repo || opts.pstack || (opts.fix && opts.json) : opts.fix) throw new UsageError('', { usage: true });
+  return ['playbook', name, operands, ...parts].filter(Boolean).join(' ');
+}
+
+const usageText = () => {
+  const lines = Object.keys(COMMANDS).map(synopsis);
+  return [`usage: ${lines[0]}`, ...lines.slice(1).map((l) => `       ${l}`), '', "Run playbook help <command> for a command's options and examples."].join('\n');
+};
+
+function helpPage(name) {
+  const { summary, options, examples } = COMMANDS[name];
+  const rows = [...options, 'help'].map((o) => [`--${o}${OPTIONS[o].value ? ` ${OPTIONS[o].value}` : ''}${OPTIONS[o].short ? `, -${OPTIONS[o].short}` : ''}`, OPTIONS[o].help]);
+  const width = Math.max(...rows.map(([flag]) => flag.length)) + 2;
+  return [`usage: ${synopsis(name)}`, '', summary, '', 'Options:', ...rows.map(([flag, help]) => `  ${flag.padEnd(width)}${help}`), '', 'Examples:', ...examples.map((e) => `  ${e}`)].join('\n');
+}
+
+const usageHint = (usage) => (usage === true ? [usageText()] : [`usage: ${synopsis(usage)}`, `run playbook help ${usage}`]);
+
+function parseCli(argv) {
+  const config = Object.fromEntries(Object.entries(OPTIONS).map(([name, o]) => [name, { type: o.value ? 'string' : 'boolean', ...(o.short ? { short: o.short } : {}) }]));
+  const { positionals, tokens } = parseArgs({ args: argv, options: config, allowPositionals: true, strict: false, tokens: true });
+  const opts = Object.fromEntries(Object.entries(OPTIONS).map(([name, o]) => [optKey(name), o.value ? null : false]));
+  const set = [];
+  for (const token of tokens) {
+    if (token.kind !== 'option') continue;
+    const option = OPTIONS[token.name];
+    if (!option) throw new UsageError(`unknown option ${token.rawName}; run playbook help`);
+    if (!option.value && token.value !== undefined) throw new UsageError(`${token.rawName} takes no value; run playbook help`);
+    if (option.value && (token.value === undefined || token.value === '' || (token.value.startsWith('-') && token.value !== '-' && !option.dashText))) throw new UsageError(`${token.rawName} needs a value; run playbook help`);
+    opts[optKey(token.name)] = option.value ? token.value : true;
+    set.push(token.name);
+  }
+  const [word, ...args] = positionals;
+  if (word === undefined) {
+    if (set.length === 0 || opts.help) return { print: usageText() };
+    throw new UsageError('', { usage: true });
+  }
+  const name = commandNamed(word);
+  if (!name) throw new UsageError(`unknown command ${word}; run playbook help`);
+  if (opts.help) return { print: helpPage(name) };
+  if (name === 'help' && args[0] !== undefined && !commandNamed(args[0])) throw new UsageError(`unknown command ${args[0]}; run playbook help`);
+  const command = COMMANDS[name];
+  if (args.length < (command.min ?? 0) || args.length > (command.max ?? 0)) throw new UsageError('', { usage: name });
+  const stray = set.find((o) => o !== 'help' && !command.options.includes(o));
+  if (stray) throw new UsageError(`--${stray} does not go with ${name}`, { usage: name });
+  for (const group of command.oneOf ?? []) if (group.filter((o) => set.includes(o)).length > 1) throw new UsageError(`${group.map((o) => `--${o}`).join(' and ')} do not go together`, { usage: name });
+  const wrong = command.validate?.(opts);
+  if (wrong) throw new UsageError(wrong, { usage: name });
   return { opts, command, args };
 }
 
 function main(argv) {
   try {
-    const { opts, command, args } = parseArgs(argv);
-    if (opts.help) {
-      process.stdout.write(`${USAGE}\n`);
+    const { print, opts, command, args } = parseCli(argv);
+    if (print) {
+      process.stdout.write(`${print}\n`);
       return 0;
     }
     const { out, status } = command.run(opts, args);

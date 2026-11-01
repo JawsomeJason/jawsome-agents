@@ -60,12 +60,13 @@ function writePacksIn(dir, packs) {
     writeFileSync(join(root, 'pack.json'), JSON.stringify({ name, description: `${name} pack`, requires: pack.requires ?? [] }));
     for (const [stem, text] of Object.entries(pack.playbooks ?? {})) writeFileSync(join(root, 'playbooks', `${stem}.md`), text);
     if (pack.skills) {
-      mkdirSync(join(root, 'skills', 'a-skill'), { recursive: true });
-      writeFileSync(join(root, 'skills', 'a-skill', 'SKILL.md'), '---\nname: a-skill\ndescription: x\n---\n');
+      const skill = pack.skills === true ? `${name}-skill` : pack.skills;
+      mkdirSync(join(root, 'skills', skill), { recursive: true });
+      writeFileSync(join(root, 'skills', skill, 'SKILL.md'), `---\nname: ${skill}\ndescription: x\n---\n`);
     }
     if (pack.rules) {
       mkdirSync(join(root, 'rules'), { recursive: true });
-      writeFileSync(join(root, 'rules', 'a-rule.md'), '# rule\n');
+      writeFileSync(join(root, 'rules', `${pack.rules === true ? `${name}-rule` : pack.rules}.md`), '# rule\n');
     }
   }
 }
@@ -574,9 +575,9 @@ test('a linked pack whose folder is gone is a named problem in both checks, and 
   assert.match(locked.stdout, /mine.*links to .*missing/);
 });
 
-const SAME_NAME_SKILL = { skills: true };
+const SAME_NAME_SKILL = { skills: 'a-skill' };
 test('install refuses a pack skill or rule named like the repo\'s own or another pack\'s, which rulesync would drop with exit 0', () => {
-  const w = forgeConsumer({ one: SAME_NAME_SKILL, two: SAME_NAME_SKILL, ruled: { rules: true }, ruled2: { rules: true } }, { 'rulesync.jsonc': '{\n  "sources": []\n}\n' });
+  const w = forgeConsumer({ one: SAME_NAME_SKILL, two: SAME_NAME_SKILL, ruled: { rules: 'a-rule' } }, { 'rulesync.jsonc': '{\n  "sources": []\n}\n' });
   const both = w.forge(['install', 'one', 'two', '--from', w.slug]);
   assert.equal(both.status, 1);
   assert.match(both.stderr, /packs\/two\/skills\/a-skill.*pack one/);
@@ -596,6 +597,13 @@ test('install refuses a pack skill or rule named like the repo\'s own or another
   const skill = w.forge(['update', 'one']);
   assert.equal(skill.status, 1);
   assert.match(skill.stderr, /\.rulesync\/skills\/a-skill/);
+});
+
+test('install refuses a name another source already holds in rulesync.lock', () => {
+  const w = forgeConsumer({ one: SAME_NAME_SKILL }, { 'rulesync.jsonc': '{\n  "sources": []\n}\n', 'rulesync.lock': JSON.stringify({ sources: { 'other/repo': { skills: { 'a-skill': {} } } } }) });
+  const r = w.forge(['install', 'one', '--from', w.slug]);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /packs\/one\/skills\/a-skill: rulesync source other\/repo/);
 });
 
 test('rulesync\'s own vendored copy of a pack skill is no collision, so a rerun passes', () => {

@@ -862,7 +862,7 @@ test('an unknown playbook and a bad command are usage errors', () => {
   assert.match(unknown.stderr, /no playbook named nope/);
   assert.equal(unknown.status, 2);
   const bad = w.run(['frobnicate']);
-  assert.match(bad.stderr, /usage: playbook/);
+  assert.match(bad.stderr, /playbook help/);
   assert.equal(bad.status, 2);
   const help = w.run(['--help']);
   assert.match(help.stdout, /usage: playbook/);
