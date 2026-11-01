@@ -1,0 +1,5 @@
+{
+  "name": "jawsome",
+  "description": "Two standalone playbooks with no tie to any team: auditing a repo's agent rules with an eval, and adversarial testing of a change in a real browser.",
+  "requires": []
+}

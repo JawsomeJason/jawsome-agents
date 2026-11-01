@@ -14,7 +14,7 @@ Terms the playbook plugin's docs and skills use, in alphabetical order. Each ent
 
 **Edit verb.** One of the four bold words an edit line starts with. `**After**` and `**Before**` insert a new step next to the quoted one, `**Replace**` strikes the quoted words and adds the change text after them, and `**In**` appends the change text to the step. [pstack-claude]
 
-**`extends`.** The frontmatter key that names a file's parents by stem, separated by commas. It patches them in place and does not create a derived playbook under the file's name. One level, a team file over bundled playbooks, is [pstack-claude]. Chains, where a user file extends a team file or another user file, are [playbook]. The chains set the apply order.
+**`extends`.** The frontmatter key that names a file's parents by stem, separated by commas. It patches them in place and does not create a derived playbook under the file's name. One level, a team file over bundled playbooks, is [pstack-claude]. Chains, where a team file extends a team file, or a user file extends a team file or another user file, are [playbook]. The chains set the apply order.
 
 **Family.** A root and every active file that reaches it through `extends`, directly or through a chain. A file with several parents belongs to each one's family. `playbook show` applies a whole family. [pstack-claude] for team files, [playbook] across chains.
 
@@ -24,13 +24,15 @@ Terms the playbook plugin's docs and skills use, in alphabetical order. Each ent
 
 **Mode skill.** The operator's `<handle>-mode` skill, which pstack's automate-me writes during `setup`. It runs poteto-mode first, takes each playbook's steps from `playbook show` instead of applying project playbooks by hand, and names every override by the stem of the file that made it. [playbook]
 
-**Parent.** A stem a file's `extends` names. A team file's parents are bundled playbooks only [pstack-claude]; a user file's parents may also be team files and user files [playbook].
+**Pack.** A named set of playbooks, with optional skills and rules, that a source repo holds in `packs/<name>/` and any repo installs as committed copies pinned in `.agents/playbooks.lock`. [playbook]
+
+**Parent.** A stem a file's `extends` names. A team file's parents are bundled playbooks on plain pstack [pstack-claude], and may also be team files in the repo; a user file's parents may also be team files and user files [playbook].
 
 **Patch.** A file with a non-empty `extends`. It never becomes a step list of its own: it edits its family's root. [pstack-claude]
 
 **Playbook.** A numbered step list that poteto-mode follows for one kind of recurring work, such as babysitting a PR. Each one is either a bundled playbook or a standalone playbook. [pstack-claude]
 
-**`playbook`.** The command, `scripts/playbook.mjs` in the `playbook` skill, which needs only Node. Its commands are `list`, `show`, `locate`, `extend`, `new`, `check` and `doctor`. [playbook]
+**`playbook`.** The command, `scripts/playbook.mjs` in the `playbook` skill, which needs only Node. Its commands are `list`, `show`, `locate`, `extend`, `new`, `install`, `update`, `remove`, `check` and `doctor`. [playbook]
 
 **`playbook check`.** Validates every team file and active user file against the installed pstack, after running pstack-claude's `check-playbooks.mjs` when the repo has `.agents/playbooks`. It reports stale or ambiguous quotes, missing parents, cycles, repeated stems, sibling `Replace` clashes, unresolved handoffs and step references, retired `layer:` keys and numbered folders, and broken links, and notes dormant files. A pass records the checked pstack version in `config.json`. [playbook]
 
@@ -58,8 +60,8 @@ Terms the playbook plugin's docs and skills use, in alphabetical order. Each ent
 
 **Standalone playbook.** A playbook a file defines on its own, with an empty `extends` and a unique stem, so its numbered steps are its body. poteto-mode matches it only by its `when` sentence [pstack-claude], and playbook also finds it by name through a handoff [playbook]. It cannot carry edit lines.
 
-**Team file.** A playbook file in a repo's `.agents/playbooks/`, which the repo commits and a pull request changes. [pstack-claude] It extends only bundled playbooks and quotes only pstack's text, because pstack's checker reads it without personal files. [pstack-claude]
+**Team file.** A playbook file in a repo's `.agents/playbooks/`, which the repo commits and a pull request changes. [pstack-claude] Chain-free, it extends only bundled playbooks and quotes only pstack's text, as pstack's checker requires. [pstack-claude] It may extend another team file, which plain pstack refuses. [playbook]
 
-**User file.** A playbook file in the config dir, in `playbooks/` or a scope folder. Only user files form chains, and `playbook extend` and `playbook new` write them. [playbook]
+**User file.** A playbook file in the config dir, in `playbooks/` or a scope folder. `playbook extend` and `playbook new` write them. [playbook]
 
 **`when`.** The required frontmatter sentence that names the requests a file serves. poteto-mode matches a standalone playbook only by this sentence. [pstack-claude]

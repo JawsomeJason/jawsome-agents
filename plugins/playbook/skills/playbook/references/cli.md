@@ -1,13 +1,16 @@
 # playbook reference
 
 ```sh
-Playbook list [--repo <repo>] [--json] [--pstack <dir-or-version>]
-Playbook show <playbook> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-Playbook locate <playbook> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-Playbook extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
-Playbook new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
-Playbook check [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
-Playbook doctor [--fix | --json]
+playbook list [--repo <repo>] [--json] [--pstack <dir-or-version>]
+playbook show <playbook> [--repo <repo>] [--json] [--pstack <dir-or-version>]
+playbook locate <playbook> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
+playbook extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
+playbook new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
+playbook install <pack>... [--from <owner/repo|path>] [--user] [--repo <repo>] [--pstack <dir-or-version>]
+playbook update [<pack>...] [--user] [--repo <repo>] [--pstack <dir-or-version>]
+playbook remove <pack> [--user] [--repo <repo>] [--pstack <dir-or-version>]
+playbook check [--locked] [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
+playbook doctor [--fix | --json]
 playbook --help
 ```
 
@@ -109,7 +112,7 @@ A quote that names no step or more than one prints the same message `check` prin
 `extend` writes one edit line into a user file, and refuses an edit that would break `check`. It is the way to change a playbook from a terminal or an agent, because it accepts only the grammar that [the playbooks page](playbooks.md#file-format) defines and adds no verb to the files.
 
 ```sh
-Playbook extend babysit babysit-sam replace "Never require Graphite" --with - --when "Babysitting a PR" <<'TEXT'
+playbook extend babysit babysit-sam replace "Never require Graphite" --with - --when "Babysitting a PR" <<'TEXT'
 Use `gh pr view --json "state"` first.
 TEXT
 ```
@@ -125,6 +128,62 @@ TEXT
 
 `new <name> --when "<sentence>" --from-file <path|->` writes a standalone playbook: a file with an empty `extends:`, the `when:` sentence, and the body you pass. `new` refuses, with exit 1, a name that pstack, a team file, or a user file in any scope already uses, a body with no numbered steps, and a body with edit lines. It takes `--scope` and runs the same validation and rollback as `extend`.
 
+## Packs
+
+A pack is a named set of playbooks any repo can install, so one correction reaches everyone through one reviewed change. A source repo holds `packs/<name>/` with `pack.json` (`name`, `description`, `requires`), `playbooks/*.md`, and optional `skills/<skill>/SKILL.md` and `rules/*.md`.
+
+A consumer repo commits:
+
+```
+.agents/packs.json       {"packs":[{"name":"acme","source":"acme-eng/agents"}]}
+.agents/playbooks.lock   {"packs":{"acme":{"source":"acme-eng/agents","commit":"<sha>"}},"files":{"x.md":{"pack":"acme","hash":"sha256:<hex>"}}}
+.agents/playbooks/*.md   pack files, byte for byte, plus files the repo owns, outside the lock
+rulesync.jsonc           one `sources` entry per pack that ships skills or rules
+```
+
+A lock pack entry also carries `requires` when it has any, so `remove` can refuse offline. Copies stay committed, so a teammate on plain pstack reads them with no install step and CI needs no secret.
+
+### install
+
+`install <pack>... --from <owner/repo|path>` resolves `requires` from the same source, copies each pack's playbooks, and writes the lock and the manifest. A rerun changes nothing unless the source moved. `--from` can be left out for a pack the manifest lists. A slug fetches with `gh` when it is installed, else `git` over ssh, so a person's own login is the only auth. `PLAYBOOKS_GIT_BASE` points `git` at another forge or a mirror, as `<base>/<owner>/<repo>`. A path reads that folder's working tree, and the manifest records it relative to the repo.
+
+In a linked worktree, the pack verbs and `check --locked` act on that worktree, because the change reaches others through its branch. `check` and `show` read the main checkout, as they do for all team files.
+
+These fail with exit 1, name the file, and write nothing:
+
+| Case | Names |
+| --- | --- |
+| A pack or a required pack is missing | `packs/<name>/pack.json` |
+| A cycle in `requires` | `packs/<name>/pack.json`, with the cycle |
+| Two packs ship one stem | `packs/<name>/playbooks/<file>`, with the other pack |
+| A stem is a bundled playbook's | `packs/<name>/playbooks/<file>` |
+| A different file the repo owns has that name | `.agents/playbooks/<file>` |
+| A locked file was edited by hand | `.agents/playbooks/<file>` |
+| A symlink in a pack | `packs/<name>/playbooks/<file>` |
+| A cycle in `extends`, a stale quote, or two files replacing the same words | the file, from the same validation as `check` |
+
+A file the repo owns with the same bytes as the pack's is adopted into the lock. A flat lock from before packs is read and verified, and `install` rewrites it. Files it pinned that no pack ships become repo-owned.
+
+### rulesync
+
+`install` and `update` add one `sources` entry per pack that ships skills or rules, and run nothing: the next line tells you to run `rulesync install`. They edit only the text around the entry, so comments stay. The repo path sits in `source`, after a colon, such as `acme-eng/agents:packs/acme/skills`, because rulesync locks by `source` and skips a second entry that shares one, even when its `path` differs. A pack with no rulesync config, a local source, or `--user` gets an info line, and its skills and rules are not delivered.
+
+### update
+
+`update [<pack>...]` re-fetches each named pack, or every listed pack, deletes files the pack stopped shipping, and rewrites its rulesync entry. It refuses a hand-edited file, because overwriting it would lose the change.
+
+### remove
+
+`remove <pack>` deletes its files, its lock and manifest entries, and its rulesync entry, and removes the lock, the manifest and any folder left empty. It refuses while another installed pack requires it, or while a remaining file extends it.
+
+### --user
+
+`--user` installs into `<config>/playbooks/packs/<pack>/`, with the lock and manifest in the config dir. Those files are active everywhere, as user files, so a user file may extend them. A team file may not, because teammates do not have them.
+
+### check --locked
+
+`check --locked` checks only that each locked file holds its locked bytes and that the lock and the manifest name the same packs. It needs neither pstack nor the source, so it fits CI. With no lock it passes and says so. Plain `check` runs the same check, and names each hand-edited file.
+
 ## list
 
 `list` prints each root active in the context, with its kind (`pstack`, `team` or `user`) and the active members of its family in apply order. `--json` follows [schemas/playbook.list.schema.json](schemas/playbook.list.schema.json).
@@ -139,7 +198,8 @@ TEXT
 | no `layer:` key | `layer: is retired, because extends sets the order; delete it` |
 | no numbered or unnumbered layer folder at the config root | `numbered layer folders are retired; move each file into playbooks/ ...` |
 | each `extends` stem is defined in some context | `extends <x>, which no playbook defines` |
-| a team file extends only bundled stems | `team files extend only bundled playbooks, and pstack <ver> bundles no <x>` |
+| a team file extends only bundled or team stems | `team files extend bundled or team playbooks, and neither pstack <ver> nor this repo has <x>` |
+| a locked file holds its locked bytes | `hand-edited: its bytes differ from the lock ...`, or `the lock pins it, but it is missing; run playbook update` |
 | no cycle among user files | `extends a cycle: <a> -> <b> -> <a>` |
 | a stem is not bundled | `<x> is a bundled playbook's name; rename the file, such as <x>-<qualifier>.md` |
 | a stem is unique among active files and files active everywhere | `<x> is also <path>; rename one, such as <x>-<qualifier>.md` |
@@ -147,7 +207,7 @@ TEXT
 | quote matches a step its ancestors wrote | `quote not found: "<q>"`, or `quote not found in what its parents leave: "<q>"; <file> wrote it, so add <file> to extends` |
 | quote matches only 1 step | `quote matches steps <a> and <b>; make it longer` |
 | quote is in a numbered step, not intro text | `quote is outside a numbered step` |
-| team file quote is pstack's text | `team files may quote pstack only` |
+| a team file quotes no user file | `team files may quote pstack and team files only, because teammates do not have user files` |
 | two siblings do not Replace the same words | `replaces words that <x> also replaces in <playbook> step <N>; make one file extend the other` |
 | a standalone playbook has no edit lines | `standalone playbook cannot carry edits` |
 | no symlink in the config dir or `.agents/playbooks` is dangling | `broken link -> <target>` |
@@ -165,7 +225,8 @@ These print `info:` lines and do not fail the check:
 
 - A file whose parent only another context defines: `extends <x>, which only <where> defines, so this file is dormant here`, where `<where>` is a repo key or a scope folder. Its child gets `extends <x>, which is dormant here, so this file is too`.
 - A handoff to a playbook only another context defines, `hands off to <x>, which only <where> defines`, or to a dormant file, `hands off to <x>, which is dormant here`. A user file in `playbooks/` applies in every repo, so it can hand off to a playbook that exists in some repos only.
-- A team file whose name lacks its scope word: `a team file name carries its scope word (<org> or <repo>), such as <x>-<org>.md`.
+- A team file with a team parent that the installed pstack's checker refuses: `extends a team file, and plain pstack refuses that until its check-playbooks accepts project parents, so playbook checked it instead`. `check` drops pstack's lines for that file and runs its own anchor check on it. A pstack that accepts it draws no line.
+- A team file whose name lacks its scope word, unless the lock pins it, because a pack file installs into many repos: `a team file name carries its scope word (<org> or <repo>), such as <x>-<org>.md`.
 
 `check` reads team stems from every checkout in `config.json` `repos`, so missing and dormant results are the same from any directory.
 

@@ -1,7 +1,7 @@
 ---
 name: playbook
 description: Lists, computes, and checks poteto-mode playbooks extended by team and personal files, with the playbook command. show, also spelled compute, prints one playbook family with every file that extends it applied over pstack's bundled steps in extends order, tags each step with the file that wrote it, and names every override. locate names the step a quote finds and the file an edit to it belongs in. check validates every playbook file against the installed pstack. Use when running a poteto-mode playbook through this plugin, when a mode skill asks for `playbook show`, when writing or editing a playbook file, or after a pstack upgrade.
-argument-hint: "<list|show|compute|locate|extend|new|check|doctor> [playbook] [--repo <repo>]"
+argument-hint: "<list|show|compute|locate|extend|new|install|update|remove|check|doctor> [playbook|pack] [--repo <repo>]"
 compatibility: Requires Node and the pstack plugin's poteto-mode skill.
 license: MIT
 ---
@@ -23,6 +23,9 @@ Playbook applies the operator's personal and team playbook files over pstack's b
    | `extend <parent> [<file-name>] <verb> <quote>` | `playbook extend <parent> [<file-name>] <verb> "<quote>" --with -` |
    | `new <name>` | `playbook new <name> --when "<sentence>" --from-file -` |
    | `check` | `playbook check` |
+   | `install <pack>` | `playbook install <pack> --from <owner/repo\|path>` |
+   | `update [<pack>]` | `playbook update [<pack>]` |
+   | `remove <pack>` | `playbook remove <pack>` |
    | `doctor` | `playbook doctor` |
 
 3. When the argument includes `--repo <repo>`, pass it through. Without it, playbook reads the repo from the current directory's checkout.
@@ -43,7 +46,8 @@ Exit code 1 means a validator problem. Report each problem line to the operator.
 - Pick the parent with `playbook locate`: it names the file that wrote the quoted words, which is the parent the new edit must extend, because a file's quotes see only what its ancestors wrote.
 - Keep pstack's grammar: `extends`, `when`, and edit lines `- **After|Before|Replace|In** "quote" change`. pstack's own checker reads team files, so a new verb or key there breaks pstack. [references/playbooks.md](references/playbooks.md) gives where files live, names, the apply order, and what `check` validates, each rule tagged with the project that provides it.
 - Quote a short, distinctive phrase from one step, such as its bold title. pstack rewrites step text between releases, and a long quote breaks on the first rewrite.
-- A team file extends only bundled stems and quotes only pstack's text, and carries the org or repo word in its name. pstack's checker sees team files without personal files, so anything else fails there.
+- A team file carries the org or repo word in its name unless a pack ships it. Keep it chain-free, extending only bundled stems and quoting only pstack's text, when teammates run plain pstack, because pstack's checker refuses any other parent. `playbook check` reports a chained team file as an info line and checks it itself.
+- Change a pack file in its source repo, then run `playbook update`. `check` fails a hand-edited copy, because the lock pins its bytes. [references/cli.md](references/cli.md#packs) covers `install`, `update`, `remove`, and `check --locked`.
 - Run `playbook check` after every edit and after every pstack upgrade. It catches a quote that matches nothing, matches two steps, or sits outside the steps, before an agent runs the playbook.
 
 ## Keep the JSON shape

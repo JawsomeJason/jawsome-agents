@@ -389,6 +389,11 @@ export function lint(target) {
       if (raw.subarray(0, 8000).includes(0)) continue;
       // The repo's own install slug is the one identity a doc must carry, so it is blanked first.
       let text = blank(raw.toString('utf8'), RULES.docAllow);
+      // A pack's playbooks are steps an agent runs, not this repo's docs, so only the identity rule reaches them.
+      if (/^packs\/[^/]+\/playbooks\/[^/]+\.md$/.test(rel)) {
+        scanDenylists(file, text, 'tracked', report);
+        continue;
+      }
       if (rel.endsWith('.md')) {
         scanDenylists(file, text, 'doc', report, { skip: claudeOnly.has(pluginOf(rel)) ? RULES.claudeOnlyExempt : [] });
         continue;

@@ -94,29 +94,29 @@ const snapshot = (dir) => {
 
 test('install copies byte-identical files, writes the manifest and the lock, and a rerun changes nothing', () => {
   const text = '﻿---\r\nextends: babysit\r\nwhen: Crlf\r\n---\r\n\r\n- **In** "Work the merge frontier" Read it.\r\n';
-  const w = consumer({ roobet: { playbooks: { 'x-acme': text } } });
-  const r = w.run(['install', 'roobet', '--from', w.from]);
+  const w = consumer({ corp: { playbooks: { 'x-acme': text } } });
+  const r = w.run(['install', 'corp', '--from', w.from]);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal(readFileSync(join(w.dir, 'x-acme.md'), 'utf8'), text);
   const commit = git(w.from, ['rev-parse', 'HEAD']).trim();
-  assert.deepEqual(w.lock().files, { 'x-acme.md': { pack: 'roobet', hash: sha(text) } });
-  assert.equal(w.lock().packs.roobet.commit, commit);
-  assert.equal(w.manifest().packs[0].name, 'roobet');
+  assert.deepEqual(w.lock().files, { 'x-acme.md': { pack: 'corp', hash: sha(text) } });
+  assert.equal(w.lock().packs.corp.commit, commit);
+  assert.equal(w.manifest().packs[0].name, 'corp');
   const before = snapshot(join(w.repo, '.agents'));
-  assert.equal(w.run(['install', 'roobet', '--from', w.from]).status, 0);
+  assert.equal(w.run(['install', 'corp', '--from', w.from]).status, 0);
   assert.deepEqual(snapshot(join(w.repo, '.agents')), before);
   assert.equal(w.run(['check']).status, 0);
-  const again = w.run(['install', 'roobet']);
+  const again = w.run(['install', 'corp']);
   assert.equal(again.status, 0, 'the manifest names the source once it is installed');
   assert.deepEqual(snapshot(join(w.repo, '.agents')), before);
 });
 
 test('install resolves requires from the same source, and a missing or cyclic one fails naming the pack file', () => {
-  const w = consumer({ roobet: { playbooks: { 'a-acme': IN_BABYSIT } }, 'ui-team': { requires: ['roobet'], playbooks: { 'b-acme': patch('feature', '- A note.') } }, orphan: { requires: ['nowhere'] }, c1: { requires: ['c2'] }, c2: { requires: ['c1'] } });
+  const w = consumer({ corp: { playbooks: { 'a-acme': IN_BABYSIT } }, 'ui-team': { requires: ['corp'], playbooks: { 'b-acme': patch('feature', '- A note.') } }, orphan: { requires: ['nowhere'] }, c1: { requires: ['c2'] }, c2: { requires: ['c1'] } });
   const r = w.run(['install', 'ui-team', '--from', w.from]);
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.deepEqual(Object.keys(w.lock().packs).sort(), ['roobet', 'ui-team']);
-  assert.deepEqual(w.manifest().packs.map((p) => p.name).sort(), ['roobet', 'ui-team']);
+  assert.deepEqual(Object.keys(w.lock().packs).sort(), ['corp', 'ui-team']);
+  assert.deepEqual(w.manifest().packs.map((p) => p.name).sort(), ['corp', 'ui-team']);
   const missing = w.run(['install', 'orphan', '--from', w.from]);
   assert.equal(missing.status, 1);
   assert.match(missing.stderr, /packs\/orphan\/pack\.json.*nowhere/);
@@ -130,7 +130,7 @@ test('install resolves requires from the same source, and a missing or cyclic on
 
 test('install with no known source says to pass --from, and a bad pack name is refused before any path is built', () => {
   const w = consumer({});
-  assert.match(w.run(['install', 'roobet']).stderr, /--from/);
+  assert.match(w.run(['install', 'corp']).stderr, /--from/);
   assert.equal(w.run(['install', '../evil', '--from', w.from]).status, 2);
 });
 
@@ -300,10 +300,10 @@ test('a malformed lock or manifest is a named problem', () => {
 
 test('a pack may chain: a team file extends a team file, replaces its words, and check says plain pstack refuses it', () => {
   const w = consumer({
-    'roobet-one': { playbooks: { 'one-acme': patch('babysit', '- **After** "Work the merge frontier" Serve foo bar daily.') } },
-    'roobet-two': { requires: ['roobet-one'], playbooks: { 'two-acme': patch('one-acme', '- **Replace** "foo bar" free beer') } },
+    'corp-one': { playbooks: { 'one-acme': patch('babysit', '- **After** "Work the merge frontier" Serve foo bar daily.') } },
+    'corp-two': { requires: ['corp-one'], playbooks: { 'two-acme': patch('one-acme', '- **Replace** "foo bar" free beer') } },
   });
-  const r = w.run(['install', 'roobet-two', '--from', w.from]);
+  const r = w.run(['install', 'corp-two', '--from', w.from]);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const shown = w.run(['show', 'two-acme']);
   assert.equal(shown.status, 0, shown.stdout);

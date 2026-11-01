@@ -5,6 +5,7 @@ Each rule is tagged **[pstack-claude]** when pstack-claude provides it, so a tea
 ## Where files are found
 
 - **Team files** are `<main checkout>/.agents/playbooks/*.md`, top level only. A pull request changes them. [pstack-claude] The repo is the main checkout of the current directory, so a worktree reads its main checkout's team files, and `--repo <repo>` reads the checkout `config.json` records. [playbook]
+- **Pack files** are team files a repo installed, or user files under `<config>/playbooks/packs/<pack>/` with `--user`, pinned by a lock. [cli.md](cli.md#packs) describes them. [playbook]
 - **User files** sit in the config dir, `$PLAYBOOKS_CONFIG` or `.jawsome-playbooks` in the home directory. [playbook]
 
   ```
@@ -49,7 +50,7 @@ when: one sentence naming the requests it serves
 - `extends` names parents by stem, separated by commas, and patches them in place. [pstack-claude] An empty `extends` with numbered steps is a standalone playbook. [pstack-claude]
 - `when` is required. poteto-mode finds a standalone playbook only by it. [pstack-claude]
 - An edit line is a list item, a bold verb (`After`, `Before`, `Replace`, `In`), a quote in straight double quotes, then the change text. [pstack-claude] `After` and `Before` insert a step, `Replace` strikes the quoted words and adds the change after them, and `In` appends to the step. [pstack-claude]
-- A team file extends only bundled stems, and quotes only bundled text. [pstack-claude] A user file may extend any bundled playbook, any active team file, or any active user file, so only user files form chains. [playbook]
+- A team file that extends only bundled stems and quotes only bundled text runs on plain pstack. [pstack-claude] A team file may also extend another team file in the repo, and plain pstack refuses that file until its checker accepts project parents, so shared content stays chain-free when teammates run plain pstack. [playbook] A user file may extend any bundled playbook, any active team file, or any active user file. [playbook]
 - `layer:` and the numbered folders (`01-user/`, `02-orgs/`, `03-repos/`) are retired, and `check` fails them. `source:` is a team review convention that playbook ignores. [playbook]
 
 ## Names
@@ -76,11 +77,14 @@ when: one sentence naming the requests it serves
 | Check | Result | Provenance |
 | --- | --- | --- |
 | `check-playbooks.mjs` passes on `.agents/playbooks` | fail | [pstack-claude] |
-| Team file extends a non-bundled stem, or quotes text no bundled parent has | fail | [pstack-claude] |
+| A chain-free team file quotes text no bundled parent has | fail | [pstack-claude] |
+| A team file extends a stem that neither pstack nor the repo has, or quotes a user file | fail | [playbook] |
+| A team file with a team parent that pstack's checker refuses | info | [playbook] |
+| A locked pack file whose bytes differ from the lock | fail | [playbook] |
 | Missing `when` | fail | [pstack-claude] |
 | An `extends` stem that no context defines | fail | [playbook] |
 | An `extends` stem defined only in another context | info: dormant here | [playbook] |
-| A cycle among user files, self-extension included | fail, naming the cycle | [playbook] |
+| A cycle among team and user files, self-extension included | fail, naming the cycle | [playbook] |
 | A stem that is bundled, or that another active file uses | fail, with a rename hint | [playbook] |
 | A quote that matches no step, or several, in what its ancestors leave | fail, naming the file that wrote it when that file is no ancestor | [playbook] |
 | Sibling `Replace` edits on the same words | fail | [playbook] |

@@ -60,10 +60,23 @@ The [skills CLI](https://skills.sh) asks which harnesses to install into, then l
 Add this to `sources` in `rulesync.jsonc`, then run `rulesync install`:
 
 ```jsonc
-{ "source": "JawsomeJason/jawsome-agents:plugins/playbook/skills", "skills": ["playbook"] }
+{
+  "source": "JawsomeJason/jawsome-agents:plugins/playbook/skills",
+  "skills": ["playbook"],
+}
 ```
 
 Keep the repo path in `source`, after a colon. rulesync locks by `source`, so a second entry that differs only in a separate `path` key is skipped without an error. A skill install is complete: `playbook doctor` passes it with no plugin, and agents run its script by path.
+
+## Packs
+
+`packs/<name>/` holds playbooks that any repo can install with the `playbook` command, as committed copies pinned in a lock:
+
+```sh
+playbook install jawsome --from JawsomeJason/jawsome-agents
+```
+
+`jawsome` holds two standalone playbooks with no tie to any team: `auditing-agent-rules` and `testing-in-the-browser`.
 
 ## Develop
 

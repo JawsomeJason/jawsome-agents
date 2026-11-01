@@ -30,7 +30,7 @@ A correction the operator gives in one session is gone in the next unless it lan
 4. Run `playbook locate <playbook> "<quote>"`. It prints the step, the file that wrote the quoted words, and the user file an edit goes in, extending that writer. Then pick the audience:
    - Personal, in every repo: the file `locate` names, in `playbooks/`.
    - Personal, in one org's or one repo's checkouts: the same parent, with `--scope org` or `--scope repo`, named `<parent>-<org>` or `<parent>-<repo>`. A parent that is a team file needs no scope, because the edit is dormant wherever that team file is missing.
-   - The team: a team file in the repo's `.agents/playbooks`, or in the org's playbook source, through a pull request. A team file extends only bundled playbooks and quotes only pstack's text, because pstack reads it without personal files, and carries the org or repo word in its name.
+   - The team: a team file in the repo's `.agents/playbooks`, or in the org's playbook source, through a pull request. Keep a team file chain-free, extending only bundled playbooks and quoting only pstack's text, because plain pstack refuses any other parent, and give it the org or repo word in its name. A file a pack ships changes in the pack's source repo.
 
    The operator's words decide between personal and team. "I want" or "my" is personal. "We require" or "the team" is a team rule, so propose the team file and offer the personal file as the other letter.
 
