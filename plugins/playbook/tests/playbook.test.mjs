@@ -238,10 +238,10 @@ test('a missing parent fails check; a stem that takes a bundled or an active nam
   assert.ok(out.includes(`${w.config}/playbooks/repos/web/babysit-tester.md:1: babysit-tester is also ${w.config}/playbooks/babysit-tester.md; rename one, such as babysit-tester-web.md`), out.join('\n'));
 });
 
-test('a team file that extends a stem pstack does not bundle fails, as pstack-claude requires', () => {
+test('a team file that extends a stem neither pstack nor the repo has fails, because teammates do not have it', () => {
   const w = world({ team: { 'triage-acme-team.md': '---\nextends: triage\nwhen: w\nsource: x\n---\n\n- **In** "Reproduce the bug." x\n' } });
   const out = lines(w.run(['check']).stdout);
-  assert.ok(out.includes('.agents/playbooks/triage-acme-team.md:2: team files extend only bundled playbooks, and pstack 1.0.0 bundles no triage'), out.join('\n'));
+  assert.ok(out.includes('.agents/playbooks/triage-acme-team.md:2: team files extend bundled or team playbooks, and neither pstack 1.0.0 nor this repo has triage'), out.join('\n'));
 });
 
 test('a team file without its scope word gets an info line', () => {
@@ -590,7 +590,7 @@ test('check reports every validator rule with path and line', () => {
     `${c}/playbooks/solo.md:6: standalone playbook cannot carry edits`,
     '.agents/playbooks/bad-team-acme.md:4: layer: is retired, because extends sets the order; delete it',
     '.agents/playbooks/bad-team-acme.md:7: quote not found: "the trunk ruleset"',
-    '.agents/playbooks/triaging-in-web.md:2: team files extend only bundled playbooks, and pstack 1.0.0 bundles no triage',
+    '.agents/playbooks/triaging-in-web.md:2: team files extend bundled or team playbooks, and neither pstack 1.0.0 nor this repo has triage',
     'check failed: 10 problems against pstack 1.0.0',
   ].sort());
   assert.equal(r.status, 1);

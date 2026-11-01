@@ -4,6 +4,7 @@ import { accessSync, appendFileSync, constants, existsSync, lstatSync, mkdirSync
 import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { addSource, fetcher, hashOf, isForgeSource, lockProblems, PACK_NAME, PackError, parseJsonc, readLock, readManifest, removeSource, resolvePacks, rulesyncEntry, rulesyncKeys, sourceId } from './playbook.packs.mjs';
 
 const WRITE_USAGE = `extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]`;
 const NEW_USAGE = 'new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]';
@@ -12,7 +13,10 @@ const USAGE = `usage: playbook list [--repo <repo>] [--json] [--pstack <dir-or-v
        playbook locate <name> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
        playbook ${WRITE_USAGE}
        playbook ${NEW_USAGE}
-       playbook check [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
+       playbook install <pack>... [--from <owner/repo|path>] [--user] [--repo <repo>] [--pstack <dir-or-version>]
+       playbook update [<pack>...] [--user] [--repo <repo>] [--pstack <dir-or-version>]
+       playbook remove <pack> [--user] [--repo <repo>] [--pstack <dir-or-version>]
+       playbook check [--locked] [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
        playbook doctor [--fix | --json]
        (compute is an alias of show)`;
 
@@ -32,6 +36,9 @@ const SCOPES = {
 // The numbered layout ordered layers by folder; extends orders files now, so these folders only mislead.
 const RETIRED_DIRS = ['01-user', '02-orgs', '03-repos', 'user', 'orgs', 'repos'];
 const TEAM_DIR = join('.agents', 'playbooks');
+const PACK_DIR = 'packs';
+const TEAM_LOCK = join('.agents', 'playbooks.lock');
+const TEAM_MANIFEST = join('.agents', 'packs.json');
 
 const CHANGE = /^\s*(?:[-*]|\d+\.)\s+\*\*(After|Before|Replace|In)\*\*\s+"([^"]+)"[ \t]*(.*)$/;
 const CHANGE_VERB = /^\s*(?:[-*]|\d+\.)\s+\*\*(?:After|Before|Replace|In)\*\*/;
@@ -41,7 +48,7 @@ const HEADING = /^#{1,6}\s+(.+)$/;
 
 const FAILURES = {
   ambiguous: { rank: 5, message: (quote, f) => `quote matches steps ${andList(f.steps)}; make it longer` },
-  teamOnly: { rank: 4, message: () => 'team files may quote pstack only' },
+  teamOnly: { rank: 4, message: () => 'team files may quote pstack and team files only, because teammates do not have user files' },
   unseen: { rank: 3, message: (quote, f) => `quote not found in what its parents leave: "${quote}"; ${f.writer} wrote it, so add ${f.writer} to extends` },
   outside: { rank: 2, message: () => 'quote is outside a numbered step' },
   missing: { rank: 1, message: (quote) => `quote not found: "${quote}"` },
@@ -215,14 +222,17 @@ const VERBS = {
 
 const makePlaybook = (name, kind, parsed) => ({ name, kind, title: parsed.title, intro: parsed.intro, steps: parsed.steps.map((t) => newStep(t, name, kind)), notes: [], family: [] });
 
-/** The one step a quote names in what `seen` wrote, or the reason it names none. Team files see only bundled text. */
+/** The one step a quote names in what `seen` wrote, or the reason it names none. */
 function locate(pb, quote, seen, team) {
   const re = quoteRegex(quote);
   const hits = pb.steps.flatMap((s, i) => (seen.has(s.origin) && re.test(viewText(s, seen)) ? [i + 1] : []));
   if (hits.length === 1) return { step: pb.steps[hits[0] - 1] };
   if (hits.length > 1) return { fail: 'ambiguous', steps: hits };
   const elsewhere = pb.steps.find((s) => re.test(effective(s)));
-  if (elsewhere) return team ? { fail: 'teamOnly' } : { fail: 'unseen', writer: writersOf(elsewhere, re)[0] };
+  if (elsewhere) {
+    const writer = writersOf(elsewhere, re)[0];
+    return team && pb.family.find((m) => m.stem === writer)?.kind === 'user' ? { fail: 'teamOnly' } : { fail: 'unseen', writer };
+  }
   if (re.test(pb.intro)) return { fail: 'outside' };
   return { fail: 'missing' };
 }
@@ -260,15 +270,17 @@ function buildGraph(bundled, files, universe, pstackName) {
     for (const cycle of cycleFrom(file, byStem)) file.problems.push({ line: file.extendsLine, message: `extends a cycle: ${cycle.join(' -> ')}` });
   }
   const pending = files.filter((f) => f.extends.length > 0 && !bundled.has(f.stem) && !f.problems.some((p) => p.message.startsWith('extends a cycle')));
+  // A team file reaches teammates, who have this repo's team files and pstack, and nothing else.
+  const teamParent = (stem) => bundled.has(stem) || byStem.get(stem)?.kind === 'team';
   for (const file of pending) {
     if (file.kind !== 'team') continue;
-    for (const stem of file.extends.filter((s) => !bundled.has(s))) {
-      file.problems.push({ line: file.extendsLine, message: `team files extend only bundled playbooks, and pstack ${pstackName} bundles no ${stem}` });
+    for (const stem of file.extends.filter((s) => !teamParent(s))) {
+      file.problems.push({ line: file.extendsLine, message: `team files extend bundled or team playbooks, and neither pstack ${pstackName} nor this repo has ${stem}` });
       file.unresolved = true;
     }
   }
-  const valid = (file, stem) => nodes.has(stem) && (file.kind !== 'team' || bundled.has(stem));
-  const teamInvalid = (file, stem) => file.kind === 'team' && !bundled.has(stem);
+  const valid = (file, stem) => nodes.has(stem) && (file.kind !== 'team' || teamParent(stem));
+  const teamInvalid = (file, stem) => file.kind === 'team' && !teamParent(stem);
   // A file applies only where every parent it names exists, so a parent defined only elsewhere keeps it dormant here.
   const ready = (file) => file.extends.some((s) => valid(file, s)) && file.extends.every((s) => valid(file, s) || teamInvalid(file, s) || !universe.has(s));
   for (let grew = true; grew; ) {
@@ -780,10 +792,13 @@ const userDirs = (ctx) =>
     .map(([scope, s]) => [scope, s.dir(ctx)])
     .filter(([, dir]) => dir);
 
-/** Team files from the checkout, then user files from each active scope folder. */
+const userPackDirs = (configDir) => listDir(join(configDir, USER_DIR, PACK_DIR)).map((pack) => join(configDir, USER_DIR, PACK_DIR, pack));
+
+/** Team files from the checkout, then user files from each active scope folder and each user pack, which is active everywhere. */
 function collectFiles(ctx) {
   const team = mdFiles(ctx.repo.agentsDir).map((name) => readPlaybookFile(join(ctx.repo.agentsDir, name), ctx.repo.teamDisplay(name), 'team', ctx.repo.name));
-  const user = userDirs(ctx).flatMap(([scope, dir]) => mdFiles(dir).map((name) => readPlaybookFile(join(dir, name), join(dir, name), 'user', scope)));
+  const dirs = [...userDirs(ctx), ...userPackDirs(ctx.configDir).map((dir) => ['everywhere', dir])];
+  const user = dirs.flatMap(([scope, dir]) => mdFiles(dir).map((name) => readPlaybookFile(join(dir, name), join(dir, name), 'user', scope)));
   return { team, user, all: [...team, ...user] };
 }
 
@@ -833,15 +848,23 @@ function linkedTeamDir(ctx) {
   return [{ path: '.agents/playbooks', line: 1, message: 'links into the config dir; team playbooks are committed copies, so replace the link with them' }];
 }
 
-function runPstackCheck(ctx, teamBroken) {
+/**
+ * pstack's own checker, for the files it can read. Plain pstack refuses a file with a team parent, and `check` runs its
+ * anchor check on those instead, so only chain-free files can fail here. A chained file it refused gets an info line.
+ */
+function runPstackCheck(ctx, teamBroken, chained = []) {
   const skipped = (why) => ({ status: 'skipped', lines: [`not run: ${why}`] });
   if (!ctx.repo.agentsDir) return skipped('no .agents/playbooks');
   if (teamBroken) return skipped('broken link in .agents/playbooks');
   const script = join(ctx.pstack.dir, 'skills', 'poteto-mode', 'scripts', 'check-playbooks.mjs');
   if (!isFile(script)) return skipped(`pstack ${ctx.pstack.name} has no check-playbooks.mjs`);
   const r = spawnSync(process.execPath, [script, ctx.repo.root], { cwd: ctx.repo.root, encoding: 'utf8' });
-  const lines = `${r.stdout ?? ''}\n${r.stderr ?? ''}`.split('\n').filter((l) => l.trim());
-  return { status: r.status === 0 ? 'ok' : 'failed', lines };
+  const all = `${r.stdout ?? ''}\n${r.stderr ?? ''}`.split('\n').filter((l) => l.trim());
+  const refused = (file) => all.some((l) => l.startsWith(`${file.display}:`));
+  for (const file of chained.filter(refused)) file.info.push({ line: file.extendsLine, message: `extends a team file, and plain pstack refuses that until its check-playbooks accepts project parents, so playbook checked it instead` });
+  const lines = all.filter((l) => !chained.some((file) => l.startsWith(`${file.display}:`)));
+  const failed = r.status !== 0 && lines.length > 0;
+  return { status: failed ? 'failed' : 'ok', lines: failed || r.status === 0 ? lines : [] };
 }
 
 /**
@@ -856,6 +879,7 @@ function stemUniverse(ctx) {
   const base = join(ctx.configDir, USER_DIR);
   add(base, USER_DIR);
   for (const group of ['orgs', 'repos']) for (const name of listDir(join(base, group))) add(join(base, group, name), `${USER_DIR}/${group}/${name}`);
+  for (const dir of userPackDirs(ctx.configDir)) add(dir, USER_DIR);
   const checkouts = [[ctx.repo.name, ctx.repo.root], ...Object.entries(ctx.settings?.repos ?? {}).map(([name, r]) => [name, r.checkout && isDir(r.checkout) ? findCheckout(r.checkout)?.root : null])];
   for (const [name, root] of checkouts) if (root) add(join(root, TEAM_DIR), name);
   return stems;
@@ -882,7 +906,9 @@ function nameProblems(ctx, files, bundled, universe) {
     else first.set(file.stem, file);
   }
   const words = [ctx.repo.org, ctx.repo.name].filter(Boolean);
-  for (const file of files.filter((f) => f.kind === 'team' && words.length && !words.some((w) => f.stem.split('-').includes(w)))) {
+  // A pack file is named for its pack and installs into many repos, so no one repo's word belongs in its name.
+  const locked = ctx.repo.root ? readLock(join(ctx.repo.root, TEAM_LOCK))?.files ?? {} : {};
+  for (const file of files.filter((f) => f.kind === 'team' && words.length && !locked[`${f.stem}.md`] && !words.some((w) => f.stem.split('-').includes(w)))) {
     file.info.push({ line: 1, message: `a team file name carries its scope word (${words.join(' or ')}), such as ${file.stem}-${words[0]}.md` });
   }
 }
@@ -917,7 +943,8 @@ function analyze(ctx, { pstackCheck }) {
   }
   const links = brokenLinks(ctx);
   links.problems.push(...linkedTeamDir(ctx));
-  return { files, graph, playbooks, roots, ancestors, index, links, pstackCheck: pstackCheck ? runPstackCheck(ctx, links.teamBroken) : null };
+  const chained = files.team.filter((f) => f.extends.some((s) => !bundled.has(s)));
+  return { files, graph, playbooks, roots, ancestors, index, links, pstackCheck: pstackCheck ? runPstackCheck(ctx, links.teamBroken, chained) : null };
 }
 
 const fileProblems = (files, key = 'problems') => files.flatMap((f) => [...f[key]].sort((a, b) => a.line - b.line).map(({ path, line, message }) => ({ path: f.display, line, message })));
@@ -931,10 +958,29 @@ function record(ctx) {
   writeFileSync(ctx.settings.path, swapped !== text || ctx.settings.raw.pstack === ctx.pstack.version ? swapped : `${JSON.stringify({ ...ctx.settings.raw, pstack: ctx.pstack.version }, null, 2)}\n`);
 }
 
+const teamLockOf = (root) => ({
+  lockPath: join(root, TEAM_LOCK),
+  lockShown: '.agents/playbooks.lock',
+  manifestPath: join(root, TEAM_MANIFEST),
+  manifestShown: '.agents/packs.json',
+  fileOf: (name) => join(root, TEAM_DIR, name),
+  shownOf: (name) => `.agents/playbooks/${name}`,
+});
+
+const userLockOf = (configDir) => ({
+  lockPath: join(configDir, 'playbooks.lock'),
+  lockShown: join(configDir, 'playbooks.lock'),
+  manifestPath: join(configDir, 'packs.json'),
+  manifestShown: join(configDir, 'packs.json'),
+  fileOf: (name, entry) => join(configDir, USER_DIR, PACK_DIR, entry.pack, name),
+  shownOf: (name, entry) => join(configDir, USER_DIR, PACK_DIR, entry.pack, name),
+});
+
 function checkReport(ctx, analysis) {
   const files = analysis.files.all;
-  const problems = [...ctx.configProblems, ...analysis.links.problems, ...fileProblems(files)];
-  const info = fileProblems(files, 'info');
+  const locks = [...(ctx.repo.root ? [lockProblems(teamLockOf(ctx.repo.root))] : []), lockProblems(userLockOf(ctx.configDir))];
+  const problems = [...ctx.configProblems, ...analysis.links.problems, ...fileProblems(files), ...locks.flatMap((l) => l.problems)];
+  const info = [...fileProblems(files, 'info'), ...locks.flatMap((l) => l.info)];
   const passed = problems.length === 0 && analysis.pstackCheck.status !== 'failed';
   return { pstack: ctx.pstack.version, problems, info, pstackCheck: analysis.pstackCheck, passed };
 }
@@ -966,6 +1012,19 @@ function everyRepoReport(ctx) {
   const lines = [...new Set(reports.flatMap((r) => (r.pstackCheck.status === 'skipped' ? [] : r.pstackCheck.lines)))];
   const status = statuses.includes('failed') ? 'failed' : statuses.includes('ok') ? 'ok' : 'skipped';
   return { pstack: ctx.pstack.version, problems: once('problems'), info: once('info'), pstackCheck: { status, lines }, passed: reports.every((r) => r.passed) };
+}
+
+/** `check --locked`: only the committed hashes, so CI needs neither pstack nor the pack's source. A worktree checks itself. */
+function runLockedCheck(opts) {
+  const root = gitOut(process.cwd(), ['rev-parse', '--show-toplevel']) ?? process.cwd();
+  const report = lockProblems(teamLockOf(root));
+  const passed = report.problems.length === 0;
+  if (opts.json) {
+    const out = { pstack: null, problems: report.problems, info: report.info, pstackCheck: { status: 'skipped', lines: ['not run: --locked'] }, recorded: false };
+    return { out, status: passed ? 0 : 1 };
+  }
+  const end = !report.found ? 'check --locked passed: no .agents/playbooks.lock to verify' : passed ? `check --locked passed: ${report.count} ${report.count === 1 ? 'file matches' : 'files match'} the lock` : `check --locked failed: ${report.problems.length} ${report.problems.length === 1 ? 'problem' : 'problems'}`;
+  return { out: [...report.problems.map(problemLine), ...report.info.map((p) => `info: ${problemLine(p)}`), end].join('\n'), status: passed ? 0 : 1 };
 }
 
 function runCheck(ctx, opts) {
@@ -1184,6 +1243,284 @@ function commitWrite(ctx, path, prior, next) {
       else writeFileSync(path, prior);
     }
   }
+}
+
+/**
+ * Where a pack verb writes. A repo's packs land in the current worktree, not its main checkout like a read, because they
+ * reach everyone through that branch's pull request. `--user` packs land in the config dir.
+ */
+function packTarget(ctx, opts) {
+  if (opts.user) {
+    const lock = userLockOf(ctx.configDir);
+    return { ...lock, contexts: everyContext(ctx), ctx, base: process.cwd(), dirOf: (pack) => join(ctx.configDir, USER_DIR, PACK_DIR, pack), rulesync: null, user: true };
+  }
+  const root = opts.repo && opts.repo !== findCheckout(process.cwd())?.name ? ctx.repo.root : gitOut(process.cwd(), ['rev-parse', '--show-toplevel']);
+  if (!root) throw new UsageError('not in a git checkout; run from the repo, or pass --user');
+  const repo = { ...ctx.repo, root, agentsDir: lexists(join(root, TEAM_DIR)) ? join(root, TEAM_DIR) : null };
+  const here = { ...ctx, repo };
+  return { ...teamLockOf(root), contexts: [here], ctx: here, base: root, dirOf: () => join(root, TEAM_DIR), rulesync: join(root, 'rulesync.jsonc'), user: false };
+}
+
+/** Tracks every path a pack verb changes, so a refusal puts back the prior bytes and removes what it created. */
+function fileBatch() {
+  const prior = new Map();
+  const remember = (path) => {
+    if (!prior.has(path)) prior.set(path, lexists(path) ? readFileSync(path) : null);
+  };
+  const madeDirs = [];
+  const emptyDirs = [];
+  const dropEmpty = (dir) => {
+    for (let d = dir; listDir(d).length === 0 && lexists(d); d = dirname(d)) {
+      emptyDirs.push(d);
+      rmSync(d, { recursive: true });
+    }
+  };
+  return {
+    write(path, bytes) {
+      remember(path);
+      for (let d = dirname(path); !lexists(d); d = dirname(d)) madeDirs.push(d);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, bytes);
+    },
+    remove(path, { upTo } = {}) {
+      remember(path);
+      rmSync(path, { force: true });
+      if (upTo && isDir(dirname(path)) && dirname(path) !== upTo && dirname(path).startsWith(upTo)) dropEmpty(dirname(path));
+    },
+    dropEmpty,
+    undo() {
+      for (const dir of emptyDirs.reverse()) mkdirSync(dir, { recursive: true });
+      for (const [path, bytes] of prior) {
+        if (bytes === null) rmSync(path, { force: true });
+        else {
+          mkdirSync(dirname(path), { recursive: true });
+          writeFileSync(path, bytes);
+        }
+      }
+      for (const dir of madeDirs.reverse()) if (lexists(dir) && listDir(dir).length === 0) rmSync(dir, { recursive: true });
+    },
+  };
+}
+
+/** Runs `change`, then refuses it, with every byte put back, when it adds a check problem in any context of the target. */
+function guardedChange(target, change) {
+  const lines = (contexts) => contextLines(contexts.map((c) => withAgents(c)));
+  const before = new Set(lines(target.contexts).map(sameProblem));
+  const batch = fileBatch();
+  let committed = false;
+  try {
+    change(batch);
+    const added = lines(target.contexts).filter((line) => !before.has(sameProblem(line)));
+    if (added.length) throw Object.assign(new UsageError(`refused: this adds check problems, so nothing was written\n${added.join('\n')}`), { status: 1 });
+    committed = true;
+  } finally {
+    if (!committed) batch.undo();
+  }
+}
+
+/** A context whose team folder is re-read, because a pack verb creates and removes it. */
+const withAgents = (c) => {
+  const { root } = c.repo;
+  return root ? { ...c, repo: { ...c.repo, agentsDir: lexists(join(root, TEAM_DIR)) ? join(root, TEAM_DIR) : null } } : c;
+};
+
+const packFail = (message) => Object.assign(new UsageError(message), { status: 1 });
+
+const writeJson = (batch, path, value) => batch.write(path, `${JSON.stringify(value, null, 2)}\n`);
+const sorted = (entries) => Object.fromEntries([...entries].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+
+/** The lock and manifest of a target, read for a write: a broken one stops the verb, since writing would lose what it holds. */
+function packState(target) {
+  const lock = readLock(target.lockPath);
+  if (lock?.error) throw packFail(`${target.lockShown}: not a valid lock: ${lock.error}`);
+  const manifest = readManifest(target.manifestPath);
+  if (manifest.error) throw packFail(`${target.manifestShown}: not a valid manifest: ${manifest.error}`);
+  return { lock: lock ?? { packs: {}, files: {}, legacy: false }, manifest };
+}
+
+function writePackState(batch, target, lockPacks, lockFiles, manifestPacks) {
+  if (Object.keys(lockPacks).length === 0 && Object.keys(lockFiles).length === 0) {
+    batch.remove(target.lockPath);
+    batch.remove(target.manifestPath);
+    return;
+  }
+  writeJson(batch, target.lockPath, { packs: sorted(Object.entries(lockPacks)), files: sorted(Object.entries(lockFiles)) });
+  writeJson(batch, target.manifestPath, { packs: manifestPacks });
+}
+
+/** Refuses to overwrite or delete a file whose bytes are neither what the lock pins nor what this run would write. */
+function assertUnedited(target, name, entry, incoming) {
+  const path = entry.pack ? target.fileOf(name, entry) : join(target.base, TEAM_DIR, name);
+  if (!lexists(path)) return;
+  const hash = hashOf(readFileSync(path));
+  if (hash !== entry.hash && hash !== incoming) throw packFail(`${target.shownOf(name, entry)}: hand-edited, so playbook will not overwrite it; move the change to the pack's source, then restore the file or delete it`);
+}
+
+/** Copies `packs` into the target, deletes what they no longer ship, and rewrites the lock, the manifest and rulesync. */
+function syncPacks(ctx, opts, packs, fetch, target, state) {
+  const { lock, manifest } = state;
+  const names = new Set(packs.map((p) => p.name));
+  const bundled = readBundled(ctx);
+  const keptFiles = new Map(Object.entries(lock.files).filter(([, e]) => e.pack && !names.has(e.pack)));
+  const incoming = new Map();
+  for (const pack of packs) {
+    for (const [name, bytes] of pack.playbooks) {
+      const shown = `packs/${pack.name}/playbooks/${name}`;
+      const other = incoming.get(name)?.pack ?? keptFiles.get(name)?.pack;
+      if (other) throw packFail(`${shown}: pack ${other} also ships ${name}; rename one`);
+      const stem = basename(name, '.md');
+      if (bundled.has(stem)) throw packFail(`${shown}: ${stem} is a bundled playbook's name; rename the file`);
+      incoming.set(name, { pack: pack.name, bytes, hash: hashOf(bytes) });
+    }
+  }
+  for (const [name, next] of incoming) {
+    const dest = join(target.dirOf(next.pack), name);
+    const entry = lock.files[name];
+    if (entry) assertUnedited(target, name, entry, next.hash);
+    else if (lexists(dest) && hashOf(readFileSync(dest)) !== next.hash) throw packFail(`${target.user ? dest : `.agents/playbooks/${name}`}: a file this ${target.user ? 'config' : 'repo'} owns, and pack ${next.pack} ships ${name}; rename or delete one`);
+  }
+  const stale = Object.entries(lock.files).filter(([name, e]) => e.pack && names.has(e.pack) && !incoming.has(name));
+  for (const [name, entry] of stale) assertUnedited(target, name, entry, null);
+  const notes = [];
+  const lockPacks = { ...lock.packs };
+  const manifestPacks = [...manifest.packs];
+  for (const pack of packs) {
+    const fetched = fetch.get(pack.source);
+    if (fetched.dirty) notes.push(`${pack.name}: ${pack.source} has uncommitted changes under packs, so the locked commit does not describe these bytes`);
+    lockPacks[pack.name] = { source: pack.source, commit: fetched.commit, ...(pack.requires.length ? { requires: pack.requires } : {}) };
+    const at = manifestPacks.findIndex((p) => p.name === pack.name);
+    if (at === -1) manifestPacks.push({ name: pack.name, source: pack.source });
+    else manifestPacks[at] = { ...manifestPacks[at], source: pack.source };
+  }
+  const lockFiles = sorted([...keptFiles, ...[...incoming].map(([name, { pack, hash }]) => [name, { pack, hash }])]);
+  const summary = [];
+  guardedChange(target, (batch) => {
+    for (const [name, entry] of stale) {
+      batch.remove(target.fileOf(name, entry), { upTo: target.base });
+      summary.push(`deleted ${target.shownOf(name, entry)}`);
+    }
+    for (const [name, { pack, bytes, hash }] of incoming) {
+      const dest = join(target.dirOf(pack), name);
+      if (lexists(dest) && hashOf(readFileSync(dest)) === hash) continue;
+      batch.write(dest, bytes);
+      summary.push(`wrote ${target.user ? dest : `.agents/playbooks/${name}`}`);
+    }
+    writePackState(batch, target, lockPacks, lockFiles, manifestPacks);
+    syncRulesync(batch, target, packs, notes);
+  });
+  const end = packs.map((p) => `${p.name} ${lockPacks[p.name].commit?.slice(0, 12) ?? 'no commit'}`).join(', ');
+  return { out: [...summary, `installed ${end}`, ...notes.map((n) => `info: ${n}`)].join('\n'), status: 0 };
+}
+
+/** One rulesync source per pack that ships skills or rules, in a target that can take it. Comments in the file survive. */
+function syncRulesync(batch, target, packs, notes) {
+  const carrying = packs.filter((p) => p.hasSkills || p.hasRules);
+  const path = target.rulesync;
+  let text = path && isFile(path) ? readFileSync(path, 'utf8') : null;
+  const original = text;
+  for (const pack of packs) {
+    const entry = rulesyncEntry(pack);
+    if (!isForgeSource(pack.source)) {
+      if (entry) notes.push(`${pack.name} ships skills or rules, but its source is local, and rulesync reads only forge sources, so they were not delivered`);
+      continue;
+    }
+    if (target.user) {
+      if (entry) notes.push(`${pack.name} ships skills or rules, but a --user install delivers playbooks only; add its skills through your harness`);
+      continue;
+    }
+    if (text === null) {
+      if (entry) notes.push(`${pack.name} ships skills or rules, but this repo has no rulesync.jsonc, so they were not delivered`);
+      continue;
+    }
+    const current = parseJsonc(text).sources ?? [];
+    const keys = rulesyncKeys(pack.source, pack.name);
+    const held = current.find((s) => keys.includes(s.source));
+    if (JSON.stringify(held) === JSON.stringify(entry ?? undefined)) continue;
+    for (const key of keys) text = removeSource(text, key);
+    if (entry) text = addSource(text, entry);
+  }
+  if (text !== null && text !== original) {
+    batch.write(path, text);
+    notes.push('rulesync.jsonc changed; run rulesync install');
+  } else if (carrying.length && text !== null && !target.user) notes.push('rulesync.jsonc already lists these packs');
+}
+
+function requireInstalled(state, target, name) {
+  if (!state.manifest.packs.some((p) => p.name === name)) throw new UsageError(`${name} is not installed in ${target.manifestShown}`);
+}
+
+function runPackFetch(ctx, opts, names, target, state) {
+  const listed = (name) => state.manifest.packs.find((p) => p.name === name)?.source ?? null;
+  const fetch = fetcher(target.base);
+  try {
+    const from = opts.from === null ? null : sourceId(opts.from, target.base);
+    const sourceOf = (name) => (names.includes(name) && from) || listed(name);
+    const packs = resolvePacks(names, sourceOf, fetch, new Set(Object.keys(state.lock.packs)));
+    return syncPacks(ctx, opts, packs, fetch, target, state);
+  } catch (e) {
+    if (e instanceof PackError) throw packFail(e.message);
+    throw e;
+  } finally {
+    fetch.close();
+  }
+}
+
+function checkPackNames(names) {
+  for (const name of names) if (!PACK_NAME.test(name)) throw new UsageError(`${name}: a pack name is lowercase letters, digits and dashes`);
+}
+
+function runInstall(ctx, opts, names) {
+  checkPackNames(names);
+  const target = packTarget(ctx, opts);
+  const state = packState(target);
+  for (const name of names) {
+    if (opts.from === null && !state.manifest.packs.some((p) => p.name === name)) throw new UsageError(`${name} has no known source; pass --from <owner/repo|path>`);
+  }
+  return runPackFetch(target.ctx, opts, names, target, state);
+}
+
+function runUpdate(ctx, opts, asked) {
+  checkPackNames(asked);
+  const target = packTarget(ctx, opts);
+  const state = packState(target);
+  for (const name of asked) requireInstalled(state, target, name);
+  const names = asked.length ? asked : state.manifest.packs.map((p) => p.name);
+  if (names.length === 0) return { out: 'no packs to update', status: 0 };
+  return runPackFetch(target.ctx, opts, names, target, state);
+}
+
+function runRemove(ctx, opts, [name]) {
+  checkPackNames([name]);
+  const target = packTarget(ctx, opts);
+  const state = packState(target);
+  requireInstalled(state, target, name);
+  const { lock, manifest } = state;
+  const dependents = Object.entries(lock.packs).filter(([other, p]) => other !== name && p.requires?.includes(name)).map(([other]) => other);
+  if (dependents.length) throw packFail(`refused: ${andList(dependents)} requires ${name}; remove ${dependents.length > 1 ? 'them' : 'it'} first`);
+  const owned = Object.entries(lock.files).filter(([, e]) => e.pack === name);
+  for (const [file, entry] of owned) assertUnedited(target, file, entry, null);
+  const source = lock.packs[name]?.source ?? manifest.packs.find((p) => p.name === name).source;
+  const { [name]: _gone, ...lockPacks } = lock.packs;
+  const lockFiles = Object.fromEntries(Object.entries(lock.files).filter(([, e]) => e.pack !== name));
+  const manifestPacks = manifest.packs.filter((p) => p.name !== name);
+  const notes = [];
+  guardedChange(target, (batch) => {
+    for (const [file, entry] of owned) batch.remove(target.fileOf(file, entry));
+    writePackState(batch, target, lockPacks, lockFiles, manifestPacks);
+    if (target.rulesync && isFile(target.rulesync)) {
+      const text = readFileSync(target.rulesync, 'utf8');
+      const next = rulesyncKeys(source, name).reduce(removeSource, text);
+      if (next !== text) {
+        batch.write(target.rulesync, next);
+        notes.push('rulesync.jsonc changed; run rulesync install');
+      }
+    }
+    const top = target.user ? join(ctx.configDir, USER_DIR, PACK_DIR) : dirname(target.lockPath);
+    const leaf = target.dirOf(name);
+    if (isDir(leaf) && listDir(leaf).length === 0) batch.dropEmpty(leaf);
+    if (isDir(top) && listDir(top).length === 0) batch.dropEmpty(top);
+  });
+  return { out: [`removed ${name}: ${owned.length} ${owned.length === 1 ? 'file' : 'files'}`, ...notes.map((n) => `info: ${n}`)].join('\n'), status: 0 };
 }
 
 const remainingNote = (remaining) => (remaining.length ? ['', 'this edit added no problems, but check still reports:', ...remaining] : []);
@@ -1602,7 +1939,10 @@ const COMMANDS = {
   'playbook locate': { arity: 2, run: (opts, [name, quote]) => runLocate(loadContext(opts), opts, name, quote) },
   'playbook extend': { arity: [3, 4], writes: true, run: (opts, args) => runExtend(loadContext(opts), opts, args) },
   'playbook new': { arity: 1, writes: true, run: (opts, args) => runNew(loadContext(opts), opts, args) },
-  check: { arity: 0, run: (opts) => runCheck(loadContext(opts), opts) },
+  'playbook install': { arity: (n) => n >= 1, packs: true, run: (opts, args) => runInstall(loadContext(opts), opts, args) },
+  'playbook update': { arity: () => true, packs: true, run: (opts, args) => runUpdate(loadContext(opts), opts, args) },
+  'playbook remove': { arity: 1, packs: true, run: (opts, args) => runRemove(loadContext(opts), opts, args) },
+  check: { arity: 0, run: (opts) => (opts.locked ? runLockedCheck(opts) : runCheck(loadContext(opts), opts)) },
   doctor: { arity: 0, run: (opts) => runDoctor(opts) },
 };
 
@@ -1613,17 +1953,24 @@ const WRITE_OPTIONS = {
   '--from-file': { key: 'fromFile' },
   '--scope': { key: 'scope' },
 };
-const GROUP_VERBS = new Set(['list', 'show', 'compute', 'locate', 'extend', 'new']);
+const GROUP_VERBS = new Set(['list', 'show', 'compute', 'locate', 'extend', 'new', 'install', 'update', 'remove']);
 const VERB_ALIASES = { compute: 'show' };
 
 function parseArgs(argv) {
-  const opts = { json: false, fix: false, help: false, everyRepo: false, repo: null, pstack: null, with: null, withFile: null, when: null, fromFile: null, scope: null };
+  const opts = { json: false, fix: false, help: false, everyRepo: false, repo: null, pstack: null, with: null, withFile: null, when: null, fromFile: null, scope: null, from: null, user: false, locked: false };
   const words = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') opts.json = true;
     else if (arg === '--fix') opts.fix = true;
     else if (arg === '--every-repo') opts.everyRepo = true;
+    else if (arg === '--user') opts.user = true;
+    else if (arg === '--locked') opts.locked = true;
+    else if (arg === '--from') {
+      const value = argv[++i];
+      if (!value || value.startsWith('-')) throw new UsageError(`${arg} needs a value`, { usage: true });
+      opts.from = value;
+    }
     else if (arg === '--help' || arg === '-h') opts.help = true;
     else if (arg === '--repo' || arg === '--pstack') {
       const value = argv[++i];
@@ -1640,7 +1987,12 @@ function parseArgs(argv) {
   const [head, ...rest] = words;
   const command = COMMANDS[GROUP_VERBS.has(head) ? `playbook ${VERB_ALIASES[head] ?? head}` : head];
   const args = rest;
-  if (!command || ![command.arity].flat().includes(args.length)) throw new UsageError('', { usage: true });
+  const fits = (arity) => (typeof arity === 'function' ? arity(args.length) : [arity].flat().includes(args.length));
+  if (!command || !fits(command.arity)) throw new UsageError('', { usage: true });
+  if (command.packs && (WRITE_FLAGS.some((f) => opts[f] !== null) || opts.json || opts.fix)) throw new UsageError('', { usage: true });
+  if (opts.user && !command.packs) throw new UsageError('', { usage: true });
+  if (opts.from !== null && command !== COMMANDS['playbook install']) throw new UsageError('', { usage: true });
+  if (opts.locked && (command !== COMMANDS.check || opts.everyRepo || opts.repo || opts.pstack)) throw new UsageError('', { usage: true });
   if (!command.writes && WRITE_FLAGS.some((f) => opts[f] !== null)) throw new UsageError('', { usage: true });
   if (opts.everyRepo && (command !== COMMANDS.check || opts.repo)) throw new UsageError('', { usage: true });
   if (command.writes && (opts.json || opts.fix)) throw new UsageError('', { usage: true });

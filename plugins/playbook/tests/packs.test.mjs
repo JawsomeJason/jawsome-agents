@@ -12,6 +12,31 @@ const IN_BABYSIT = patch('babysit', '- **In** "Work the merge frontier" Read the
 const standaloneBody = (text) => `---\nextends:\n${WHEN}---\n\n1. ${text}\n`;
 const sha = (text) => `sha256:${createHash('sha256').update(text).digest('hex')}`;
 
+/** A pstack whose checker refuses what the released one refuses: a parent it does not bundle, and a quote outside its bundled parents. */
+function plainPstack() {
+  const dir = join(tempDir(), 'pstack');
+  cpSync(PSTACK, dir, { recursive: true });
+  writeFileSync(join(dir, 'skills/poteto-mode/scripts/check-playbooks.mjs'), `#!/usr/bin/env node
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const BUNDLED = join(dirname(fileURLToPath(import.meta.url)), '../playbooks');
+const root = process.argv[2];
+const problems = [];
+for (const name of readdirSync(join(root, '.agents/playbooks')).filter((f) => f.endsWith('.md'))) {
+  const text = readFileSync(join(root, '.agents/playbooks', name), 'utf8');
+  const bases = (/^extends:[ \\t]*(.*)$/m.exec(text)?.[1] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const known = bases.filter((b) => existsSync(join(BUNDLED, b + '.md')));
+  for (const b of bases.filter((x) => !known.includes(x))) problems.push('.agents/playbooks/' + name + ': extends ' + b + ', which this pstack has no playbook for');
+  for (const m of text.matchAll(/\\*\\*(?:After|Before|Replace|In)\\*\\*\\s+"([^"]+)"/g)) {
+    if (!known.some((b) => readFileSync(join(BUNDLED, b + '.md'), 'utf8').includes(m[1]))) problems.push('.agents/playbooks/' + name + ': "' + m[1] + '" is not in any playbook it extends');
+  }
+}
+if (problems.length) { console.error(problems.join('\\n')); process.exitCode = 1; } else console.log('Every project playbook matches.');
+`);
+  return dir;
+}
+
 /** A git repo of packs, as { pack: { requires, playbooks: { stem: text }, skills, rules } }. */
 function source(packs, dir = join(tempDir(), 'source')) {
   mkdirSync(dir, { recursive: true });
@@ -44,6 +69,8 @@ function writePacks(dir, packs) {
 function consumer(packs, opts = {}) {
   const w = world({ team: { 'babysitting-an-acme-pr.md': null, 'releasing-web.md': null }, ...opts });
   rmSync(join(w.repo, '.agents'), { recursive: true, force: true });
+  // These extend the team files gone from this checkout, which no other context defines.
+  for (const path of ['babysitting-an-acme-pr-tester.md', 'releasing-web-tester.md', 'repos/web/babysitting-an-acme-pr-web.md']) rmSync(join(w.config, 'playbooks', path));
   git(w.repo, ['add', '-A']);
   const from = source(packs);
   const dir = join(w.repo, '.agents', 'playbooks');
@@ -281,7 +308,7 @@ test('a pack may chain: a team file extends a team file, replaces its words, and
   const shown = w.run(['show', 'two-acme']);
   assert.equal(shown.status, 0, shown.stdout);
   assert.match(shown.stdout, /~~foo bar~~ free beer/);
-  const check = w.run(['check']);
+  const check = w.run(['check'], { env: { PLAYBOOKS_PSTACK_DIR: plainPstack() } });
   assert.equal(check.status, 0, check.stdout);
   assert.match(check.stdout, /info: \.agents\/playbooks\/two-acme\.md:\d+: .*plain pstack refuses/);
   assert.doesNotMatch(check.stdout, /info: \.agents\/playbooks\/one-acme\.md:\d+: .*plain pstack/);
@@ -296,7 +323,7 @@ test('a chained file gets playbook\'s own anchor check, a chain-free one keeps p
   assert.match(r.stdout, /two-web\.md:\d+: quote not found: "not in the parent"/);
   rmSync(join(stale.dir, 'two-web.md'));
   writeFileSync(join(stale.dir, 'free-web.md'), patch('babysit', '- **In** "not in pstack" x'));
-  const free = stale.run(['check', '--json']);
+  const free = stale.run(['check', '--json'], { env: { PLAYBOOKS_PSTACK_DIR: plainPstack() } });
   assert.equal(JSON.parse(free.stdout).pstackCheck.status, 'failed');
   rmSync(join(stale.dir, 'free-web.md'));
   writeFileSync(join(stale.dir, 'two-web.md'), patch('one-acme', '- **Replace** "foo bar" x'));
@@ -316,9 +343,10 @@ test('a team file may not extend or quote a user file, because teammates do not 
 });
 
 test('a pack may ship a standalone root that another pack chains on', () => {
-  const w = consumer({ root: { playbooks: { 'triage-acme': standaloneBody('Sort the queue.') } }, more: { requires: ['root'], playbooks: { 'triage-more-acme': patch('triage-acme', '- **In** "Sort the queue" By age.') } } });
-  assert.equal(w.run(['install', 'more', '--from', w.from]).status, 0);
-  const r = w.run(['show', 'triage-acme']);
+  const w = consumer({ root: { playbooks: { 'sorting-pack': standaloneBody('Sort the queue.') } }, more: { requires: ['root'], playbooks: { 'sorting-more-pack': patch('sorting-pack', '- **In** "Sort the queue" By age.') } } });
+  const installed = w.run(['install', 'more', '--from', w.from]);
+  assert.equal(installed.status, 0, installed.stdout + installed.stderr);
+  const r = w.run(['show', 'sorting-pack']);
   assert.equal(r.status, 0, r.stdout);
   assert.match(r.stdout, /Sort the queue\. By age\./);
 });

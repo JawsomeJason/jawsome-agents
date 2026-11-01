@@ -76,7 +76,7 @@ function brokenWorld(opts) {
   const w = doctorWorld({ plugins: [], marketplaces: [], ...opts });
   unlinkSync(join(w.bin, 'playbook'));
   unlinkSync(join(w.home, '.claude', 'skills', 'tester-mode'));
-  rmSync(join(w.repo, '.agents', 'playbooks'), { recursive: true });
+  rmSync(join(w.repo, '.agents'), { recursive: true });
   dropTeamChildren(w);
   return w;
 }
@@ -199,7 +199,8 @@ test('team playbooks that git does not track are info, and a leftover link into 
   const untracked = w.doctor();
   assert.ok(untracked.stdout.includes(`- web: ${w.repo}/.agents/playbooks holds 2 team playbooks, but git does not track them, so teammates do not see them\n`), untracked.stdout);
   assert.equal(untracked.status, 0);
-  rmSync(join(w.repo, '.agents', 'playbooks'), { recursive: true });
+  rmSync(join(w.repo, '.agents'), { recursive: true });
+  mkdirSync(join(w.repo, '.agents'));
   mkdirSync(join(w.config, 'old-team'));
   symlinkSync(join(w.config, 'old-team'), join(w.repo, '.agents', 'playbooks'));
   const linked = w.doctor();
