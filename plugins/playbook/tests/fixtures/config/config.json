@@ -1,0 +1,6 @@
+{
+  "handle": "tester",
+  "modeTrigger": "manual",
+  "pstack": "1.0.0",
+  "orgs": { "acme": { "owners": ["acme-eng"] } }
+}

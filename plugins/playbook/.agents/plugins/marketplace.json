@@ -1,0 +1,21 @@
+{
+  "name": "jawsome-playbooks",
+  "interface": {
+    "displayName": "jawsome-playbooks"
+  },
+  "plugins": [
+    {
+      "name": "jawsome-playbooks",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+        "products": ["CODEX"]
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
