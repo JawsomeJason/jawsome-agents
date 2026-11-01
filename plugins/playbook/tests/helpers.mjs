@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -41,7 +42,7 @@ export function git(cwd, args) {
 
 /**
  * A temp copy of the fixture config, plus a git checkout of `web` whose .agents/playbooks holds the team files, as
- * committed copies: the acme org files pinned in .agents/playbooks.lock, as a sync writes them, and web's own files
+ * committed copies: the acme pack's files pinned in .agents/playbooks.lock, as `playbook install` writes them, and web's own files
  * outside the lock. config.json records the checkout. `files` writes extra config files and `team` extra team files
  * (null deletes one); `links` adds symlinks, keyed by config-relative path, or checkout-relative under `.agents/`.
  */
@@ -71,8 +72,11 @@ export function world({ files = {}, team = {}, links = {}, remote = 'git@example
       if (content === null) rmSync(join(dir, name));
       else writeFileSync(join(dir, name), content);
     }
-    const lock = { source: 'acme-eng/agents', commit: '0'.repeat(40), files: Object.fromEntries(org.map((name) => [name, 'sha256:0'])) };
+    const locked = org.filter((name) => team[name] !== null);
+    const files = Object.fromEntries(locked.map((name) => [name, { pack: 'acme', hash: `sha256:${createHash('sha256').update(readFileSync(join(dir, name))).digest('hex')}` }]));
+    const lock = { packs: { acme: { source: 'acme-eng/agents', commit: '0'.repeat(40) } }, files };
     writeFileSync(join(repo, '.agents', 'playbooks.lock'), `${JSON.stringify(lock, null, 2)}\n`);
+    writeFileSync(join(repo, '.agents', 'packs.json'), `${JSON.stringify({ packs: [{ name: 'acme', source: 'acme-eng/agents' }] }, null, 2)}\n`);
     const settings = JSON.parse(readFileSync(join(config, 'config.json'), 'utf8'));
     writeFileSync(join(config, 'config.json'), `${JSON.stringify({ ...settings, repos: { web: { checkout: repo } } }, null, 2)}\n`);
   }
