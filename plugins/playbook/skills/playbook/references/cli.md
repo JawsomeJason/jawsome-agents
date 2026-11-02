@@ -25,7 +25,7 @@ Bare `playbook`, `playbook help` and `--help` print the usage and exit 0. `playb
 | --- | --- |
 | `--repo <repo>` | Sets the repo key. When it differs from the current checkout's key, playbook reads the team files of the checkout `config.json` records for that repo, or none when it records no checkout. |
 | `--every-repo` | `check` only. Checks with no repo and in each repo `config.json` records, and prints one report in the same shape. It never records a version, because it reads several contexts' files. |
-| `--json` | Prints JSON that follows the command's schema in [schemas/](schemas/). |
+| `--json` | Prints the same data as JSON. |
 | `--scope everywhere\|org\|repo` | `extend` and `new` only. Where the new file is active. `everywhere` (the default) writes to `<config>/playbooks/`, `org` to `<config>/playbooks/orgs/<org>/`, and `repo` to `<config>/playbooks/repos/<repo>/`, for the org or repo of the current checkout. |
 | `--with <text\|->`, `--with-file <path>` | `extend` only. The change text, from the argument, from stdin when it is `-`, or from a file. Give one. |
 | `--when <sentence>` | `extend` when it creates a file, and `new`. The `when:` sentence. |
@@ -85,7 +85,7 @@ When a file in the family has a problem, `compute` withholds the playbook: it pr
 
 A file with an `extends` stem that no context defines edits nothing, and any playbook may be the one it meant. So `compute` of every playbook lists that file's problems and exits 1. It still prints the steps of a playbook the file does not touch, under a line that says they may be incomplete. With `--json`, the steps stay and `problems` carries the file's problems.
 
-`pstack check-playbooks:` comes last, with pstack's own checker result, or `ok`. `--json` prints the same data, shaped by [schemas/playbook.compute.schema.json](schemas/playbook.compute.schema.json).
+`pstack check-playbooks:` comes last, with pstack's own checker result, or `ok`. `--json` prints the same data.
 
 When the installed pstack differs from the `pstack` in `config.json`, `compute` runs `check` first. A pass records the new version. A failure stops with exit 1, because an upgrade that moved the quoted text would otherwise apply edits in the wrong place.
 
@@ -106,7 +106,7 @@ babysit wrote the quoted words. Write the edit in:
 
 A file's quotes see only what its ancestors wrote, so the new edit must extend the file that wrote the words. When several files wrote them, `locate` drops any that another writer descends from, and the file extends the rest. The suggested file is `<writer>-<handle>` in `playbooks/`. When one user file wrote the words, the line names that file with `exists; it wrote these words, so change its text there`, because an edit line cannot anchor on its own file's text.
 
-A quote that names no step or more than one prints the same message `check` prints and exits 1. `--json` follows [schemas/playbook.locate.schema.json](schemas/playbook.locate.schema.json).
+A quote that names no step or more than one prints the same message `check` prints and exits 1.
 
 ## map
 
@@ -124,7 +124,7 @@ babysit [pstack]
     └── waiting-sam [user] (dormant: extends only-other, which only playbooks/repos/other defines)
 ```
 
-The origin is `pstack`, `pack <name>`, `repo <name>`, `user` or `user pack <name>`. `<= asked` marks the file you named, which any member of the family can be, so the lines above it are its ancestors and the lines below it are its descendants. A file with several parents appears under each, naming the others, and its subtree prints once. A file in two families prints both trees. A dormant file shows under its active parent with what it waits on, and you can ask for one by name. `--json` gives each file once, following [schemas/playbook.map.schema.json](schemas/playbook.map.schema.json).
+The origin is `pstack`, `pack <name>`, `repo <name>`, `user` or `user pack <name>`. `<= asked` marks the file you named, which any member of the family can be, so the lines above it are its ancestors and the lines below it are its descendants. A file with several parents appears under each, naming the others, and its subtree prints once. A file in two families prints both trees. A dormant file shows under its active parent with what it waits on, and you can ask for one by name. `--json` gives each file once.
 
 ## extend
 
@@ -224,7 +224,7 @@ rulesync drops a pack's skill or rule with exit 0 when the repo's own `.rulesync
 playbook check --packs .
 ```
 
-It fails, naming the file and line, on a `pack.json` that is missing, has the wrong `name`, or lacks `description`, `requires` that name no pack or form a cycle, a playbook with no `when:`, a `layer:` key, a change with no straight-quoted anchor, a standalone playbook with edits, a stem two packs share, a cycle in `extends`, a parent in a pack the file's pack does not require, and a symlink, in a pack file or on a pack folder that leaves the source. To require a word in every stem, such as an org name, add `packs/config.json` holding `{"nameWords": ["acme"]}`. With no such file there is no name rule. `--json` follows the check schema. Stale quotes need a pstack, so run `playbook check` in a repo that installs the pack.
+It fails, naming the file and line, on a `pack.json` that is missing, has the wrong `name`, or lacks `description`, `requires` that name no pack or form a cycle, a playbook with no `when:`, a `layer:` key, a change with no straight-quoted anchor, a standalone playbook with edits, a stem two packs share, a cycle in `extends`, a parent in a pack the file's pack does not require, and a symlink, in a pack file or on a pack folder that leaves the source. To require a word in every stem, such as an org name, add `packs/config.json` holding `{"nameWords": ["acme"]}`. With no such file there is no name rule. `--json` prints the shape `check --json` prints. Stale quotes need a pstack, so run `playbook check` in a repo that installs the pack.
 
 ### check --locked
 
@@ -232,7 +232,7 @@ It fails, naming the file and line, on a `pack.json` that is missing, has the wr
 
 ## list
 
-`list` prints each root active in the context, with its kind (`pstack`, `team` or `user`) and the active members of its family in apply order. `--json` follows [schemas/playbook.list.schema.json](schemas/playbook.list.schema.json).
+`list` prints each root active in the context, with its kind (`pstack`, `team` or `user`) and the active members of its family in apply order.
 
 ## check
 
@@ -276,7 +276,7 @@ These print `info:` lines and do not fail the check:
 
 `check` reads team stems from every checkout in `config.json` `repos`, so missing and dormant results are the same from any directory.
 
-`check` ends with `check passed: pstack <ver>` or `check failed: ...`. `--json` follows [schemas/playbook.check.schema.json](schemas/playbook.check.schema.json). Without `--pstack`, a pass records the checked version in `config.json` when that file exists.
+`check` ends with `check passed: pstack <ver>` or `check failed: ...`. Without `--pstack`, a pass records the checked version in `config.json` when that file exists.
 
 ## doctor
 
@@ -305,4 +305,4 @@ The fixes depend on the harness:
 
 `--fix` prints the report, then asks `run these? [y/N]` for each `✗` or `-` line that has a command to run, and runs that check's commands on `y`. It runs only `claude plugin` commands, `mkdir -p`, and `ln -s` to a path that does not exist. A fix never copies files into a plugin cache, because a harness loads only the version its install record names. When stdin is not a terminal, `--fix` prints `fixes not run: no terminal to ask on` and runs nothing. After the fixes, doctor runs every check again and prints the new report under `after fixes:`.
 
-`--json` prints the findings, shaped by [schemas/playbook.doctor.schema.json](schemas/playbook.doctor.schema.json).
+`--json` prints the findings.

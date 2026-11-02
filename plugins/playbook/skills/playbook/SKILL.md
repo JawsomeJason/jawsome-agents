@@ -50,7 +50,3 @@ Playbook applies the operator's personal and team playbook files over pstack's b
 - A team file carries the org or repo word in its name unless a pack ships it. Keep it chain-free, extending only bundled stems and quoting only pstack's text, when teammates run plain pstack, because pstack's checker refuses any other parent. `playbook check` reports a chained team file as an info line and checks it itself.
 - Change a pack file in its source repo, then run `playbook update`. `check` fails a hand-edited copy, because the lock pins its bytes. [references/cli.md](references/cli.md#packs) covers `install`, `update`, `remove`, `--link` for a private local folder, `check --locked`, and `check --packs`, the linter a repo that holds packs runs in CI.
 - Run `playbook check` after every edit and after every pstack upgrade. It catches a quote that matches nothing, matches two steps, or sits outside the steps, before an agent runs the playbook.
-
-## Keep the JSON shape
-
-`--json` output follows [playbook.compute](references/schemas/playbook.compute.schema.json), [playbook.list](references/schemas/playbook.list.schema.json), [playbook.locate](references/schemas/playbook.locate.schema.json), [playbook.map](references/schemas/playbook.map.schema.json), [playbook.check](references/schemas/playbook.check.schema.json), and [playbook.doctor](references/schemas/playbook.doctor.schema.json). When playbook cannot run, produce the same shape by hand from [references/playbooks.md](references/playbooks.md), so a mode skill that reads it keeps working.

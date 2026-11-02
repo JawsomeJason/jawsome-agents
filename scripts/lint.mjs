@@ -247,7 +247,7 @@ function lintSkill(skillDir, report, { claudeOnly = false } = {}) {
     const schemas = existsSync(schemasDir) ? readdirSync(schemasDir).map((f) => f.split('.')[0]) : [];
     for (const script of readdirSync(scriptsDir)) {
       const stem = script.split('.')[0];
-      if (!schemas.includes(stem)) {
+      if (!schemas.includes(stem) && !RULES.scriptSchemaExempt.includes(stem)) {
         report(join(scriptsDir, script), 1, 'script-schema', `no output schema at references/schemas/${stem}.*`);
       }
     }

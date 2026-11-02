@@ -16,6 +16,7 @@
   "identityExempt": ["LICENSE", "scripts/lint-rules.json"],
   "manifestIdentityKeys": ["author", "owner"],
   "claudeOnlyPrefix": "claudecode-",
+  "scriptSchemaExempt": ["playbook"],
   "claudeOnlyExempt": ["harness-tool", "model-name", "vendor-name"],
   "denylists": [
     {

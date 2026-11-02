@@ -29,7 +29,7 @@ Skills must keep working as harnesses, models, vendors and runtimes change aroun
 - **Harness tools.** Describe actions with verbs: run, spawn a subagent, ask the user. Never name a harness's tool.
 - **Models.** Name no model family or model ID, and make no claim about what a model can do.
 - **Vendors.** Name no vendor or hosted service. Describe an optional capability by category, such as a judgment model or a forge CLI, and give a fallback. `git` is the only hard dependency.
-- **Runtimes.** Scripts use the standard library only: no `package.json`, no lockfile, no install step. Each script's output follows a schema in `references/schemas/`, so an agent can write the same file by hand when the script fails.
+- **Runtimes.** Scripts use the standard library only: no `package.json`, no lockfile, no install step. Each script's output follows a schema in `references/schemas/`, so an agent can write the same file by hand when the script fails. The `playbook` skill is exempt through `scriptSchemaExempt` in `scripts/lint-rules.json`, because nothing writes its output by hand: its `--json` only prints what its text prints.
 - **Links.** The only external URL a skill may carry is the spec. Examples live in `references/`, and every relative link stays inside its own skill folder.
 - **Time.** Prose carries no time-relative words and no absolute dates. Words like `currently`, `latest` and `recently` go stale. Dates belong in data files.
 - **Reasons.** Every rule states why it exists. A rule with its reason still generalizes after the tools change.

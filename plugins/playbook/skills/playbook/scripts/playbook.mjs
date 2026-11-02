@@ -2195,7 +2195,7 @@ function runDoctor(opts) {
 const OPTIONS = {
   repo: { value: '<repo>', help: 'Use this repo key. Away from its checkout, read the checkout config.json records.' },
   pstack: { value: '<dir-or-version>', help: 'Use this pstack, and write nothing to config.json.' },
-  json: { help: 'Print JSON that follows the schema in references/schemas/.' },
+  json: { help: 'Print the same data as JSON.' },
   with: { value: '<text|->', dashText: true, help: 'The change text, or - for stdin.' },
   'with-file': { value: '<path>', help: 'Read the change text from a file.' },
   when: { value: '<sentence>', dashText: true, help: 'The when: sentence, naming the requests the file serves.' },
