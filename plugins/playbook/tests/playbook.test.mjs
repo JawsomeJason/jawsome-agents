@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { FIXTURES, PSTACK, git, lines, tempDir, world } from './helpers.mjs';
+import { FIXTURES, PSTACK, git, lines, world } from './helpers.mjs';
 
 const OK_LINE = "Every project playbook matches this pstack's playbooks.";
 const readLayers = (config) => JSON.parse(readFileSync(join(config, 'config.json'), 'utf8'));
@@ -727,4 +726,15 @@ test('check fails an edit line with no straight-quoted anchor', () => {
   const r = w.run(['check']);
   assert.equal(r.status, 1);
   assert.match(r.stdout, /bad\.md:6: a change has no straight-quoted step text to anchor on/);
+});
+
+test('check fails an edit line whose bold word is not a verb, instead of reading it as a note', () => {
+  const swap = '---\nextends: babysit\nwhen: Bad\n---\n\n- **Swap** "Declare the mode" with this.\n- **after** "Work the merge frontier" lower.\n- **Note** a plain note.\n';
+  const w = world({ files: { 'playbooks/swap.md': swap } });
+  const r = w.run(['check']);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /swap\.md:6: \*\*Swap\*\* is not an edit verb; use After, Before, Replace or In/);
+  assert.match(r.stdout, /swap\.md:7: \*\*after\*\* is not an edit verb/);
+  assert.doesNotMatch(r.stdout, /swap\.md:8:/);
+  assert.match(w.run(['show', 'babysit']).stdout, /No steps/);
 });

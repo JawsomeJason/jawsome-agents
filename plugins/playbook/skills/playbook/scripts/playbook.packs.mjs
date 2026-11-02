@@ -170,10 +170,7 @@ function lockNameProblem(packs, files) {
   return null;
 }
 
-/**
- * A lock as { packs, files, legacy }, or { error }. The flat shape from before packs, { source, commit, files: { name: hash } },
- * reads with a null pack per file, so its hashes still verify. A linked pack has no files here, only `link` and its path.
- */
+/** A lock as { packs, files }, or { error }. A linked pack has no files here, only `link` and its path. */
 export function readLock(path) {
   if (!existsSync(path)) return null;
   let raw;
@@ -183,9 +180,8 @@ export function readLock(path) {
     return { error: e.message };
   }
   if (!raw || typeof raw.files !== 'object' || raw.files === null) return { error: '"files" must be an object' };
-  const lock = raw.packs
-    ? { packs: raw.packs, files: raw.files, legacy: false }
-    : { packs: {}, files: Object.fromEntries(Object.entries(raw.files).map(([name, hash]) => [name, { pack: null, hash }])), legacy: true };
+  if (!raw.packs || typeof raw.packs !== 'object') return { error: '"packs" must be an object' };
+  const lock = { packs: raw.packs, files: raw.files };
   const error = lockNameProblem(lock.packs, lock.files);
   return error ? { error } : lock;
 }
@@ -214,7 +210,6 @@ export function lockProblems({ lockPath, lockShown, manifestPath, manifestShown,
   if (!lock) return { problems: [], info: [], count: 0, found: false };
   if (lock.error) return { problems: [{ path: lockShown, line: 1, message: `not a valid lock: ${lock.error}` }], info: [], count: 0, found: true };
   const problems = [];
-  const info = [];
   for (const [name, entry] of Object.entries(lock.files).sort()) {
     const path = fileOf(name, entry);
     if (!existsSync(path)) problems.push({ path: shownOf(name, entry), line: 1, message: `the lock pins it, but it is missing; run playbook update` });
@@ -227,15 +222,12 @@ export function lockProblems({ lockPath, lockShown, manifestPath, manifestShown,
     const target = join(pack.source, 'packs', name, 'playbooks');
     if (!existsSync(target)) problems.push({ path: lockShown, line: 1, message: `${name} links to ${target}, which is missing` });
   }
-  if (lock.legacy) info.push({ path: lockShown, line: 1, message: 'holds no packs, so it is the flat shape from before them; playbook install <pack> rewrites it' });
-  else {
-    const manifest = readManifest(manifestPath);
-    if (manifest.error) problems.push({ path: manifestShown, line: 1, message: `not a valid manifest: ${manifest.error}` });
-    const listed = manifest.packs.map((p) => p.name);
-    for (const name of listed.filter((n) => !lock.packs[n])) problems.push({ path: manifestShown, line: 1, message: `lists ${name}, which the lock does not; run playbook install ${name}` });
-    for (const name of Object.keys(lock.packs).filter((n) => !manifest.error && !listed.includes(n))) problems.push({ path: lockShown, line: 1, message: `pins ${name}, which the manifest does not list; run playbook remove ${name}` });
-  }
-  return { problems, info, count: Object.keys(lock.files).length, linked: links.length, found: true };
+  const manifest = readManifest(manifestPath);
+  if (manifest.error) problems.push({ path: manifestShown, line: 1, message: `not a valid manifest: ${manifest.error}` });
+  const listed = manifest.packs.map((p) => p.name);
+  for (const name of listed.filter((n) => !lock.packs[n])) problems.push({ path: manifestShown, line: 1, message: `lists ${name}, which the lock does not; run playbook install ${name}` });
+  for (const name of Object.keys(lock.packs).filter((n) => !manifest.error && !listed.includes(n))) problems.push({ path: lockShown, line: 1, message: `pins ${name}, which the manifest does not list; run playbook remove ${name}` });
+  return { problems, info: [], count: Object.keys(lock.files).length, linked: links.length, found: true };
 }
 
 /**

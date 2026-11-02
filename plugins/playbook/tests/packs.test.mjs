@@ -282,24 +282,6 @@ test('check --locked passes where no lock exists, and refuses flags that need a 
   assert.equal(w.run(['show', 'babysit', '--locked']).status, 2);
 });
 
-test('check verifies a lock in the flat shape from before packs, says it is the old shape, and install rewrites it', () => {
-  const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
-  mkdirSync(w.dir, { recursive: true });
-  writeFileSync(join(w.dir, 'one-acme.md'), IN_BABYSIT);
-  writeFileSync(join(w.dir, 'kept-web.md'), patch('feature', '- A note.'));
-  const flat = { source: 'acme-eng/agents', commit: '0'.repeat(40), files: { 'one-acme.md': sha(IN_BABYSIT), 'kept-web.md': sha(patch('feature', '- A note.')) } };
-  writeFileSync(w.lockPath, JSON.stringify(flat));
-  const ok = w.run(['check']);
-  assert.equal(ok.status, 0, ok.stdout);
-  assert.match(ok.stdout, /info: \.agents\/playbooks\.lock:1: .*playbook install/);
-  writeFileSync(join(w.dir, 'kept-web.md'), 'tampered\n');
-  assert.match(w.run(['check', '--locked']).stdout, /kept-web\.md:1: .*hand-edited/);
-  writeFileSync(join(w.dir, 'kept-web.md'), patch('feature', '- A note.'));
-  assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
-  assert.deepEqual(Object.keys(w.lock().files), ['one-acme.md']);
-  assert.equal(existsSync(join(w.dir, 'kept-web.md')), true);
-});
-
 test('a malformed lock or manifest is a named problem', () => {
   const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
   assert.equal(w.run(['install', 'a', '--from', w.from]).status, 0);
@@ -438,10 +420,16 @@ test('update prints a new rulesync line when a pack gains rules, and the line to
   const gained = w.forge(['update']);
   assert.equal(gained.status, 0);
   assert.ok(gained.stdout.includes(JSON.stringify({ source: 'acme-eng/agents:packs/p/skills', skills: ['*'], rules: ['*'], rulesPath: 'packs/p/rules' })), gained.stdout);
+  assert.doesNotMatch(gained.stdout, /delete /);
+  writePacks(w.bare, { p: { rules: true } });
+  const moved = w.forge(['update']);
+  assert.equal(moved.status, 0);
+  assert.match(moved.stdout, /p moved; delete acme-eng\/agents:packs\/p\/skills from "sources"/);
+  assert.ok(moved.stdout.includes(JSON.stringify({ source: 'acme-eng/agents:packs/p/rules', rules: ['*'], rulesPath: 'packs/p/rules' })), moved.stdout);
   writePacks(w.bare, { p: {} });
   const dropped = w.forge(['update']);
   assert.equal(dropped.status, 0);
-  assert.match(dropped.stdout, /delete acme-eng\/agents:packs\/p\/skills from "sources"/);
+  assert.match(dropped.stdout, /delete acme-eng\/agents:packs\/p\/rules from "sources"/);
   assert.equal(existsSync(join(w.repo, 'rulesync.jsonc')), false);
 });
 
@@ -477,7 +465,6 @@ test('a lock or manifest that names a path outside its folder is refused, and up
     'a files key that is no markdown': (l) => ({ ...l, files: { ...l.files, 'victim.txt': { pack: 'a', hash: sha(VICTIM) } } }),
     'a file entry whose pack climbs': (l) => ({ ...l, files: { 'victim.md': { pack: '../..', hash: sha(VICTIM) } } }),
     'a packs key that climbs': (l) => ({ ...l, packs: { ...l.packs, '../../evil': { source: 'acme-eng/agents', commit: 'x' } } }),
-    'a flat lock whose key climbs': () => ({ source: 'acme-eng/agents', commit: 'x', files: { '../../victim.md': sha(VICTIM) } }),
   };
   for (const [what, change] of Object.entries(hostile)) {
     const w = consumer({ a: { playbooks: { 'one-acme': IN_BABYSIT } } });
@@ -761,7 +748,7 @@ test('check --packs passes a clean source with no pstack, and returns the check 
 test('check --packs names each broken rule with its file and line', () => {
   const noWhen = '---\nextends: babysit\n---\n\n- A note.\n';
   const root = sourceRepo({
-    a: { requires: ['ghost', 'c1'], playbooks: { 'no-when': noWhen, same: IN_BABYSIT, unquoted: patch('babysit', '- **In** Work the merge frontier x'), edits: standaloneBody('Step.').replace('1. Step.', '- **In** "x" y\n\n1. Step.') } },
+    a: { requires: ['ghost', 'c1'], playbooks: { 'no-when': noWhen, same: IN_BABYSIT, unquoted: patch('babysit', '- **In** Work the merge frontier x'), swapped: patch('babysit', '- **Swap** "Work the merge frontier" x'), edits: standaloneBody('Step.').replace('1. Step.', '- **In** "x" y\n\n1. Step.') } },
     b: { playbooks: { same: IN_BABYSIT, 'reaches-up': patch('no-when', '- A note.'), 'p-one': patch('p-two', '- A note.'), 'p-two': patch('p-one', '- A note.') } },
     c1: { requires: ['c2'] },
     c2: { requires: ['c1'] },
@@ -775,6 +762,7 @@ test('check --packs names each broken rule with its file and line', () => {
     /packs\/c[12]\/pack\.json:1: requires a cycle: /,
     /packs\/wrong\/pack\.json:1: "name" must be wrong/,
     /packs\/a\/playbooks\/unquoted\.md:\d+: a change has no straight-quoted/,
+    /packs\/a\/playbooks\/swapped\.md:6: \*\*Swap\*\* is not an edit verb; use After, Before, Replace or In/,
     /packs\/a\/playbooks\/edits\.md:\d+: standalone playbook cannot carry edits/,
     /packs\/b\/playbooks\/reaches-up\.md:\d+: extends no-when, in pack a, which pack b does not require/,
     /packs\/b\/playbooks\/p-[a-z]+\.md:\d+: extends a cycle: /,
