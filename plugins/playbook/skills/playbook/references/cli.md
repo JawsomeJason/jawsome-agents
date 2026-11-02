@@ -3,10 +3,7 @@
 ```sh
 playbook list [--repo <repo>] [--json] [--pstack <dir-or-version>]
 playbook show <name> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-playbook locate <name> <quote> [--repo <repo>] [--json] [--pstack <dir-or-version>]
 playbook map <name> [--repo <repo>] [--json] [--pstack <dir-or-version>]
-playbook extend <parent> [<file-name>] after|before|replace|in "<quote>" (--with <text|-> | --with-file <path>) [--when <sentence>] [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
-playbook new <name> --when <sentence> --from-file <path|-> [--scope everywhere|org|repo] [--repo <repo>] [--pstack <dir-or-version>]
 playbook install <pack>... [--from <owner/repo|path>] [--user] [--link] [--repo <repo>] [--pstack <dir-or-version>]
 playbook update [<pack>...] [--user] [--repo <repo>] [--pstack <dir-or-version>]
 playbook remove <pack> [--user] [--repo <repo>] [--pstack <dir-or-version>]
@@ -26,10 +23,6 @@ Bare `playbook`, `playbook help` and `--help` print the usage and exit 0. `playb
 | `--repo <repo>` | Sets the repo key. When it differs from the current checkout's key, playbook reads the team files of the checkout `config.json` records for that repo, or none when it records no checkout. |
 | `--every-repo` | `check` only. Checks with no repo and in each repo `config.json` records, and prints one report in the same shape. It never records a version, because it reads several contexts' files. |
 | `--json` | Prints the same data as JSON. |
-| `--scope everywhere\|org\|repo` | `extend` and `new` only. Where the new file is active. `everywhere` (the default) writes to `<config>/playbooks/`, `org` to `<config>/playbooks/orgs/<org>/`, and `repo` to `<config>/playbooks/repos/<repo>/`, for the org or repo of the current checkout. |
-| `--with <text\|->`, `--with-file <path>` | `extend` only. The change text, from the argument, from stdin when it is `-`, or from a file. Give one. |
-| `--when <sentence>` | `extend` when it creates a file, and `new`. The `when:` sentence. |
-| `--from-file <path\|->` | `new` only. The numbered steps, from a file or stdin. |
 | `--pstack <dir-or-version>` | Uses that pstack instead of the one playbook finds. It takes a folder, or a version next to the one in use or in any plugin cache. With this flag, playbook never writes `config.json`, so you can preview an upgrade. |
 
 ## Exit codes
@@ -37,7 +30,7 @@ Bare `playbook`, `playbook help` and `--help` print the usage and exit 0. `playb
 | Code | Meaning |
 | --- | --- |
 | 0 | Clean. |
-| 1 | A validator problem, a `locate` quote that names no step or more than one, pstack's own checker failed, or a `doctor` check failed. `compute` still prints the playbook, except when the `check` it runs after a pstack change fails. Then it prints the `check` result. |
+| 1 | A validator problem, pstack's own checker failed, or a `doctor` check failed. `compute` still prints the playbook, except when the `check` it runs after a pstack change fails. Then it prints the `check` result. |
 | 2 | Bad usage, such as `--repo` or `--pstack` with `doctor`. No pstack found, an unknown `--pstack` version, a `config.json` that is not valid JSON or has the wrong shape, or an unknown playbook. The message goes to stderr. |
 
 ## Environment
@@ -90,23 +83,6 @@ When the installed pstack differs from the `pstack` in `config.json`, `compute` 
 
 With `"telemetry": true` in `config.json`, `compute` appends one JSON line per playbook it finds to `usage.jsonl` in `PLAYBOOKS_STATE`: `ts`, `playbook`, `repo`, `org`, and `pstack`. The log stays on the machine, and a tool such as a usage counter reads it to tell which playbooks agents run. A failed write never fails the compute, because a read log must not block the work it records.
 
-## locate
-
-`locate` finds the one step of the computed family that a quote names, the files that wrote the quoted words, and the user file an edit to them belongs in. The `learn` skill uses it to place a lesson, so the agent does not merge files by hand to find where a quote anchors.
-
-```
-# babysit step 3 (web · acme-eng · pstack 1.2.3)
-
-**Work the merge frontier.** The lowest open PR matters first.   [babysit]
-
-babysit wrote the quoted words. Write the edit in:
-- /tmp/sam/.jawsome-playbooks/playbooks/babysit-sam.md (exists), extending babysit
-```
-
-A file's quotes see only what its ancestors wrote, so the new edit must extend the file that wrote the words. When several files wrote them, `locate` drops any that another writer descends from, and the file extends the rest. The suggested file is `<writer>-<handle>` in `playbooks/`. When one user file wrote the words, the line names that file with `exists; it wrote these words, so change its text there`, because an edit line cannot anchor on its own file's text.
-
-A quote that names no step or more than one prints the same message `check` prints and exits 1.
-
 ## map
 
 `map` draws a family as a tree: the root at the top, every file below the parent it extends, each labelled with its origin.
@@ -124,27 +100,6 @@ babysit [pstack]
 ```
 
 The origin is `pstack`, `pack <name>`, `repo <name>`, `user` or `user pack <name>`. `<= asked` marks the file you named, which any member of the family can be, so the lines above it are its ancestors and the lines below it are its descendants. A file with several parents appears under each, naming the others, and its subtree prints once. A file in two families prints both trees. A dormant file shows under its active parent with what it waits on, and you can ask for one by name. `--json` gives each file once.
-
-## extend
-
-`extend` writes one edit line into a user file, and refuses an edit that would break `check`. It is the way to change a playbook from a terminal or an agent, because it accepts only the grammar that [the playbooks page](playbooks.md#file-format) defines and adds no verb to the files.
-
-```sh
-playbook extend babysit babysit-sam replace "Never require Graphite" --with - --when "Babysitting a PR" <<'TEXT'
-Use `gh pr view --json "state"` first.
-TEXT
-```
-
-- The file is `<file-name>.md` in the folder `--scope` picks. Without a file name it is `<parent>-<handle>`, with the handle from `config.json`. The parent may be a bundled playbook, an active team file, or an active user file. When the file is missing, `extend` creates it with `extends: <parent>` and the `--when` sentence, which is then required. When it exists, `extend` appends the edit line and adds the parent to `extends` if it is missing. A file that has no `extends:` line, or an empty one, is refused, because it is a standalone playbook.
-- The verb is `after`, `before`, `replace`, or `in`. The quote holds no double quote. The text may hold backticks and quotes, and line breaks in it fold to spaces.
-- Before writing, the quote must match exactly one step in the text the parent and its ancestors wrote, the text the new file's quotes will see. On none or several, `extend` names the problem and the matching steps, writes nothing, and exits 1. When another file wrote the words, the message names it, so it can become a second parent.
-- After writing, `extend` runs the same validation as `check` in every context: no repo, plus every repo in `config.json`'s `repos`. A user file can change the text another file quotes, or take a name another repo uses, so a write that passes where it runs can still break another repo. A recorded repo is read from its checkout when the checkout exists. If the write added a problem, it puts the prior bytes back, or removes the file it created, prints the new problems, and exits 1. A problem that was already there never refuses a write, so it cannot block an unrelated edit or its own repair. `extend` prints it after the changed step instead.
-- On success it prints the path and the changed step with its stem tags.
-- Writes follow `PLAYBOOKS_CONFIG`. `extend` and `new` never write under `.agents/`, because team changes go through a pull request.
-
-## new
-
-`new <name> --when "<sentence>" --from-file <path|->` writes a standalone playbook: a file with an empty `extends:`, the `when:` sentence, and the body you pass. `new` refuses, with exit 1, a name that pstack, a team file, or a user file in any scope already uses, a body with no numbered steps, and a body with edit lines. It takes `--scope` and runs the same validation and rollback as `extend`.
 
 ## Packs
 

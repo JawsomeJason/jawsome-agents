@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { world } from './helpers.mjs';
 
-const VERBS = ['list', 'show', 'locate', 'map', 'extend', 'new', 'install', 'update', 'remove', 'check', 'doctor', 'help'];
+const VERBS = ['list', 'show', 'map', 'install', 'update', 'remove', 'check', 'doctor', 'help'];
 const reference = readFileSync(new URL('../skills/playbook/references/cli.md', import.meta.url), 'utf8');
 const skill = readFileSync(new URL('../skills/playbook/SKILL.md', import.meta.url), 'utf8');
 
@@ -58,7 +58,7 @@ test('an unknown verb, option or help topic exits 2 and points at help', () => {
 
 test('a wrong argument count or a flag of another verb prints that verb\'s usage', () => {
   const w = world();
-  for (const args of [['show'], ['show', 'a', 'b'], ['list', '--with', 'x']]) {
+  for (const args of [['show'], ['show', 'a', 'b'], ['list', '--from', 'x']]) {
     const r = w.run(args);
     assert.equal(r.status, 2, args.join(' '));
     assert.match(r.stderr, new RegExp(`usage: playbook ${args[0]}\\b`));
@@ -66,11 +66,8 @@ test('a wrong argument count or a flag of another verb prints that verb\'s usage
   }
 });
 
-test('text options take a value that starts with a dash, and other options do not', () => {
+test('an option does not take a value that starts with a dash', () => {
   const w = world();
-  const r = w.run(['extend', 'babysit', 'dashed', 'in', 'Declare the mode', '--with', '-v means verbose', '--when', 'Any']);
-  assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /-v means verbose/);
   const repo = w.run(['list', '--repo', '--json']);
   assert.equal(repo.status, 2);
   assert.match(repo.stderr, /--repo needs a value/);

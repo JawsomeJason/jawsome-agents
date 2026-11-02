@@ -97,4 +97,4 @@ when: one sentence naming the requests it serves
 
 ## Writing files
 
-`playbook extend` and `playbook new` write user files only, in the folder `--scope` picks, and undo a write that adds a `check` problem. [playbook] Team files change through a pull request. [cli.md](cli.md#extend) gives the details.
+Edit the Markdown directly, then run `playbook check`, which names every problem an edit adds. A user file reaches every repo it is active in, so run `playbook check --every-repo` after changing one. [playbook] Team files change through a pull request. [pstack-claude]

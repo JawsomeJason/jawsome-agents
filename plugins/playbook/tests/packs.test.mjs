@@ -637,7 +637,7 @@ test('the usage lists the pack verbs, and writing flags stay on their commands',
   assert.equal(w.run(['remove']).status, 2);
   assert.equal(w.run(['remove', 'a', 'b']).status, 2);
   assert.equal(w.run(['show', 'babysit', '--from', 'x']).status, 2);
-  assert.equal(w.run(['install', 'a', '--with', 'x']).status, 2);
+  assert.equal(w.run(['install', 'a', '--every-repo']).status, 2);
   assert.equal(w.run(['update', '--from', 'x']).status, 2);
 });
 

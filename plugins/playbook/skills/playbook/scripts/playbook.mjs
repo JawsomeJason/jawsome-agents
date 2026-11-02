@@ -96,11 +96,9 @@ function parseLayerText(raw) {
   const lines = normalize(raw).split('\n');
   const front = {};
   let start = 0;
-  let hasFront = false;
   if (lines[0] === '---') {
     const end = lines.indexOf('---', 1);
     if (end > 0) {
-      hasFront = true;
       start = end + 1;
       for (let i = 1; i < end; i++) {
         const m = /^([\w-]+):[ \t]*(.*)$/.exec(lines[i]);
@@ -142,7 +140,7 @@ function parseLayerText(raw) {
       open.text += ` ${line.trim()}`;
     }
   }
-  return { front, hasFront, edits, notes, malformed, prose, body: body.join('\n') };
+  return { front, edits, notes, malformed, prose, body: body.join('\n') };
 }
 
 // A segment records the stem that wrote it and the stem whose Replace struck it, so each file can see only its ancestors' text.
@@ -407,7 +405,7 @@ function applyFamilies(bundled, graph) {
       file.problems.push({ line: edit.line, message: failure(worst, edit.quote) });
     });
   }
-  return { playbooks, roots, ancestors };
+  return { playbooks, roots };
 }
 
 const kebab = (title) => title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
@@ -917,7 +915,7 @@ function analyze(ctx, { pstackCheck }) {
   nameProblems(ctx, files.all, bundled, universe);
   const usable = files.all.filter((f) => !f.problems.some((p) => p.line === 1 && / is (?:a bundled playbook's name|also )/.test(p.message)));
   const graph = buildGraph(bundled, usable, universe, ctx.pstack.name);
-  const { playbooks, roots, ancestors } = applyFamilies(bundled, graph);
+  const { playbooks, roots } = applyFamilies(bundled, graph);
   const index = playbookIndex(ctx.pstack.dir, playbooks, roots);
   const dormant = new Set(graph.dormant.map((f) => f.stem));
   for (const file of files.all) {
@@ -941,7 +939,7 @@ function analyze(ctx, { pstackCheck }) {
   const links = brokenLinks(ctx);
   links.problems.push(...linkedTeamDir(ctx));
   const chained = files.team.filter((f) => f.extends.some((s) => !bundled.has(s)));
-  return { files, graph, playbooks, roots, ancestors, index, links, pstackCheck: pstackCheck ? runPstackCheck(ctx, links.teamBroken, chained) : null };
+  return { files, graph, playbooks, roots, index, links, pstackCheck: pstackCheck ? runPstackCheck(ctx, links.teamBroken, chained) : null };
 }
 
 const fileProblems = (files, key = 'problems') => files.flatMap((f) => [...f[key]].sort((a, b) => a.line - b.line).map(({ path, line, message }) => ({ path: f.display, line, message })));
@@ -1281,73 +1279,6 @@ function runMap(ctx, opts, name) {
   return { out: [`# ${roots.join(', ')} (${headerParts(ctx).join(' · ')})`, '', ...lines].join('\n'), status: 0 };
 }
 
-/**
- * Where an edit to words `writers` wrote goes. A user file's own words change in that file. Anything else gets a user
- * file that extends the writers, named <writer>-<handle>, since a file's quotes see only what its ancestors wrote.
- */
-function editTarget(ctx, analysis, writers) {
-  const file = analysis.files.all.find((f) => f.stem === writers[0]);
-  if (writers.length === 1 && file?.kind === 'user') return { path: file.display, exists: true, own: true, extends: null };
-  const handle = ctx.settings?.raw.handle;
-  const name = handle ? `${writers[0]}-${handle}` : `${writers[0]}-mine`;
-  const existing = analysis.files.all.find((f) => f.stem === name && f.kind === 'user');
-  const path = existing?.display ?? join(SCOPES.everywhere.dir(ctx), `${name}.md`);
-  return { path, exists: Boolean(existing), own: false, extends: writers };
-}
-
-function runLocate(ctx, opts, name, quote) {
-  const analysis = analyze(ctx, { pstackCheck: false });
-  const { root, stem } = familyOf(analysis, name);
-  const pb = analysis.playbooks.get(root);
-  const found = locate(pb, quote, new Set(pb.family.map((m) => m.stem)), false);
-  if (!found.step) return { out: failure(found, quote), status: 1 };
-  const { step } = found;
-  const written = writersOf(step, quoteRegex(quote));
-  // A writer that another writer descends from is already visible to a file extending the descendant.
-  const writers = written.filter((w) => !written.some((o) => o !== w && analysis.ancestors(o).has(w)));
-  const edit = editTarget(ctx, analysis, writers);
-  const n = pb.steps.indexOf(step) + 1;
-  if (opts.json) {
-    const { repo } = ctx;
-    const head = { playbook: root, asked: stem, repo: repo.name, owner: repo.owner, org: repo.org, pstack: ctx.pstack.version };
-    return { out: { ...head, step: n, text: effective(step), origin: step.origin, kind: step.kind, touched: step.touched, writers, edit }, status: 0 };
-  }
-  const where = edit.own ? `${edit.path} (exists; it wrote these words, so change its text there)` : `${edit.path} (${edit.exists ? 'exists' : 'new'}), extending ${andList(edit.extends)}`;
-  return {
-    out: [`# ${root} step ${n} (${headerParts(ctx).join(' · ')})`, `${display(step)}   ${tags(step)}`, `${andList(writers)} wrote the quoted words. Write the edit in:\n- ${where}`].join('\n\n'),
-    status: 0,
-  };
-}
-
-const readStdin = () => {
-  try {
-    return readFileSync(0, 'utf8');
-  } catch {
-    return '';
-  }
-};
-const readSource = (source, flag) => {
-  if (source === '-') return readStdin();
-  try {
-    return readFileSync(resolve(source), 'utf8');
-  } catch {
-    throw new UsageError(`${flag}: cannot read ${source}`);
-  }
-};
-const oneLine = (text) => text.trim().replace(/\s*\n\s*/g, ' ');
-
-/** The user scope folder a write lands in. Never a team folder, which changes only through a pull request. */
-function writeDir(ctx, opts) {
-  const scope = opts.scope ?? 'everywhere';
-  if (!SCOPES[scope]) throw new UsageError(`--scope ${scope}: use everywhere, org or repo`);
-  if (!isDir(ctx.configDir)) throw new UsageError(`no config dir at ${ctx.configDir}; run the setup skill first`);
-  const dir = SCOPES[scope].dir(ctx);
-  if (!dir) throw new UsageError(`no ${scope} for this checkout; run from a checkout of the ${scope}, or pass --repo`);
-  const real = realOr(dir) ?? dir;
-  if (real.split(sep).includes('.agents')) throw new UsageError(`${dir} resolves into a team folder; team changes go through a pull request`);
-  return dir;
-}
-
 /** The current context, the one with no repo, and each repo config.json records, read from its checkout when it has one. */
 function everyContext(ctx) {
   const at = (name) => {
@@ -1362,42 +1293,13 @@ function everyContext(ctx) {
 
 const reportLines = (report) => [...report.problems.map(problemLine), ...(report.pstackCheck.status === 'failed' ? report.pstackCheck.lines : [])];
 
-const contextLines = (contexts, ctx, analysis) => contexts.flatMap((c) => {
-  const report = checkReport(c, c === ctx && analysis ? analysis : analyze(c, { pstackCheck: true }));
+const contextLines = (contexts) => contexts.flatMap((c) => {
+  const report = checkReport(c, analyze(c, { pstackCheck: true }));
   return report.passed ? [] : reportLines(report).map((line) => `in ${c.repo.name ?? 'no repo'}: ${line}`);
 });
 
 /** A stale step reference names the live step count, which the write itself can change. */
 const sameProblem = (line) => line.replace(/ has \d+ steps?$/, ' has N steps');
-
-/**
- * Writes `next`, then runs check in every context, since a user file can change what another file quotes or collide
- * with a name in any repo. Only a problem the write added refuses it, so a problem already on disk never blocks an
- * unrelated edit or its own repair. A refusal puts the prior bytes back and exits 1. `prior` is a Buffer, so a file that
- * is not UTF-8 comes back whole.
- */
-function commitWrite(ctx, path, prior, next) {
-  const contexts = everyContext(ctx);
-  const before = new Set(contextLines(contexts).map(sameProblem));
-  let made = null;
-  for (let d = dirname(path); !lexists(d); d = dirname(d)) made = d;
-  mkdirSync(dirname(path), { recursive: true });
-  let committed = false;
-  try {
-    writeFileSync(path, next);
-    const analysis = analyze(ctx, { pstackCheck: true });
-    const after = contextLines(contexts, ctx, analysis);
-    const added = after.filter((line) => !before.has(sameProblem(line)));
-    if (added.length) throw Object.assign(new UsageError(`refused: this edit adds check problems, so nothing was written\n${added.join('\n')}`), { status: 1 });
-    committed = true;
-    return { analysis, remaining: after };
-  } finally {
-    if (!committed) {
-      if (prior === null) rmSync(made ?? path, { recursive: true, force: true });
-      else writeFileSync(path, prior);
-    }
-  }
-}
 
 /**
  * Where a pack verb writes. A repo's packs land in the current worktree, not its main checkout like a read, because they
@@ -1772,88 +1674,6 @@ function runRemove(ctx, opts, [name]) {
   return { out: [`removed ${name}: ${owned.length} ${owned.length === 1 ? 'file' : 'files'}`, ...notes.map((n) => `info: ${n}`), ...pstackWarning(ctx)].join('\n'), status: 0 };
 }
 
-const remainingNote = (remaining) => (remaining.length ? ['', 'this edit added no problems, but check still reports:', ...remaining] : []);
-
-function runExtend(ctx, opts, args) {
-  const [parent, ...rest] = args;
-  if (rest.length === 2 && !ctx.settings?.raw.handle) throw new UsageError('give a file name, or set handle in config.json');
-  const [fileName, verbWord, rawQuote] = rest.length === 2 ? [`${parent}-${ctx.settings.raw.handle}`, ...rest] : rest;
-  const verb = ['After', 'Before', 'Replace', 'In'].find((v) => v.toLowerCase() === verbWord.toLowerCase());
-  if (!verb) throw new UsageError(`${verbWord}: use after, before, replace or in`);
-  const quote = rawQuote.trim();
-  if (!quote || quote.includes('"')) throw new UsageError('the quote must be non-empty and hold no double quote');
-  if (!/^[\w][\w.-]*$/.test(fileName) || fileName.endsWith('.md')) throw new UsageError(`${fileName}: give the file name without .md, letters, digits, dots and dashes only`);
-  if ((opts.with === null) === (opts.withFile === null)) throw new UsageError('give exactly one of --with and --with-file');
-  const text = oneLine(opts.with === null ? readSource(opts.withFile, '--with-file') : opts.with === '-' ? readStdin() : opts.with);
-  if (!text) throw new UsageError('the change text is empty');
-  const dir = writeDir(ctx, opts);
-  const analysis = analyze(ctx, { pstackCheck: false });
-  const roots = analysis.roots.get(analysis.index.resolve(parent) ?? parent);
-  if (!roots || analysis.index.resolve(parent) !== parent) throw new UsageError(`no playbook named ${parent} is active here; run from a checkout where it is, or pass --repo`);
-  // The new file sees its parent and the parent's ancestors, the same text its quotes will match once written.
-  const seen = new Set([parent, ...analysis.ancestors(parent)]);
-  let found;
-  let pb;
-  for (const root of roots) {
-    pb = analysis.playbooks.get(root);
-    found = locate(pb, quote, seen, false);
-    if (found.step) break;
-  }
-  if (!found.step) {
-    const hits = found.steps?.map((n) => `${n}. ${effective(pb.steps[n - 1]).slice(0, 70).trimEnd()}...`);
-    throw Object.assign(new UsageError(`refused: ${failure(found, quote)}${hits ? `\n${hits.join('\n')}` : ''}`), { status: 1 });
-  }
-  const path = join(dir, `${fileName}.md`);
-  const edit = `- **${verb}** "${quote}" ${text}`;
-  const exists = lexists(path);
-  let next;
-  let prior = null;
-  if (exists) {
-    if (lstatSync(path).isSymbolicLink() || !isFile(path)) throw new UsageError(`${path} is not a plain file`);
-    prior = readFileSync(path);
-    const { front, hasFront } = parseLayerText(prior.toString('utf8'));
-    if (!hasFront || !front.extends) throw new UsageError(`${path} has no extends: line; add one by hand or pick another file name`);
-    const stems = front.extends.value.split(',').map((x) => x.trim()).filter(Boolean);
-    if (stems.length === 0) throw new UsageError(`${path} defines a standalone playbook; pick another file name`);
-    // latin1 maps each byte to one character, so bytes that are not UTF-8 pass through the line edit unchanged.
-    const asBytes = (value) => Buffer.from(value).toString('latin1');
-    const lines = prior.toString('latin1').replaceAll('\r\n', '\n').split('\n');
-    if (!stems.includes(parent)) lines[front.extends.line - 1] = asBytes(`extends: ${[...stems, parent].join(', ')}`);
-    next = Buffer.from(`${lines.join('\n').replace(/\n*$/, '')}\n${asBytes(edit)}\n`, 'latin1');
-  } else {
-    if (opts.when === null || !oneLine(opts.when)) throw new UsageError('a new file needs --when "<one sentence naming the requests it serves>"');
-    next = `---\nextends: ${parent}\nwhen: ${oneLine(opts.when)}\n---\n\n${edit}\n`;
-  }
-  const { analysis: after, remaining } = commitWrite(ctx, path, prior, next);
-  const out = [`${exists ? 'appended to' : 'created'} ${path}`];
-  const flat = (value) => value.replace(/\s+/g, ' ');
-  for (const root of after.roots.get(fileName) ?? []) {
-    const shown = after.playbooks.get(root);
-    const i = shown.steps.findIndex((s) => flat(effective(s)).includes(flat(text)) && (s.origin === fileName || s.touched.includes(fileName)));
-    if (i >= 0) out.push('', `# ${root} step ${i + 1} (${headerParts(ctx).join(' · ')})`, `${display(shown.steps[i])}   ${tags(shown.steps[i])}`);
-  }
-  return { out: [...out, ...remainingNote(remaining)].join('\n'), status: 0 };
-}
-
-function runNew(ctx, opts, [name]) {
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) throw new UsageError(`${name}: a playbook name is lowercase letters, digits and dashes`);
-  if (opts.fromFile === null) throw new UsageError('give the steps with --from-file <path|->');
-  const when = opts.when === null ? '' : oneLine(opts.when);
-  if (!when) throw new UsageError('give --when "<one sentence naming the requests it serves>"');
-  const dir = writeDir(ctx, opts);
-  const analysis = analyze(ctx, { pstackCheck: false });
-  const path = join(dir, `${name}.md`);
-  const taken = analysis.playbooks.has(name) || analysis.roots.has(name) || stemUniverse(ctx).has(name) || lexists(path);
-  if (taken) throw Object.assign(new UsageError(`refused: ${name} already exists; pick a unique name`), { status: 1 });
-  const body = normalize(readSource(opts.fromFile, '--from-file')).trim();
-  if (body.split('\n').some((l) => CHANGE_VERB.test(l))) throw Object.assign(new UsageError('refused: a standalone playbook cannot carry edit lines'), { status: 1 });
-  if (body.startsWith('---')) throw new UsageError('give the steps only; new writes the front matter');
-  if (parsePlaybook(body).steps.length === 0) throw Object.assign(new UsageError('refused: the body has no numbered steps (a line "1. " at column 0 starts one)'), { status: 1 });
-  const { analysis: after, remaining } = commitWrite(ctx, path, null, `---\nextends:\nwhen: ${when}\n---\n\n${body}\n`);
-  const pb = after.playbooks.get(name);
-  return { out: `created ${path}\n\n# ${name} (${headerParts(ctx).join(' · ')})\n${pb.steps.map((s, i) => `${i + 1}. ${display(s)}   ${tags(s)}`).join('\n')}${remainingNote(remaining).join('\n')}`, status: 0 };
-}
-
 function runList(ctx, opts) {
   const { playbooks } = analyze(ctx, { pstackCheck: false });
   const rows = [...playbooks.values()]
@@ -1998,16 +1818,11 @@ function runDoctor(opts) {
 }
 
 // One table drives parsing, the usage and every help page, so none of them can drift. It is plain node:util parseArgs in
-// non-strict mode, because strict mode refuses a text value that starts with a dash, such as --with "-v means verbose".
+// non-strict mode, so an unknown option gets this command's own message.
 const OPTIONS = {
   repo: { value: '<repo>', help: 'Use this repo key. Away from its checkout, read the checkout config.json records.' },
   pstack: { value: '<dir-or-version>', help: 'Use this pstack, and write nothing to config.json.' },
   json: { help: 'Print the same data as JSON.' },
-  with: { value: '<text|->', dashText: true, help: 'The change text, or - for stdin.' },
-  'with-file': { value: '<path>', help: 'Read the change text from a file.' },
-  when: { value: '<sentence>', dashText: true, help: 'The when: sentence, naming the requests the file serves.' },
-  'from-file': { value: '<path|->', help: 'Read the numbered steps from a file, or - for stdin.' },
-  scope: { value: 'everywhere|org|repo', help: 'Where the file is active.' },
   from: { value: '<owner/repo|path>', help: 'Where the pack comes from. Not needed for a pack the manifest lists.' },
   user: { help: 'Act on packs in the config dir, active everywhere, instead of this repo.' },
   link: { help: 'With --user and a local folder: reference the folder live instead of copying.' },
@@ -2034,15 +1849,6 @@ const COMMANDS = {
     examples: ['playbook show babysit', 'playbook show opening-an-acme-pr --json'],
     run: (opts, [name]) => runCompute(loadContext(opts), opts, name),
   },
-  locate: {
-    operands: '<name> <quote>',
-    min: 2,
-    max: 2,
-    summary: 'Name the step a quote finds, who wrote it, and the file an edit to it belongs in.',
-    options: ['repo', 'json', 'pstack'],
-    examples: ['playbook locate babysit "Work the merge frontier"'],
-    run: (opts, [name, quote]) => runLocate(loadContext(opts), opts, name, quote),
-  },
   map: {
     operands: '<name>',
     min: 1,
@@ -2051,26 +1857,6 @@ const COMMANDS = {
     options: ['repo', 'json', 'pstack'],
     examples: ['playbook map babysit', 'playbook map babysitting-an-acme-pr --json'],
     run: (opts, [name]) => runMap(loadContext(opts), opts, name),
-  },
-  extend: {
-    operands: '<parent> [<file-name>] after|before|replace|in "<quote>"',
-    min: 3,
-    max: 4,
-    summary: 'Write one edit line into a user file, refusing an edit that breaks check.',
-    options: ['with', 'with-file', 'when', 'scope', 'repo', 'pstack'],
-    required: [['with', 'with-file']],
-    examples: ['playbook extend babysit replace "Never merge" --with "Merge once green."', 'playbook extend babysit babysit-sam in "Work the merge frontier" --with - --when "Babysitting a PR"'],
-    run: (opts, args) => runExtend(loadContext(opts), opts, args),
-  },
-  new: {
-    operands: '<name>',
-    min: 1,
-    max: 1,
-    summary: 'Write a standalone user playbook.',
-    options: ['when', 'from-file', 'scope', 'repo', 'pstack'],
-    required: [['when'], ['from-file']],
-    examples: ['playbook new triaging --when "Triaging a report" --from-file steps.md'],
-    run: (opts, args) => runNew(loadContext(opts), opts, args),
   },
   install: {
     operands: '<pack>...',
@@ -2134,16 +1920,12 @@ const flagText = (name) => `--${name}${OPTIONS[name].value ? ` ${OPTIONS[name].v
 const commandNamed = (word) => Object.keys(COMMANDS).find((name) => name === word || COMMANDS[name].aliases?.includes(word)) ?? null;
 
 function synopsis(name) {
-  const { operands, options, oneOf = [], required = [] } = COMMANDS[name];
-  const groups = [...oneOf, ...required];
+  const { operands, options, oneOf = [] } = COMMANDS[name];
   const parts = [];
   for (const option of options) {
-    const group = groups.find((g) => g.includes(option));
+    const group = oneOf.find((g) => g.includes(option));
     if (!group) parts.push(`[${flagText(option)}]`);
-    else if (group[0] === option) {
-      const body = group.map(flagText).join(' | ');
-      parts.push(!required.includes(group) ? `[${body}]` : group.length > 1 ? `(${body})` : body);
-    }
+    else if (group[0] === option) parts.push(`[${group.map(flagText).join(' | ')}]`);
   }
   return ['playbook', name, operands, ...parts].filter(Boolean).join(' ');
 }
@@ -2172,7 +1954,7 @@ function parseCli(argv) {
     const option = OPTIONS[token.name];
     if (!option) throw new UsageError(`unknown option ${token.rawName}; run playbook help`);
     if (!option.value && token.value !== undefined) throw new UsageError(`${token.rawName} takes no value; run playbook help`);
-    if (option.value && (token.value === undefined || token.value === '' || (token.value.startsWith('-') && token.value !== '-' && !option.dashText))) throw new UsageError(`${token.rawName} needs a value; run playbook help`);
+    if (option.value && (token.value === undefined || token.value === '' || token.value.startsWith('-'))) throw new UsageError(`${token.rawName} needs a value; run playbook help`);
     opts[optKey(token.name)] = option.value ? token.value : true;
     set.push(token.name);
   }

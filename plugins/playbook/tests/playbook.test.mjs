@@ -804,58 +804,6 @@ test('no pstack found is a usage error that names the variable to set', () => {
   assert.equal(r.status, 2);
 });
 
-test('locate names the step, the stems that wrote and edited it, and the file to extend from the writer of the quoted words', () => {
-  const w = world();
-  const r = w.run(['locate', 'babysit', 'Work the merge frontier']);
-  assert.equal(r.stderr, '');
-  assert.equal(
-    r.stdout,
-    `# babysit step 3 (web · acme-eng · pstack 1.0.0)
-
-**Work the merge frontier.** The lowest open PR matters first.   [babysit]
-
-babysit wrote the quoted words. Write the edit in:
-- ${w.config}/playbooks/babysit-tester.md (exists), extending babysit
-`,
-  );
-  assert.equal(r.status, 0);
-  const team = w.run(['locate', 'babysit', 'Snapshot diffs count']);
-  assert.match(team.stdout, /^babysitting-an-acme-pr wrote the quoted words\. Write the edit in:\n- .*\/playbooks\/babysitting-an-acme-pr-tester\.md \(exists\), extending babysitting-an-acme-pr$/m);
-});
-
-test('locate sends an edit to words a user file wrote back to that file', () => {
-  const w = world();
-  const r = w.run(['locate', 'babysit-tester', 'the trunk ruleset', '--json']);
-  assert.equal(r.status, 0);
-  assert.deepEqual(JSON.parse(r.stdout), {
-    playbook: 'babysit',
-    asked: 'babysit-tester',
-    repo: 'web',
-    owner: 'acme-eng',
-    org: 'acme',
-    pstack: '1.0.0',
-    step: 4,
-    text: 'Read the trunk ruleset before the first push.',
-    origin: 'babysit-tester',
-    kind: 'user',
-    touched: ['babysitting-an-acme-pr-tester'],
-    writers: ['babysitting-an-acme-pr-tester'],
-    edit: { path: join(w.config, 'playbooks', 'babysitting-an-acme-pr-tester.md'), exists: true, own: true, extends: null },
-  });
-  const md = w.run(['locate', 'babysit', 'the trunk ruleset']).stdout;
-  assert.match(md, /^- .*babysitting-an-acme-pr-tester\.md \(exists; it wrote these words, so change its text there\)$/m);
-});
-
-test('locate exits 1 when the quote finds no step or more than one', () => {
-  const w = world();
-  const missing = w.run(['locate', 'babysit', 'no such words']);
-  assert.equal(missing.stdout, 'quote not found: "no such words"\n');
-  assert.equal(missing.status, 1);
-  const ambiguous = w.run(['locate', 'babysit', 'the']);
-  assert.match(ambiguous.stdout, /^quote matches steps .+; make it longer\n$/);
-  assert.equal(ambiguous.status, 1);
-});
-
 test('an unknown playbook and a bad command are usage errors', () => {
   const w = world();
   const unknown = w.run(['compute', 'nope']);
@@ -928,4 +876,31 @@ test('a file that partly resolves withholds what it touches, and only warns on t
   assert.equal(other.status, 1);
   assert.match(other.stdout, /^1\. /m);
   assert.match(other.stdout, /half\.md:2: extends babysitt/);
+});
+
+test('check --every-repo finds a problem the current context cannot see, and records nothing', () => {
+  const w = world();
+  writeFileSync(join(w.config, 'config.json'), JSON.stringify({ handle: 'tester', pstack: '1.0.0', orgs: { acme: { owners: ['acme-eng'] } }, repos: { web: { checkout: w.repo } } }));
+  writeFileSync(join(w.config, 'playbooks', 'mine.md'), '---\nextends: babysit\nwhen: w\n---\n\n- **In** "Declare the mode" see babysit step 6\n');
+  assert.equal(w.run(['check']).status, 0);
+  const before = readFileSync(join(w.config, 'config.json'), 'utf8');
+  const r = w.run(['check', '--every-repo', '--json']);
+  assert.equal(r.status, 1);
+  assert.match(JSON.parse(r.stdout).problems[0].message, /babysit step 6, but babysit has \d steps/);
+  assert.equal(readFileSync(join(w.config, 'config.json'), 'utf8'), before);
+  assert.equal(w.run(['check', '--every-repo', '--repo', 'web']).status, 2);
+});
+
+test('a spaced dash after a step number is prose, not a range', () => {
+  const w = world({ files: { 'playbooks/notes.md': '---\nextends: babysit\nwhen: Notes\n---\n\n- See babysit step 1 - 20 minutes of waiting.\n' } });
+  assert.equal(w.run(['check']).status, 0);
+  const tight = world({ files: { 'playbooks/notes.md': '---\nextends: babysit\nwhen: Notes\n---\n\n- See babysit steps 1-99.\n' } });
+  assert.equal(tight.run(['check']).status, 1);
+});
+
+test('check fails an edit line with no straight-quoted anchor', () => {
+  const w = world({ files: { 'playbooks/bad.md': '---\nextends: babysit\nwhen: Bad\n---\n\n- **In** Declare the mode, add this.\n' } });
+  const r = w.run(['check']);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /bad\.md:6: a change has no straight-quoted step text to anchor on/);
 });

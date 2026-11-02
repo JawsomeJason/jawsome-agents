@@ -8,7 +8,7 @@ Every command here checks before it writes, so a second run of the whole page ch
 mkdir -p "$CONFIG/playbooks"
 ```
 
-`mkdir -p` leaves an existing folder and its files alone. The scope folders, `playbooks/orgs/<org>/` and `playbooks/repos/<repo>/`, appear when `playbook extend --scope` or `playbook new --scope` first writes into one, so setup makes none.
+`mkdir -p` leaves an existing folder and its files alone. The scope folders, `playbooks/orgs/<org>/` and `playbooks/repos/<repo>/`, appear when someone first writes a file into one, so setup makes none.
 
 ## Create config.json when it is missing
 
