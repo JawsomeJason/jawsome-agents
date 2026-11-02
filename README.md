@@ -40,10 +40,7 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 /plugin install guard@jawsome-agents
 /plugin install claudecode-smart-usage@jawsome-agents
 /plugin install playbook@jawsome-agents
-/plugin install claudecode-playbook-guard@jawsome-agents
 ```
-
-The last is an optional companion to `playbook`, for people who want the guard hooks.
 
 ### Every other harness
 
@@ -86,7 +83,7 @@ npm run format                                     # reflow every Markdown file
 node scripts/lint.mjs                              # lint the repo's skills and docs
 node --test 'scripts/*.test.mjs'                   # tests for the lint and test-harnesses.mjs
 node --test 'plugins/standards/tests/*.test.mjs'   # tests for the standards scripts
-node --test 'plugins/playbook/tests/*.test.mjs' 'plugins/claudecode-playbook-guard/tests/*.test.mjs'   # tests for playbook
+node --test 'plugins/playbook/tests/*.test.mjs'   # tests for playbook
 node scripts/test-harnesses.mjs                    # real runs in each installed harness
 ```
 

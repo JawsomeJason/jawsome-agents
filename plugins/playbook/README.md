@@ -6,8 +6,6 @@ Playbook keeps pstack's playbook format and edit grammar, adds no verbs, and nev
 
 The plugin ships three skills. The `playbook` skill runs `playbook` for an agent. The `learn` skill turns a session's corrections into proposed playbook edits and writes the ones you pick. The `setup` skill writes your `<handle>-mode` skill, scaffolds the config dir, and records your repos' checkouts. You can rerun `setup` at any time.
 
-In Claude Code, the optional [`claudecode-playbook-guard`](../claudecode-playbook-guard/README.md) plugin stops an agent from reading an installed pstack playbook directly and from hand-editing a personal playbook file.
-
 Packs share playbooks across repos. `playbook install acme --from acme-eng/agents` copies a pack's files into `.agents/playbooks/` byte for byte, pins them in a lock, and adds its skills and rules to `rulesync.jsonc`, so one reviewed change in the source reaches every repo on its next `playbook update`, and a teammate on plain pstack keeps working. CI runs `playbook check --locked`, which needs no pstack, no source and no secret. Private playbooks stay private: `playbook install mine --user --link --from <folder>` references a local folder live, with no copy and no network. A repo that holds packs lints them in CI with `playbook check --packs .`. This repo's [`packs/jawsome`](../../packs/jawsome/pack.json) is one such pack.
 
 - The [playbook reference](skills/playbook/references/cli.md) lists the commands, flags, exit codes, and environment variables.

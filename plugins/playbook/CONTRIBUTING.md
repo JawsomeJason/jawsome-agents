@@ -3,7 +3,7 @@
 ## Run the checks
 
 ```sh
-node --test 'plugins/playbook/tests/*.test.mjs' 'plugins/claudecode-playbook-guard/tests/*.test.mjs'
+node --test 'plugins/playbook/tests/*.test.mjs'
 claude plugin validate plugins/playbook
 ```
 
