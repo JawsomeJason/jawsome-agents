@@ -400,20 +400,7 @@ test('a linked worktree installs into itself, not its main checkout', () => {
   assert.equal(w.run(['check', '--locked'], { cwd: tree }).status, 0);
 });
 
-const RULESYNC = `// Generated copies.
-{
-  "targets": ["claudecode"], // the harnesses
-  // The curated skills.
-  "sources": [
-    {
-      "source": "remix-run/agent-skills",
-      "skills": ["x"],
-    },
-    // keep this comment
-  ],
-}
-`;
-const stripJsonc = (text) => JSON.parse(text.replace(/^\s*\/\/.*$/gm, '').replace(/\/\/ the harnesses/, '').replace(/,(\s*[}\]])/g, '$1'));
+const RULESYNC = '// Generated copies.\n{\n  "sources": [], // kept\n}\n';
 
 /** A consumer with `files` at its root, whose run is `forge` as well. */
 function forgeConsumer(packs, files = {}) {
@@ -422,7 +409,7 @@ function forgeConsumer(packs, files = {}) {
   return { ...w, slug: w.from, forge: (args) => w.run(args) };
 }
 
-test('install from a forge slug fetches with git, records the slug, and writes one rulesync entry per pack, keeping comments', () => {
+test('install from a forge slug fetches with git, records the slug, prints one rulesync line per pack, and leaves the config alone', () => {
   const w = forgeConsumer(
     { both: { skills: true, rules: true, playbooks: { 'b-acme': IN_BABYSIT } }, skills: { skills: true }, rules: { rules: true }, bare: { playbooks: { 'p-acme': patch('feature', '- A note.') } } },
     { 'rulesync.jsonc': RULESYNC },
@@ -430,44 +417,32 @@ test('install from a forge slug fetches with git, records the slug, and writes o
   const r = w.forge(['install', 'both', 'skills', 'rules', 'bare', '--from', w.slug]);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal(w.manifest().packs[0].source, w.slug);
-  const text = readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8');
-  for (const comment of ['// Generated copies.', '// the harnesses', '// The curated skills.', '// keep this comment']) assert.ok(text.includes(comment), comment);
-  assert.deepEqual(stripJsonc(text).sources.slice(1), [
+  const printed = r.stdout.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l));
+  assert.deepEqual(printed, [
     { source: 'acme-eng/agents:packs/both/skills', skills: ['*'], rules: ['*'], rulesPath: 'packs/both/rules' },
     { source: 'acme-eng/agents:packs/skills/skills', skills: ['*'] },
     { source: 'acme-eng/agents:packs/rules/rules', rules: ['*'], rulesPath: 'packs/rules/rules' },
   ]);
-  assert.match(r.stdout, /rulesync install/);
-  assert.equal(w.forge(['install', 'both', 'skills', 'rules', 'bare', '--from', w.slug]).status, 0);
-  assert.equal(readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8'), text);
-  assert.equal(w.forge(['remove', 'both']).status, 0);
-  assert.equal(w.forge(['remove', 'skills']).status, 0);
-  assert.equal(w.forge(['remove', 'rules']).status, 0);
-  const after = readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8');
-  assert.deepEqual(stripJsonc(after).sources, [{ source: 'remix-run/agent-skills', skills: ['x'] }]);
-  for (const comment of ['// Generated copies.', '// the harnesses', '// The curated skills.', '// keep this comment']) assert.ok(after.includes(comment), comment);
+  assert.match(r.stdout, /add this to "sources" in rulesync\.jsonc, then run rulesync install/);
+  assert.doesNotMatch(r.stdout, /bare ships/);
+  const removed = w.forge(['remove', 'both']);
+  assert.equal(removed.status, 0);
+  assert.match(removed.stdout, /delete acme-eng\/agents:packs\/both\/skills from "sources" in rulesync\.jsonc/);
+  assert.equal(readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8'), RULESYNC);
 });
 
-test('update rewrites a rulesync entry when a pack gains rules, and drops it when the pack stops shipping both', () => {
-  const w = forgeConsumer({ p: { skills: true } }, { 'rulesync.jsonc': '{\n  "sources": []\n}\n' });
+test('update prints a new rulesync line when a pack gains rules, and the line to delete when it stops shipping both', () => {
+  const w = forgeConsumer({ p: { skills: true } });
   assert.equal(w.forge(['install', 'p', '--from', w.slug]).status, 0);
   writePacks(w.bare, { p: { skills: true, rules: true } });
-  assert.equal(w.forge(['update']).status, 0);
-  assert.deepEqual(JSON.parse(readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8')).sources, [{ source: 'acme-eng/agents:packs/p/skills', skills: ['*'], rules: ['*'], rulesPath: 'packs/p/rules' }]);
+  const gained = w.forge(['update']);
+  assert.equal(gained.status, 0);
+  assert.ok(gained.stdout.includes(JSON.stringify({ source: 'acme-eng/agents:packs/p/skills', skills: ['*'], rules: ['*'], rulesPath: 'packs/p/rules' })), gained.stdout);
   writePacks(w.bare, { p: {} });
-  assert.equal(w.forge(['update']).status, 0);
-  assert.deepEqual(JSON.parse(readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8')).sources, []);
-});
-
-test('a rulesync config with no sources key gains one, and a repo with no config gets an info line and no new file', () => {
-  const w = forgeConsumer({ p: { skills: true } }, { 'rulesync.jsonc': '// c\n{\n  "targets": ["claudecode"]\n}\n' });
-  assert.equal(w.forge(['install', 'p', '--from', w.slug]).status, 0);
-  assert.deepEqual(stripJsonc(readFileSync(join(w.repo, 'rulesync.jsonc'), 'utf8')).sources, [{ source: 'acme-eng/agents:packs/p/skills', skills: ['*'] }]);
-  const bare = forgeConsumer({ p: { skills: true } });
-  const r = bare.forge(['install', 'p', '--from', bare.slug]);
-  assert.equal(r.status, 0);
-  assert.match(r.stdout, /info: .*p ships skills or rules.*no rulesync\.jsonc/);
-  assert.equal(existsSync(join(bare.repo, 'rulesync.jsonc')), false);
+  const dropped = w.forge(['update']);
+  assert.equal(dropped.status, 0);
+  assert.match(dropped.stdout, /delete acme-eng\/agents:packs\/p\/skills from "sources"/);
+  assert.equal(existsSync(join(w.repo, 'rulesync.jsonc')), false);
 });
 
 test('a local source inside the repo cannot reach rulesync, which refuses a local path, so install says so and leaves the config alone', () => {
