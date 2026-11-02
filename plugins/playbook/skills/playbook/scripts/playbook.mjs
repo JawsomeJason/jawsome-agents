@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { accessSync, appendFileSync, constants, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,8 +21,6 @@ const SCOPES = {
   org: { dir: (c) => c.repo.org && join(c.configDir, USER_DIR, 'orgs', c.repo.org) },
   repo: { dir: (c) => c.repo.name && join(c.configDir, USER_DIR, 'repos', c.repo.name) },
 };
-// The numbered layout ordered layers by folder; extends orders files now, so these folders only mislead.
-const RETIRED_DIRS = ['01-user', '02-orgs', '03-repos', 'user', 'orgs', 'repos'];
 const TEAM_DIR = join('.agents', 'playbooks');
 const PACK_DIR = 'packs';
 const TEAM_LOCK = join('.agents', 'playbooks.lock');
@@ -410,88 +408,23 @@ function applyFamilies(bundled, graph) {
 
 const kebab = (title) => title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
 
-/**
- * Resolves a written name to a playbook stem by stem or by title, the way poteto-mode turns a title into a file name.
- * `ignored` names a poteto-mode section or skill, which a bold word after "per" often means instead.
- */
-function playbookIndex(pstackDir, playbooks, roots) {
+/** Resolves a written name to a playbook stem by stem or by title, the way poteto-mode turns a title into a file name. */
+function playbookIndex(playbooks, roots) {
   const stems = new Map();
   for (const pb of playbooks.values()) {
     stems.set(pb.name, pb.name);
     if (pb.title) stems.set(kebab(pb.title), pb.name);
   }
   for (const stem of roots.keys()) stems.set(stem, stem);
-  const skillsDir = join(pstackDir, 'skills');
-  const skills = new Set(listDir(skillsDir));
-  const guide = join(skillsDir, 'poteto-mode', 'SKILL.md');
-  const headings = isFile(guide) ? normalize(readFileSync(guide, 'utf8')).split('\n').map((l) => HEADING.exec(l)?.[1]) : [];
-  const sections = new Set(headings.filter(Boolean).map(kebab));
   return {
     resolve: (name) => stems.get(kebab(name)) ?? null,
     names: [...stems.keys()],
     root: (stem) => roots.get(stem)?.[0] ?? null,
-    ignored: (name) => [kebab(name), `principle-${kebab(name)}`].some((k) => sections.has(k) || skills.has(k)),
   };
-}
-
-const HANDOFF_PATH = /playbooks\/([a-z0-9-]+)\.md/g;
-const HANDOFF_VERB = /\b(?:(run|per)\s+|(?:route[sd]?|routing|hand(?:s|ed|ing)?)\b[^.!?\n]{0,60}?\bto\s+)/gi;
-const HANDOFF_ITEM = /^(?:\*\*([^*]+)\*\*|([a-z0-9]+(?:-[a-z0-9]+)+)(?![\w-])|([A-Z][\w'&-]*(?:[ \t]+[\w'&-]+){0,6}))/;
-const HANDOFF_JOIN = /^(?:,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+)/;
-// A kebab word that ends its clause names a thing; one followed by a noun ("run read-only checks") modifies it.
-const CLAUSE_END = /^(?:$|[.,;:!?)]|\s+(?:and|or|for|to|on|with|when|once|after|before|then|first|again|if|in|per|as)\b)/;
-
-/** The one handoff `rest` starts with: { length, ref }, where ref is null when the words name no playbook. */
-function handoffItem(rest, index, toward) {
-  const m = HANDOFF_ITEM.exec(rest);
-  if (!m) return null;
-  const [whole, bold, slug, plain] = m;
-  const ref = (name, looks) => {
-    const stem = index.resolve(name);
-    return stem || looks ? { name, stem } : null;
-  };
-  if (bold) return { length: whole.length, ref: ref(bold, !index.ignored(bold)) };
-  if (slug) return { length: whole.length, ref: ref(slug, !index.ignored(slug) && CLAUSE_END.test(rest.slice(whole.length))) };
-  const words = [...plain.matchAll(/[\w'&-]+/g)];
-  for (let k = words.length; k > 0; k--) {
-    const end = words[k - 1].index + words[k - 1][0].length;
-    if (index.resolve(plain.slice(0, end))) return { length: end, ref: ref(plain.slice(0, end), true) };
-  }
-  // A capitalized word after "route ... to" or "hand ... to" is a playbook title; after "run" or "per" it is often not ("per PR").
-  const first = words[0][0];
-  return { length: first.length, ref: ref(first, toward && /^[A-Z][a-z]/.test(first) && !index.ignored(first)) };
-}
-
-/** Every playbook reference in text, in order: { name, stem }, where stem is null when nothing defines it. */
-function handoffRefs(text, index) {
-  const found = [...text.matchAll(HANDOFF_PATH)].map((m) => ({ at: m.index, name: m[1], stem: index.resolve(m[1]) }));
-  for (const m of text.matchAll(HANDOFF_VERB)) {
-    let at = m.index + m[0].length;
-    for (;;) {
-      const item = handoffItem(text.slice(at), index, !m[1]);
-      if (!item?.ref) break;
-      found.push({ at, ...item.ref });
-      at += item.length;
-      const join = HANDOFF_JOIN.exec(text.slice(at));
-      if (!join) break;
-      at += join[0].length;
-    }
-  }
-  return found.sort((a, b) => a.at - b.at);
 }
 
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const nameAlternatives = (index) => [...index.names].sort((a, b) => b.length - a.length).map((name) => escapeRegex(name).replaceAll('-', '[ -]')).join('|');
-
-/** A known playbook named after a run-like word that handoffRefs did not register. It is often plain prose ("one PR per feature"), so it only informs. */
-function nearMisses(text, index) {
-  if (index.names.length === 0) return [];
-  const registered = handoffRefs(text, index);
-  const re = new RegExp(`\\b(?:runs?|running|ran|per)\\s+(?:\\*\\*|\`)?(${nameAlternatives(index)})(?![\\w-])`, 'gi');
-  return [...text.matchAll(re)]
-    .filter((m) => !registered.some((r) => r.at >= m.index && r.at <= m.index + m[0].length))
-    .map((m) => ({ phrase: m[0].replace(/\*\*|`/g, ''), stem: index.resolve(m[1]) }));
-}
 
 /** Each `<playbook> step N`, `steps N, M` or `steps N-M` that names a step the merged playbook lacks. */
 function badStepRefs(text, index, playbooks) {
@@ -506,29 +439,10 @@ function badStepRefs(text, index, playbooks) {
   });
 }
 
-/** Each other family the steps, then the notes, hand off to, named by its root, in order of first mention. */
-function handoffs(pb, index) {
-  const found = new Map();
-  const mention = (text, step) => {
-    for (const ref of handoffRefs(text, index)) {
-      const stem = ref.stem && index.root(ref.stem);
-      if (!stem || stem === pb.name) continue;
-      if (!found.has(stem)) found.set(stem, { playbook: stem, steps: [], inNotes: false });
-      const entry = found.get(stem);
-      if (!step) entry.inNotes = true;
-      else if (!entry.steps.includes(step)) entry.steps.push(step);
-    }
-  };
-  pb.steps.forEach((s, i) => mention(effective(s), i + 1));
-  for (const note of pb.notes) mention(note.text, null);
-  return [...found.values()];
-}
-
-function computed(pb, index) {
+function computed(pb) {
   return {
     family: pb.family,
     steps: pb.steps.map((s) => ({ text: effective(s), origin: s.origin, kind: s.kind, touched: s.touched, display: display(s), tags: tags(s) })),
-    handoffs: handoffs(pb, index),
     notes: pb.notes,
     overrides: pb.steps.flatMap((s, i) => s.overrides.map((o) => ({ step: i + 1, ...o }))),
   };
@@ -548,10 +462,7 @@ const mdFiles = (dir) => (dir ? listDir(dir).filter((f) => f.endsWith('.md') && 
 
 function readSettings(configDir) {
   const path = join(configDir, 'config.json');
-  if (!isFile(path)) {
-    if (isFile(join(configDir, 'layers.json'))) throw new UsageError(`${join(configDir, 'layers.json')}: rename it to config.json`);
-    return null;
-  }
+  if (!isFile(path)) return null;
   let raw;
   try {
     raw = JSON.parse(readFileSync(path, 'utf8'));
@@ -561,7 +472,6 @@ function readSettings(configDir) {
   const bad = (what) => new UsageError(`${path}: ${what}`);
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw bad('must be a JSON object');
   if (raw.pstack !== undefined && typeof raw.pstack !== 'string') throw bad('"pstack" must be a string');
-  if (raw.telemetry !== undefined && typeof raw.telemetry !== 'boolean') throw bad('"telemetry" must be true or false');
   const orgs = raw.orgs ?? {};
   if (typeof orgs !== 'object' || Array.isArray(orgs)) throw bad('"orgs" must be an object');
   for (const [org, entry] of Object.entries(orgs)) {
@@ -572,7 +482,7 @@ function readSettings(configDir) {
   for (const [repo, entry] of Object.entries(repos)) {
     if (entry?.checkout !== undefined && typeof entry.checkout !== 'string') throw bad(`repos.${repo}.checkout must be a path`);
   }
-  return { path, raw, pstack: raw.pstack ?? null, telemetry: raw.telemetry ?? false, orgs, repos };
+  return { path, raw, pstack: raw.pstack ?? null, orgs, repos };
 }
 
 const gitOut = (cwd, args) => {
@@ -712,39 +622,12 @@ const configDirPath = () => {
   const env = envVar('CONFIG');
   return env ? resolve(env) : join(homedir(), '.jawsome-playbooks');
 };
-const usageLogPath = () => {
-  const state = process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state');
-  return join(envVar('STATE') || join(state, 'jawsome-playbooks'), 'usage.jsonl');
-};
-
-/** With `telemetry` on, one JSON line per computed playbook. A failed write never fails the compute. */
-function logRead(ctx, name) {
-  if (!ctx.settings?.telemetry) return;
-  const path = usageLogPath();
-  const line = { ts: new Date().toISOString(), playbook: name, repo: ctx.repo.name, org: ctx.repo.org, pstack: ctx.pstack.version };
-  try {
-    mkdirSync(dirname(path), { recursive: true });
-    appendFileSync(path, `${JSON.stringify(line)}\n`);
-  } catch {}
-}
-
 const PSTACK_HELP = "playbooks need pstack's poteto-mode to run; install it with: claude plugin marketplace add michael-denyer/pstack-claude, then claude plugin install pstack@pstack-claude -s user. Other harnesses: see the pstack-claude README, or set PLAYBOOKS_PSTACK_DIR";
 
 /** `pstackOptional` lets a pack verb run without pstack: ctx.pstack is null, and the verb warns and skips what needs it. */
 function loadContext(opts, { pstackOptional = false } = {}) {
   const configDir = configDirPath();
   const settings = readSettings(configDir);
-  const configProblems = [];
-  if (settings?.raw.layers !== undefined) {
-    configProblems.push({ path: settings.path, line: 1, message: '"layers" is retired: extends sets the order, so delete the key' });
-  }
-  for (const old of RETIRED_DIRS.filter((d) => isDir(join(configDir, d)))) {
-    configProblems.push({
-      path: join(configDir, old),
-      line: 1,
-      message: 'numbered layer folders are retired; move each file into playbooks/ (playbooks/orgs/<org>/ or playbooks/repos/<repo>/ to limit where it applies) under a unique name, as playbooks.md describes',
-    });
-  }
   let pstack = null;
   try {
     pstack = resolvePstack(opts.pstack);
@@ -752,7 +635,7 @@ function loadContext(opts, { pstackOptional = false } = {}) {
     if (!(e instanceof UsageError) || !pstackOptional || opts.pstack) throw e;
   }
   const repo = resolveRepo(opts, configDir, settings);
-  return { configDir, settings, configProblems, pstack, repo, pinned: Boolean(opts.pstack) };
+  return { configDir, settings, pstack, repo, pinned: Boolean(opts.pstack) };
 }
 
 /** One playbook file, team or user. `scope` is where it is active: a repo's checkout, everywhere, or one org or repo. */
@@ -761,7 +644,6 @@ function readPlaybookFile(path, displayPath, kind, scope) {
   const { front } = parsed;
   const problems = parsed.malformed.map((line) => ({ line, message: 'a change has no straight-quoted step text to anchor on' }));
   if (!front.when?.value) problems.push({ line: 1, message: 'missing when:' });
-  if (front.layer) problems.push({ line: front.layer.line, message: 'layer: is retired, because extends sets the order; delete it' });
   return {
     path,
     display: displayPath,
@@ -830,16 +712,6 @@ function brokenLinks(ctx) {
   };
   if (isDir(ctx.configDir)) walk(ctx.configDir);
   return { problems, teamBroken };
-}
-
-/** A .agents/playbooks that links into the config dir is the retired layout, where the team folders lived in the config. */
-function linkedTeamDir(ctx) {
-  const agents = ctx.repo.agentsDir;
-  if (!agents || !lstatSync(agents).isSymbolicLink()) return [];
-  const real = realOr(agents);
-  const config = realOr(ctx.configDir);
-  if (!real || !config || !real.startsWith(`${config}${sep}`)) return [];
-  return [{ path: '.agents/playbooks', line: 1, message: 'links into the config dir; team playbooks are committed copies, so replace the link with them' }];
 }
 
 /**
@@ -916,28 +788,15 @@ function analyze(ctx, { pstackCheck }) {
   const usable = files.all.filter((f) => !f.problems.some((p) => p.line === 1 && / is (?:a bundled playbook's name|also )/.test(p.message)));
   const graph = buildGraph(bundled, usable, universe, ctx.pstack.name);
   const { playbooks, roots } = applyFamilies(bundled, graph);
-  const index = playbookIndex(ctx.pstack.dir, playbooks, roots);
-  const dormant = new Set(graph.dormant.map((f) => f.stem));
+  const index = playbookIndex(playbooks, roots);
   for (const file of files.all) {
     for (const { text, line } of file.prose) {
-      for (const { phrase, stem } of nearMisses(text, index)) {
-        file.info.push({ line, message: `"${phrase}" may name ${stem} but does not register as a handoff; if it is one, write playbooks/${stem}.md` });
-      }
       for (const { stem, n, count } of badStepRefs(text, index, playbooks)) {
         file.problems.push({ line, message: `${stem} step ${n}, but ${stem} has ${count} ${count === 1 ? 'step' : 'steps'}` });
-      }
-      for (const ref of handoffRefs(text, index)) {
-        if (ref.stem) continue;
-        const stem = kebab(ref.name);
-        const where = universe.get(stem);
-        if (dormant.has(stem)) file.info.push({ line, message: `hands off to ${ref.name}, which is dormant here` });
-        else if (where) file.info.push({ line, message: `hands off to ${ref.name}, which only ${where.where} defines` });
-        else file.problems.push({ line, message: `hands off to ${ref.name}, which no playbook defines` });
       }
     }
   }
   const links = brokenLinks(ctx);
-  links.problems.push(...linkedTeamDir(ctx));
   const chained = files.team.filter((f) => f.extends.some((s) => !bundled.has(s)));
   return { files, graph, playbooks, roots, index, links, pstackCheck: pstackCheck ? runPstackCheck(ctx, links.teamBroken, chained) : null };
 }
@@ -975,7 +834,7 @@ const userLockOf = (configDir) => ({
 function checkReport(ctx, analysis) {
   const files = analysis.files.all;
   const locks = [...(ctx.repo.root ? [lockProblems(teamLockOf(ctx.repo.root))] : []), lockProblems(userLockOf(ctx.configDir))];
-  const problems = [...ctx.configProblems, ...analysis.links.problems, ...fileProblems(files), ...locks.flatMap((l) => l.problems)];
+  const problems = [...analysis.links.problems, ...fileProblems(files), ...locks.flatMap((l) => l.problems)];
   const info = [...fileProblems(files, 'info'), ...locks.flatMap((l) => l.info)];
   const passed = problems.length === 0 && analysis.pstackCheck.status !== 'failed';
   return { pstack: ctx.pstack.version, problems, info, pstackCheck: analysis.pstackCheck, passed };
@@ -1137,10 +996,6 @@ function renderCompute(r) {
     );
     if (r.family.length > 1) sections.push(`Family: ${r.family.map((m) => `${m.stem} (${m.kind})`).join(', ')}`);
   }
-  if (r.handoffs.length) {
-    const where = (h) => [...(h.steps.length ? [`${h.steps.length > 1 ? 'steps' : 'step'} ${andList(h.steps)}`] : []), ...(h.inNotes ? ['notes'] : [])].join(', ');
-    sections.push(['Hands off to:', ...r.handoffs.map((h) => `- ${h.playbook} (${where(h)})`)].join('\n'));
-  }
   if (r.notes.length) sections.push(['Notes:', ...r.notes.map((n) => `- ${n.text}   [${n.file}]`)].join('\n'));
   if (r.overrides.length) {
     const line = (o) => `- step ${o.step}: ${o.file} ${o.verb === 'Replace' ? 'replaced' : 'added to'} "${o.quote}" (${o.origin}${o.after ? `, after ${o.after.join(', ')}` : ''})`;
@@ -1167,7 +1022,6 @@ function runCompute(ctx, opts, name) {
   const analysis = analyze(ctx, { pstackCheck: true });
   const { root, stem } = familyOf(analysis, name);
   const pb = analysis.playbooks.get(root);
-  logRead(ctx, root);
   if (needsRecord(ctx)) {
     const report = checkReport(ctx, analysis);
     if (!report.passed) return { out: opts.json ? checkJson(report, false) : renderCheck(report, ctx.pstack.name), status: 1 };
@@ -1178,10 +1032,10 @@ function runCompute(ctx, opts, name) {
   const fileFound = fileProblems(touching);
   // Its edits reach no playbook, and any playbook may be the one it meant, so every show reports it.
   const unresolved = analysis.files.all.filter((f) => f.unresolved && !touching.includes(f));
-  const problems = [...ctx.configProblems, ...analysis.links.problems, ...fileFound, ...fileProblems(unresolved)];
+  const problems = [...analysis.links.problems, ...fileFound, ...fileProblems(unresolved)];
   const withheld = fileFound.length > 0;
-  const empty = { family: pb.family, steps: [], notes: [], overrides: [], handoffs: [] };
-  const result = { playbook: root, asked: stem, ...(withheld ? empty : computed(pb, analysis.index)), problems, pstackCheck: analysis.pstackCheck, withheld };
+  const empty = { family: pb.family, steps: [], notes: [], overrides: [] };
+  const result = { playbook: root, asked: stem, ...(withheld ? empty : computed(pb)), problems, pstackCheck: analysis.pstackCheck, withheld };
   const status = problems.length || analysis.pstackCheck.status === 'failed' ? 1 : 0;
   if (!opts.json) return { out: renderCompute({ ...result, partial: unresolved.length > 0, header: headerParts(ctx) }), status };
   const { repo } = ctx;
@@ -1197,7 +1051,6 @@ function runCompute(ctx, opts, name) {
       steps: result.steps.map(({ text, origin, kind, touched }) => ({ text, origin, kind, touched })),
       notes: result.notes,
       overrides: result.overrides,
-      handoffs: result.handoffs,
       problems,
       pstackCheck: analysis.pstackCheck,
     },
@@ -1799,7 +1652,7 @@ const OPTIONS = {
   user: { help: 'Act on packs in the config dir, active everywhere, instead of this repo.' },
   link: { help: 'With --user and a local folder: reference the folder live instead of copying.' },
   locked: { help: 'Verify only the lock, offline, with no pstack and no source. With --user, the config dir lock.' },
-  packs: { value: '<root>', help: "Lint every pack in a source repo, with no pstack: pack.json, stems, requires, when, layer." },
+  packs: { value: '<root>', help: "Lint every pack in a source repo, with no pstack: pack.json, stems, requires, when." },
   'every-repo': { help: 'Check with no repo and in each repo config.json records.' },
   help: { short: 'h', help: 'Print this page.' },
 };

@@ -5,7 +5,7 @@ Hand these rules to pstack's automate-me skill as fixed requirements for the `<h
 1. The mode skill runs poteto-mode first, every time it fires. Playbook changes only how the agent assembles playbook steps, and poteto-mode owns everything else.
 2. It performs poteto-mode's copy-and-apply step with `playbook show <playbook>`, and copies the output into the todolist once. The computed list already holds the bundled steps and every team and personal file's edits, so applying the project playbooks again would double them.
 3. It names every line under `Overrides:` in its reply, giving the stem of the file that made the change and the step it changed. An override changes behavior the operator expects from pstack, so the reply must always name it.
-4. When the run reaches a playbook listed under `Hands off to:`, it computes that playbook with `playbook show` too, and runs the computed steps. The callee's own family changes its steps, so running the bundled text would drop them.
+4. When a step sends the work to another playbook, it computes that playbook with `playbook show` too, and runs the computed steps. The callee's own family changes its steps, so running the bundled text would drop them.
 5. It runs `playbook` when it is on `PATH`. When it is not on `PATH`, it follows poteto-mode as written, because the mode skill must still work on a machine without playbook.
 
 ## Trigger

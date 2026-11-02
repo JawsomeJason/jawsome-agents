@@ -760,9 +760,8 @@ test('check --packs passes a clean source with no pstack, and returns the check 
 
 test('check --packs names each broken rule with its file and line', () => {
   const noWhen = '---\nextends: babysit\n---\n\n- A note.\n';
-  const layered = `---\nextends: babysit\n${WHEN}layer: org\n---\n\n- A note.\n`;
   const root = sourceRepo({
-    a: { requires: ['ghost', 'c1'], playbooks: { 'no-when': noWhen, layered, same: IN_BABYSIT, unquoted: patch('babysit', '- **In** Work the merge frontier x'), edits: standaloneBody('Step.').replace('1. Step.', '- **In** "x" y\n\n1. Step.') } },
+    a: { requires: ['ghost', 'c1'], playbooks: { 'no-when': noWhen, same: IN_BABYSIT, unquoted: patch('babysit', '- **In** Work the merge frontier x'), edits: standaloneBody('Step.').replace('1. Step.', '- **In** "x" y\n\n1. Step.') } },
     b: { playbooks: { same: IN_BABYSIT, 'reaches-up': patch('no-when', '- A note.'), 'p-one': patch('p-two', '- A note.'), 'p-two': patch('p-one', '- A note.') } },
     c1: { requires: ['c2'] },
     c2: { requires: ['c1'] },
@@ -771,7 +770,6 @@ test('check --packs names each broken rule with its file and line', () => {
   assert.equal(r.status, 1);
   for (const line of [
     /packs\/a\/playbooks\/no-when\.md:1: missing when:/,
-    /packs\/a\/playbooks\/layered\.md:4: layer: is retired/,
     /packs\/b\/playbooks\/same\.md:1: .*packs\/a\/playbooks\/same\.md/,
     /packs\/a\/pack\.json:1: requires ghost, which no pack here defines/,
     /packs\/c[12]\/pack\.json:1: requires a cycle: /,
