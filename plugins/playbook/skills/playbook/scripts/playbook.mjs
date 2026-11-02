@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { accessSync, appendFileSync, constants, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, appendFileSync, constants, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1872,34 +1872,18 @@ function runList(ctx, opts) {
 }
 
 const SCRIPT = fileURLToPath(import.meta.url);
-const README = fileURLToPath(new URL('../../../README.md', import.meta.url));
 const SELF_BIN = fileURLToPath(new URL('../../../bin/playbook', import.meta.url));
-// A plugin wraps the skill folder in a manifest; an install of the skill alone (a skills CLI, rulesync) has none.
-const PLUGIN_MANIFEST = fileURLToPath(new URL('../../../.claude-plugin/plugin.json', import.meta.url));
 const SKILL_SCRIPT = join('skills', 'playbook', 'scripts', 'playbook.mjs');
-const MARKETPLACE = 'jawsome-agents';
 const MARKS = { ok: '✓', fail: '✗', info: '-' };
-const PLUGIN = 'playbook';
+const SETUP_HINT = 'run the setup skill';
+const LINK_HINT = "link the plugin's bin/playbook, or a skill's scripts/playbook.mjs, into a folder on PATH, from a copy that updates in place";
 
-const shellQuote = (s) => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replaceAll("'", "'\\''")}'`);
-const sh = (...words) => words.map(shellQuote).join(' ');
-const finding = (id, status, message, { details = [], fixes = [] } = {}) => ({ id, status, message, details, fixes });
-const runFix = (command) => ({ command, run: true });
-const showFix = (command) => ({ command, run: false });
+const finding = (id, status, message, details = []) => ({ id, status, message, details });
 const realOr = (path) => {
   try {
     return realpathSync(path);
   } catch {
     return null;
-  }
-};
-
-const isExecutable = (path) => {
-  try {
-    accessSync(path, constants.X_OK);
-    return true;
-  } catch {
-    return false;
   }
 };
 
@@ -1920,188 +1904,53 @@ const isOurs = (path) => {
   return Boolean(real) && (isFile(join(dirname(real), '..', SKILL_SCRIPT)) || real.endsWith(join(sep, 'scripts', 'playbook.mjs')));
 };
 
-/** The dot-folder skill installs of playbook in the home directory and the current checkout, such as a skills CLI writes. */
-function skillInstalls(home, cwd) {
-  const root = findCheckout(cwd)?.root;
-  return [home, root].filter(Boolean).flatMap((base) => listDir(base).filter((e) => e.startsWith('.')).map((dot) => join(base, dot, SKILL_SCRIPT)).filter(isFile).map((path) => dirname(dirname(path))));
-}
-
-/** The `| Harness |` table rows of README install step `step`, as { harness, cell } with the Commands cell. */
-function readmeRows(step) {
-  let text;
-  try {
-    text = readFileSync(README, 'utf8');
-  } catch {
-    return null;
-  }
-  const lines = (text.split(/^### /m).find((s) => s.startsWith(`${step}.`)) ?? '').split('\n');
-  const header = lines.findIndex((line) => /^\|\s*Harness\s*\|/.test(line));
-  if (header === -1) return null;
-  const rows = [];
-  for (const line of lines.slice(header + 2)) {
-    if (!line.startsWith('|')) break;
-    const [, harness, cell] = line.split('|').map((c) => c.trim());
-    rows.push({ harness, cell });
-  }
-  return rows;
-}
-
-/**
- * The operator's harness, as far as doctor can drive it. With `claude` on PATH, fixes are Claude Code's own
- * commands; every other harness gets each README row printed, because playbook cannot run its installer.
- */
-const NO_README_FIXES = {
-  1: 'claude plugin marketplace add michael-denyer/pstack-claude, then claude plugin install pstack@pstack-claude -s user; or set PLAYBOOKS_PSTACK_DIR to the folder that holds skills/poteto-mode',
-  2: 'install the playbook skill or plugin as the README of its source repo says',
-  5: 'run the setup skill',
-};
-
-function harnessOf(home) {
-  const claude = onPath('claude');
-  const claudeJson = (args) => {
-    const r = spawnSync(claude, args, { encoding: 'utf8' });
-    try {
-      return r.status === 0 ? JSON.parse(r.stdout) : null;
-    } catch {
-      return null;
-    }
-  };
-  let marketplaces;
-  const knownMarketplaces = () => (marketplaces ??= new Set((claudeJson(['plugin', 'marketplace', 'list', '--json']) ?? []).map((m) => m.name)));
-  const fixes = (step, { run }) => {
-    const rows = readmeRows(step);
-    if (!rows) return [showFix(NO_README_FIXES[step])];
-    if (!claude) return rows.map((r) => showFix(`${r.harness}: ${r.cell.replaceAll('`', '')}`));
-    const commands = [...(rows.find((r) => r.harness === 'Claude Code')?.cell ?? '').matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-    const market = commands.map((c) => /^claude plugin install \S+@(\S+)/.exec(c)?.[1]).find(Boolean);
-    const added = run && market && knownMarketplaces().has(market);
-    return commands.filter((c) => !(added && c.startsWith('claude plugin marketplace add '))).map((command) => ({ command, run }));
-  };
-  return { home, claude, claudeJson, fixes };
-}
-
-function checkPstack(h) {
+function checkPstack() {
   try {
     const { dir, version } = resolvePstack(null);
     return { dir, finding: finding('pstack', 'ok', `pstack-claude ${version}: ${dir}`) };
   } catch (e) {
     if (!(e instanceof UsageError)) throw e;
     const env = envVar('PSTACK_DIR');
-    if (env) return { finding: finding('pstack', 'fail', `PLAYBOOKS_PSTACK_DIR=${env} holds no pstack`, { fixes: [showFix('unset PLAYBOOKS_PSTACK_DIR, or set it to the folder that holds skills/poteto-mode')] }) };
-    return { finding: finding('pstack', 'fail', "pstack-claude not found; playbooks need its poteto-mode to run", { fixes: h.fixes(1, { run: true }) }) };
+    if (env) return { finding: finding('pstack', 'fail', `PLAYBOOKS_PSTACK_DIR=${env} holds no pstack`) };
+    return { finding: finding('pstack', 'fail', 'pstack-claude not found', [PSTACK_HELP]) };
   }
 }
 
-function checkPlugin(h) {
-  const asSkill = !isFile(PLUGIN_MANIFEST);
-  if (asSkill) return finding('plugin', 'ok', `playbook skill at ${dirname(dirname(SCRIPT))}, installed without a plugin, which is complete`);
-  const skills = skillInstalls(h.home, process.cwd());
-  const skillOnly = () => skills.length && finding('plugin', 'ok', `playbook skill at ${skills[0]}, installed without a plugin, which is complete`);
-  if (h.claude) {
-    const plugins = h.claudeJson(['plugin', 'list', '--json']);
-    if (!Array.isArray(plugins)) return finding('plugin', 'fail', 'claude plugin list --json failed', { fixes: [showFix('claude plugin list --json')] });
-    const ours = plugins.find((p) => typeof p.id === 'string' && p.id.startsWith(`${PLUGIN}@`));
-    if (ours) return finding('plugin', 'ok', `${PLUGIN} ${ours.version} installed in Claude Code (${ours.scope} scope)`);
-    return skillOnly() || finding('plugin', 'fail', `${PLUGIN} is not installed in Claude Code`, { fixes: h.fixes(2, { run: true }) });
+function checkCommand() {
+  const found = onPath('playbook');
+  if (found && !isOurs(found)) return finding('cli', 'fail', `playbook on PATH is ${found}, which is not this tool`, [LINK_HINT]);
+  if (found) {
+    const real = realOr(found);
+    return finding('cli', 'ok', `playbook: ${found}${real === found ? '' : ` -> ${real}`}`);
   }
-  for (const plugins of pluginDirs()) {
-    const path = join(plugins, 'installed_plugins.json');
-    let record;
-    try {
-      record = JSON.parse(readFileSync(path, 'utf8'));
-    } catch {
-      continue;
-    }
-    const [, installs] = Object.entries(record?.plugins ?? {}).find(([key]) => key.startsWith(`${PLUGIN}@`)) ?? [];
-    if (Array.isArray(installs) && installs.length) return finding('plugin', 'ok', `${PLUGIN} ${installs[0].version} in ${path}`);
-  }
-  return skillOnly() || finding('plugin', 'fail', `${PLUGIN} is not installed in any harness install record`, { fixes: h.fixes(2, { run: false }) });
+  // The skill runs its script by path, so a link only adds the short command for the operator.
+  if (!isFile(SELF_BIN)) return finding('cli', 'info', `playbook is not on PATH; agents run node ${SCRIPT}`, [LINK_HINT]);
+  return finding('cli', 'fail', 'playbook is not on PATH', [LINK_HINT]);
 }
 
-function checkCommands(h) {
-  const binDir = join(h.home, '.local', 'bin');
-  const out = [];
-  for (const name of ['playbook']) {
-    const clone = join(h.home, '.claude', 'plugins', 'marketplaces', MARKETPLACE, 'plugins', PLUGIN, 'bin', name);
-    const asSkill = !isFile(SELF_BIN);
-    const source = asSkill ? SCRIPT : h.claude && isFile(clone) ? clone : SELF_BIN;
-    const dest = join(binDir, name);
-    const link = sh('ln', '-s', source, dest);
-    const found = onPath(name);
-    if (!found) {
-      const fixes = lexists(dest)
-        ? []
-        : [...(isDir(binDir) ? [] : [runFix(sh('mkdir', '-p', binDir))]), ...(asSkill && !isExecutable(SCRIPT) ? [runFix(sh('chmod', '+x', SCRIPT))] : []), runFix(link)];
-      if (!(process.env.PATH ?? '').split(delimiter).includes(binDir)) fixes.push(showFix(`add ${binDir} to PATH`));
-      // The skill runs its script by path, so a link only adds the short command for the operator.
-      if (asSkill) out.push(finding('cli', 'info', `${name} is not on PATH; agents run node ${SCRIPT}`, { fixes }));
-      else out.push(finding('cli', 'fail', `${name} is not on PATH`, { fixes }));
-    } else if (!isOurs(found)) {
-      out.push(finding('cli', 'fail', `${name} on PATH is ${found}, which is not this tool`, { fixes: [showFix(`move ${found} aside, then: ${link}`)] }));
-    } else {
-      const real = realOr(found);
-      out.push(finding('cli', 'ok', `${name}: ${found}${real === found ? '' : ` -> ${real}`}`));
-    }
-  }
-  return out;
-}
-
-function checkConfig(h, configDir) {
-  const setup = () => ({ fixes: h.fixes(5, { run: false }) });
-  if (!isDir(configDir)) return { finding: finding('config', 'fail', `no config dir at ${configDir}`, setup()) };
+function checkConfig(configDir) {
   let settings;
   try {
     settings = readSettings(configDir);
   } catch (e) {
     if (!(e instanceof UsageError)) throw e;
-    return { finding: finding('config', 'fail', e.message, setup()) };
+    return { finding: finding('config', 'fail', e.message, [SETUP_HINT]) };
   }
-  if (!settings) return { finding: finding('config', 'fail', `${join(configDir, 'config.json')} is missing`, setup()) };
+  if (!settings) return { finding: finding('config', 'info', `no config at ${configDir}, so no personal playbooks`, [SETUP_HINT]) };
   const { handle } = settings.raw;
-  if (typeof handle !== 'string' || !handle) return { settings, finding: finding('config', 'fail', `${settings.path} has no handle`, setup()) };
+  if (typeof handle !== 'string' || !handle) return { settings, finding: finding('config', 'fail', `${settings.path} has no handle`, [SETUP_HINT]) };
   return { settings, handle, finding: finding('config', 'ok', `config ${configDir}: config.json parses, handle ${handle}`) };
 }
 
-function checkMode(h, configDir, handle) {
+function checkMode(configDir, handle) {
   const name = `${handle}-mode`;
   const modeDir = join(configDir, 'mode', name);
-  if (!isFile(join(modeDir, 'SKILL.md'))) return finding('mode', 'fail', `${modeDir}/SKILL.md is missing`, { fixes: h.fixes(5, { run: false }) });
-  const skillDirs = listDir(h.home).filter((e) => e.startsWith('.')).map((dot) => join(h.home, dot, 'skills')).filter(isDir);
+  if (!isFile(join(modeDir, 'SKILL.md'))) return finding('mode', 'fail', `${modeDir}/SKILL.md is missing`, [SETUP_HINT]);
+  const home = homedir();
+  const skillDirs = listDir(home).filter((e) => e.startsWith('.')).map((dot) => join(home, dot, 'skills')).filter(isDir);
   const linked = skillDirs.filter((dir) => realOr(join(dir, name)) === realOr(modeDir));
   if (linked.length) return finding('mode', 'ok', `mode skill ${modeDir} is linked into ${linked.join(', ')}`);
-  const message = `mode skill ${modeDir} is not linked into any skills folder`;
-  if (!h.claude) return finding('mode', 'fail', message, { fixes: [showFix(`ln -s ${shellQuote(modeDir)} <skills folder your harness loads>/${name}`)] });
-  const dir = join(h.home, '.claude', 'skills');
-  const dest = join(dir, name);
-  const link = sh('ln', '-s', modeDir, dest);
-  const fixes = lexists(dest) ? [showFix(`move ${dest} aside, then: ${link}`)] : [...(isDir(dir) ? [] : [runFix(sh('mkdir', '-p', dir))]), runFix(link)];
-  return finding('mode', 'fail', message, { fixes });
-}
-
-/**
- * One repo's team playbooks, in the checkout config.json records or else the current one. They are committed copies;
- * a link into the config dir is the retired layout, and an untracked folder reaches only the operator.
- */
-function checkRepo(h, configDir, settings, name, here) {
-  const id = `repo:${name}`;
-  const recorded = settings.repos[name]?.checkout;
-  const path = recorded ?? (here?.name === name ? here.root : null);
-  if (!path) return { finding: finding(id, 'info', `${name}: no checkout known; set repos.${name}.checkout in config.json, or run doctor from the checkout`) };
-  const checkout = isDir(path) ? findCheckout(path) : null;
-  if (!checkout) return { finding: finding(id, 'fail', `${name}: ${path} is not a git checkout`, { fixes: h.fixes(5, { run: false }) }) };
-  const { root } = checkout;
-  const dir = join(root, TEAM_DIR);
-  if (!lexists(dir)) return { root, finding: finding(id, 'info', `${name}: ${root} has no .agents/playbooks, so it has no team playbooks`) };
-  const config = realOr(configDir);
-  const real = realOr(dir);
-  if (lstatSync(dir).isSymbolicLink() && config && real?.startsWith(`${config}${sep}`)) {
-    return { root, finding: finding(id, 'fail', `${name}: ${dir} links into the config dir; team playbooks are committed copies, so replace the link with them`, { fixes: [showFix(sh('rm', dir))] }) };
-  }
-  const count = mdFiles(dir).length;
-  const held = `${name}: ${dir} holds ${count} team ${count === 1 ? 'playbook' : 'playbooks'}`;
-  const tracked = gitOut(root, ['ls-files', '--', TEAM_DIR]);
-  if (!tracked) return { root, finding: finding(id, 'info', `${held}, but git does not track them, so teammates do not see them`) };
-  return { root, finding: finding(id, 'ok', held) };
+  return finding('mode', 'fail', `mode skill ${modeDir} is not linked into any skills folder`, [SETUP_HINT]);
 }
 
 /** Runs `playbook check` pinned to the resolved pstack, so it reads the same files and records nothing. */
@@ -2111,83 +1960,41 @@ function checkRun(repo, cwd, pstackDir) {
   const args = [SCRIPT, 'check', '--json', ...(repo ? ['--repo', repo] : []), ...(pstackDir ? ['--pstack', pstackDir] : [])];
   const r = spawnSync(process.execPath, args, { cwd, encoding: 'utf8' });
   if (r.status === 0) return finding(id, 'ok', `${label} passed`);
-  if (r.status !== 1) return finding(id, 'fail', `${label} could not run`, { details: r.stderr.split('\n').filter(Boolean) });
+  if (r.status !== 1) return finding(id, 'fail', `${label} could not run`, r.stderr.split('\n').filter(Boolean));
   const report = JSON.parse(r.stdout);
-  const details = [...report.problems.map(problemLine), ...(report.pstackCheck.status === 'failed' ? report.pstackCheck.lines : [])];
-  return finding(id, 'fail', `${label} failed`, { details, fixes: [showFix(`fix each line above, then run ${label}`)] });
+  return finding(id, 'fail', `${label} failed`, [...report.problems.map(problemLine), ...(report.pstackCheck.status === 'failed' ? report.pstackCheck.lines : [])]);
 }
 
 function diagnose() {
-  const h = harnessOf(homedir());
   const cwd = process.cwd();
   const configDir = configDirPath();
-  const pstack = checkPstack(h);
-  const findings = [pstack.finding, checkPlugin(h), ...checkCommands(h)];
-  const config = checkConfig(h, configDir);
-  findings.push(config.finding);
-  if (config.handle) findings.push(checkMode(h, configDir, config.handle));
-  const repos = Object.keys(config.settings?.repos ?? {});
+  const pstack = checkPstack();
+  const config = checkConfig(configDir);
+  const findings = [pstack.finding, checkCommand(), config.finding];
+  if (config.handle) findings.push(checkMode(configDir, config.handle));
   const here = findCheckout(cwd);
-  const runs = [];
-  for (const name of repos) {
-    const repo = checkRepo(h, configDir, config.settings, name, here);
-    findings.push(repo.finding);
-    runs.push(checkRun(name, repo.root ?? cwd, pstack.dir));
+  const recorded = Object.entries(config.settings?.repos ?? {}).map(([name, r]) => [name, r.checkout ?? (here?.name === name ? here.root : null)]);
+  for (const [name, path] of recorded.length ? recorded : [[null, here?.root]]) {
+    const root = path && isDir(path) ? findCheckout(path)?.root : null;
+    // An untracked team folder reaches only the operator.
+    if (root && lexists(join(root, TEAM_DIR)) && !gitOut(root, ['ls-files', '--', TEAM_DIR])) findings.push(finding(`repo:${name ?? basename(root)}`, 'info', `${join(root, TEAM_DIR)}: git does not track these team playbooks, so teammates do not see them`));
+    findings.push(checkRun(name, root ?? cwd, pstack.dir));
   }
-  if (repos.length === 0) runs.push(checkRun(null, cwd, pstack.dir));
-  return [...findings, ...runs];
+  return findings;
 }
 
 function renderDoctor(findings) {
   const failed = findings.filter((f) => f.status === 'fail').length;
   return [
-    ...findings.flatMap((f) => [`${MARKS[f.status]} ${f.message}`, ...[...f.details, ...f.fixes.map((x) => x.command)].map((l) => `    ${l}`)]),
+    ...findings.flatMap((f) => [`${MARKS[f.status]} ${f.message}`, ...f.details.map((l) => `    ${l}`)]),
     failed ? `doctor failed: ${failed} ${failed === 1 ? 'problem' : 'problems'}` : 'doctor passed',
   ].join('\n');
 }
 
-function ask(question) {
-  process.stdout.write(question);
-  const byte = Buffer.alloc(1);
-  let line = '';
-  for (;;) {
-    let n;
-    try {
-      n = readSync(0, byte, 0, 1, null);
-    } catch (e) {
-      if (e.code === 'EAGAIN') continue;
-      throw e;
-    }
-    if (n === 0 || byte[0] === 0x0a) return line.trim();
-    line += String.fromCharCode(byte[0]);
-  }
-}
-
-function applyFixes(findings) {
-  for (const f of findings.filter((x) => x.fixes.some((fix) => fix.run))) {
-    const commands = f.fixes.filter((fix) => fix.run).map((fix) => fix.command);
-    process.stdout.write(`\n${f.message}\n${commands.map((c) => `  ${c}\n`).join('')}`);
-    if (!/^y(es)?$/i.test(ask('run these? [y/N] '))) continue;
-    for (const command of commands) {
-      if (spawnSync('sh', ['-c', command], { stdio: 'inherit' }).status === 0) continue;
-      process.stdout.write(`failed: ${command}\n`);
-      break;
-    }
-  }
-}
-
 function runDoctor(opts) {
   const findings = diagnose();
-  const status = (list) => (list.some((f) => f.status === 'fail') ? 1 : 0);
-  if (opts.json) return { out: { passed: status(findings) === 0, findings }, status: status(findings) };
-  const report = renderDoctor(findings);
-  const fixable = findings.some((f) => f.fixes.some((fix) => fix.run));
-  if (!opts.fix || !fixable) return { out: report, status: status(findings) };
-  if (!process.stdin.isTTY) return { out: `${report}\nfixes not run: no terminal to ask on`, status: status(findings) };
-  process.stdout.write(`${report}\n`);
-  applyFixes(findings);
-  const after = diagnose();
-  return { out: `\nafter fixes:\n${renderDoctor(after)}`, status: status(after) };
+  const status = findings.some((f) => f.status === 'fail') ? 1 : 0;
+  return { out: opts.json ? { passed: status === 0, findings } : renderDoctor(findings), status };
 }
 
 // One table drives parsing, the usage and every help page, so none of them can drift. It is plain node:util parseArgs in
@@ -2207,7 +2014,6 @@ const OPTIONS = {
   locked: { help: 'Verify only the lock, offline, with no pstack and no source. With --user, the config dir lock.' },
   packs: { value: '<root>', help: "Lint every pack in a source repo, with no pstack: pack.json, stems, requires, when, layer." },
   'every-repo': { help: 'Check with no repo and in each repo config.json records.' },
-  fix: { help: 'Ask before each fix, then run it.' },
   help: { short: 'h', help: 'Print this page.' },
 };
 
@@ -2307,10 +2113,9 @@ const COMMANDS = {
     run: (opts) => (opts.packs !== null ? runPackLint(opts) : opts.locked ? runLockedCheck(opts) : runCheck(loadContext(opts), opts)),
   },
   doctor: {
-    summary: 'Check the whole install, and print the commands that fix each failure.',
-    options: ['fix', 'json'],
-    oneOf: [['fix', 'json']],
-    examples: ['playbook doctor', 'playbook doctor --fix'],
+    summary: 'Check the install, with a short hint under each failure.',
+    options: ['json'],
+    examples: ['playbook doctor', 'playbook doctor --json'],
     run: (opts) => runDoctor(opts),
   },
   help: {

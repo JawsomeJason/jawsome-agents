@@ -11,7 +11,7 @@ playbook install <pack>... [--from <owner/repo|path>] [--user] [--link] [--repo 
 playbook update [<pack>...] [--user] [--repo <repo>] [--pstack <dir-or-version>]
 playbook remove <pack> [--user] [--repo <repo>] [--pstack <dir-or-version>]
 playbook check [--locked | --packs <root>] [--user] [--repo <repo> | --every-repo] [--json] [--pstack <dir-or-version>]
-playbook doctor [--fix | --json]
+playbook doctor [--json]
 playbook help [<command>]
 ```
 
@@ -30,7 +30,6 @@ Bare `playbook`, `playbook help` and `--help` print the usage and exit 0. `playb
 | `--with <text\|->`, `--with-file <path>` | `extend` only. The change text, from the argument, from stdin when it is `-`, or from a file. Give one. |
 | `--when <sentence>` | `extend` when it creates a file, and `new`. The `when:` sentence. |
 | `--from-file <path\|->` | `new` only. The numbered steps, from a file or stdin. |
-| `--fix` | `doctor` only. Asks before each fix, then runs it. See [doctor](#doctor). |
 | `--pstack <dir-or-version>` | Uses that pstack instead of the one playbook finds. It takes a folder, or a version next to the one in use or in any plugin cache. With this flag, playbook never writes `config.json`, so you can preview an upgrade. |
 
 ## Exit codes
@@ -39,7 +38,7 @@ Bare `playbook`, `playbook help` and `--help` print the usage and exit 0. `playb
 | --- | --- |
 | 0 | Clean. |
 | 1 | A validator problem, a `locate` quote that names no step or more than one, pstack's own checker failed, or a `doctor` check failed. `compute` still prints the playbook, except when the `check` it runs after a pstack change fails. Then it prints the `check` result. |
-| 2 | Bad usage, such as `--repo` or `--pstack` with `doctor`, or `--fix` with `--json` or with another command. No pstack found, an unknown `--pstack` version, a `config.json` that is not valid JSON or has the wrong shape, or an unknown playbook. The message goes to stderr. |
+| 2 | Bad usage, such as `--repo` or `--pstack` with `doctor`. No pstack found, an unknown `--pstack` version, a `config.json` that is not valid JSON or has the wrong shape, or an unknown playbook. The message goes to stderr. |
 
 ## Environment
 
@@ -280,29 +279,16 @@ These print `info:` lines and do not fail the check:
 
 ## doctor
 
-`doctor` checks the whole install and prints one line per check: `✓` for a pass, `✗` for a failure, and `-` for information. Under a `✗` or `-` line it prints the commands that fix it, and only `✗` fails doctor. The checks run in this order:
+`doctor` checks the install and prints one line per check: `✓` for a pass, `✗` for a failure, and `-` for information. Only `✗` fails doctor. A failing line carries one short hint. doctor writes nothing, and runs `check` with `--pstack` set to the pstack it found, so `check` records no version.
 
 | Check | Passes when |
 | --- | --- |
 | pstack-claude | playbook finds a pstack, by the search order under [Environment](#environment). The line names the version and folder. |
-| install | The running script is a skill with no plugin around it, `claude plugin list --json` lists a `playbook@` plugin, or, without `claude` on `PATH`, an `installed_plugins.json` in a dot-folder of the home directory lists one. A `skills/playbook` folder in a dot-folder of the home directory or the checkout passes too, because a skill alone is a complete install. |
 | cli | `playbook` on `PATH` resolves to a plugin's `bin/` script or the skill's own script. A missing link fails in a plugin install, and prints a `-` line in a skill install, where agents run the script by path. |
-| config | The config dir exists, and `config.json` parses and has a `handle`. |
+| config | The config dir holds a `config.json` that parses and has a `handle`. With no `config.json` it prints a `-` line, and skips the mode skill. |
 | mode skill | `<config>/mode/<handle>-mode/SKILL.md` exists, and a `skills` folder in a dot-folder of the home directory links to it. |
-| each repo | For each repo in `config.json` `repos`, the checkout's `.agents/playbooks` is a folder that git tracks. An untracked folder prints a `-` line, because only the operator sees it. A missing folder prints a `-` line. A link into the config dir, the retired layout, fails with an `rm` command shown as advice. |
-| check | `playbook check --repo <repo>` passes for each repo, or `playbook check` passes when the config has no repos. |
+| check | `playbook check --repo <repo>` passes for each repo in `config.json` `repos`, or `playbook check` passes when the config has no repos. A `.agents/playbooks` that git does not track prints a `-` line, because only the operator sees it. |
 
-doctor finds a repo's checkout at `repos.<repo>.checkout` in `config.json`, which the `setup` skill records. Without that key, it uses the current directory's checkout when its key matches. A repo with neither gets a `-` line, and doctor skips its team check.
-
-doctor writes nothing without `--fix`. It runs `check` with `--pstack` set to the pstack it found, so `check` does not record a version in `config.json`.
-
-The fixes depend on the harness:
-
-- With `claude` on `PATH`, a missing plugin gets that harness's install commands from the README's tables. doctor leaves out `claude plugin marketplace add` when `claude plugin marketplace list --json` already lists that marketplace.
-- Without `claude`, doctor prints the row of every harness from the README's table for that install step. Playbook cannot run another harness's installer.
-- A missing command link gets an `ln -s` command.
-- A fix that would replace a file prints as advice, such as `move <path> aside, then: ln -s ...`, because the file in the way may be the operator's own work.
-
-`--fix` prints the report, then asks `run these? [y/N]` for each `✗` or `-` line that has a command to run, and runs that check's commands on `y`. It runs only `claude plugin` commands, `mkdir -p`, and `ln -s` to a path that does not exist. A fix never copies files into a plugin cache, because a harness loads only the version its install record names. When stdin is not a terminal, `--fix` prints `fixes not run: no terminal to ask on` and runs nothing. After the fixes, doctor runs every check again and prints the new report under `after fixes:`.
+doctor finds a repo's checkout at `repos.<repo>.checkout` in `config.json`, which the `setup` skill records. Without that key, it uses the current directory's checkout when its key matches.
 
 `--json` prints the findings.
