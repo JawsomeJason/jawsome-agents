@@ -98,7 +98,7 @@ Playbook finds pstack without help when the harness keeps a plugin cache in a do
 
 Run the `setup` skill. It writes your `<handle>-mode` skill, scaffolds the config dir, records your repos' checkouts, and links the mode skill into the skill folders your harness loads. The config dir is `$HOME/.jawsome-playbooks`, or `$PLAYBOOKS_CONFIG` when you set it. If it holds rules you would not publish, keep it private.
 
-After setup, start a new session, so the harness loads `/<handle>-mode`. To check the install later, run `playbook doctor`. It prints each check with `✓` or `✗` and the commands that fix each failure. `playbook doctor --fix` asks before it runs each fix. The [doctor reference](skills/playbook/references/cli.md#doctor) lists the checks.
+After setup, start a new session, so the harness loads `/<handle>-mode`. To check the install later, run `playbook doctor`. It prints each check with `✓` or `✗` and a short hint under each failure. The [doctor reference](skills/playbook/references/cli.md#doctor) lists the checks.
 
 | Harness | How to run it | Checked |
 | --- | --- | --- |

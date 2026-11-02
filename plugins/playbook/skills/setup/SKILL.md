@@ -18,7 +18,7 @@ This skill turns a fresh install into a working playbook install. It produces a 
 
 ## Steps
 
-1. Run `playbook doctor`. If `playbook` is not on `PATH`, run `node scripts/playbook.mjs doctor` from the `playbook` skill's folder. Show the operator its output. Doctor checks the `playbook` link and prints the `ln -s` command when it is missing. Offer to run it, or `playbook doctor --fix`, so the link lands in `$HOME/.local/bin`. On a rerun, the `✗` lines show which steps below have work to do, so the questions go to what is broken.
+1. Run `playbook doctor`. If `playbook` is not on `PATH`, run `node scripts/playbook.mjs doctor` from the `playbook` skill's folder. Show the operator its output. When the `playbook` line fails, offer to link the command into `$HOME/.local/bin`, from a copy that updates in place, so the operator can run it in a terminal. On a rerun, the `✗` lines show which steps below have work to do, so the questions go to what is broken.
 2. Find the config dir: `$PLAYBOOKS_CONFIG`, else `.jawsome-playbooks` in the home directory. Read `config.json` when it exists, and use its `handle`, `modeTrigger`, and `orgs` as defaults.
 3. Ask for the handle. Propose the saved handle, a short form of `git config user.name`, and the logged-in user of the forge CLI when one is installed, then a last letter to type one. The handle names the mode skill, `<handle>-mode`.
 4. Ask for the trigger: A manual, B on a matching ask, C every session. Each pick's meaning is in [references/mode-contract.md](references/mode-contract.md).

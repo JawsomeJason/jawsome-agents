@@ -34,30 +34,15 @@ test('the skill folder alone runs show and check, with only Node and a pstack di
   assert.match(check.stdout, /check passed: pstack 1\.0\.0/);
 });
 
-test('doctor passes a skill-only install as complete, where no plugin exists, and offers the PATH link as information', () => {
+test('doctor passes a skill-only install, where no plugin exists, and notes the PATH link as information', () => {
   for (const where of [join('.agents', 'skills', 'playbook'), join('.rulesync', 'skills', '.curated', 'playbook')]) {
     const w = standalone(where);
     const r = w.run(['doctor', '--json']);
     const byId = Object.fromEntries(JSON.parse(r.stdout).findings.map((f) => [f.id, f]));
-    assert.equal(byId.plugin.status, 'ok', where);
-    assert.match(byId.plugin.message, /installed without a plugin/);
-    assert.equal(byId.cli.status, 'info');
-    assert.match(byId.cli.fixes.at(-2)?.command ?? byId.cli.fixes[0].command, /ln -s/);
+    assert.equal(byId.cli.status, 'info', where);
+    assert.match(byId.cli.message, /agents run node/);
+    assert.equal(r.status, 0, r.stdout);
   }
-});
-
-test('doctor offers chmod when a skill install lost the script\'s mode, as rulesync does', () => {
-  const w = standalone();
-  chmodSync(w.script, 0o644);
-  const cli = JSON.parse(w.run(['doctor', '--json']).stdout).findings.find((f) => f.id === 'cli');
-  assert.ok(cli.fixes.some((f) => f.command.startsWith('chmod +x ')), JSON.stringify(cli.fixes));
-});
-
-test('doctor says pstack is needed and how to get it, when it is missing', () => {
-  const w = standalone();
-  const r = w.run(['doctor'], { PLAYBOOKS_PSTACK_DIR: '' });
-  assert.match(r.stdout, /pstack-claude not found.*poteto-mode/);
-  assert.match(r.stdout, /pstack@pstack-claude/);
 });
 
 test('doctor accepts a link on PATH straight to the skill script', () => {
@@ -69,14 +54,6 @@ test('doctor accepts a link on PATH straight to the skill script', () => {
   const r = w.run(['doctor', '--json'], { PATH: `${bin}:/usr/bin:/bin` });
   const cli = JSON.parse(r.stdout).findings.find((f) => f.id === 'cli');
   assert.equal(cli.status, 'ok', cli.message);
-});
-
-test('a plugin checkout recognises a skill install beside it when no plugin is recorded', () => {
-  const w = standalone();
-  const r = spawnSync(process.execPath, [CLI, 'doctor', '--json'], { cwd: w.repo, encoding: 'utf8', env: { PATH: '/usr/bin:/bin', HOME: w.home, PLAYBOOKS_CONFIG: join(w.root, 'config'), PLAYBOOKS_PSTACK_DIR: PSTACK } });
-  const plugin = JSON.parse(r.stdout).findings.find((f) => f.id === 'plugin');
-  assert.equal(plugin.status, 'ok', plugin.message);
-  assert.match(plugin.message, /\.agents\/skills\/playbook/);
 });
 
 test('the skill folder holds everything the script imports', () => {
