@@ -1,6 +1,6 @@
 {
   "name": "playbook",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Extends pstack's poteto-mode playbooks with team and personal playbook files, ordered by their extends chains, delivers shared packs of them to any repo, and validates them against each pstack release.",
   "author": {
     "name": "Jason Featheringham",
