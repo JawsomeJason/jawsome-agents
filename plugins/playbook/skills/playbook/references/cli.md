@@ -111,7 +111,6 @@ A consumer repo commits:
 .agents/packs.json       {"packs":[{"name":"acme","source":"acme-eng/agents"}]}
 .agents/playbooks.lock   {"packs":{"acme":{"source":"acme-eng/agents","commit":"<sha>"}},"files":{"x.md":{"pack":"acme","hash":"sha256:<hex>"}}}
 .agents/playbooks/*.md   pack files, byte for byte, plus files the repo owns, outside the lock
-rulesync.jsonc           one `sources` entry per pack that ships skills or rules
 ```
 
 A lock pack entry also carries `requires` when it has any, so `remove` can refuse offline. Copies stay committed, so a teammate on plain pstack reads them with no install step and CI needs no secret.
@@ -142,15 +141,15 @@ A file the repo owns with the same bytes as the pack's is adopted into the lock.
 
 ### rulesync
 
-`install` and `update` add one `sources` entry per pack that ships skills or rules, and run nothing: the next line tells you to run `rulesync install`. They edit only the text around the entry, so comments stay. The repo path sits in `source`, after a colon, such as `acme-eng/agents:packs/acme/skills`, because rulesync locks by `source` and skips a second entry that shares one, even when its `path` differs. A pack with no rulesync config, a local source, or `--user` gets an info line, and its skills and rules are not delivered.
+`install` and `update` never edit `rulesync.jsonc`, because it is the repo's own file. For each pack that ships skills or rules, they print the exact line to add to `sources`, then you run `rulesync install`. The repo path sits in `source`, after a colon, such as `acme-eng/agents:packs/acme/skills`, because rulesync locks by `source` and skips a second entry that shares one, even when its `path` differs. A local source or `--user` gets an info line instead, and its skills and rules are not delivered.
 
 ### update
 
-`update [<pack>...]` re-fetches each named pack, or every listed pack, deletes files the pack stopped shipping, and rewrites its rulesync entry. It refuses a hand-edited file, because overwriting it would lose the change.
+`update [<pack>...]` re-fetches each named pack, or every listed pack, deletes files the pack stopped shipping, and prints its rulesync line. A pack that stopped shipping skills and rules prints which line to delete. It refuses a hand-edited file, because overwriting it would lose the change.
 
 ### remove
 
-`remove <pack>` deletes its files, its lock and manifest entries, and its rulesync entry, and removes the lock, the manifest and any folder left empty. It refuses while another installed pack requires it, or while a remaining file extends it.
+`remove <pack>` deletes its files and its lock and manifest entries, removes the lock, the manifest and any folder left empty, and prints the rulesync line to delete when it had one. It refuses while another installed pack requires it, or while a remaining file extends it.
 
 ### --user
 

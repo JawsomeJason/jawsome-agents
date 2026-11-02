@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import { basename, delimiter, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { addSource, fetcher, hashOf, isForgeSource, isPlainFile, lockProblems, PACK_NAME, packEscape, PackError, parseJsonc, readLock, readManifest, removeSource, repoLinkProblem, resolvePacks, rulesyncEntry, rulesyncKeys, sourceId } from './playbook.packs.mjs';
+import { fetcher, hashOf, isForgeSource, isPlainFile, lockProblems, PACK_NAME, packEscape, PackError, readLock, readManifest, repoLinkProblem, resolvePacks, rulesyncEntry, rulesyncKeys, sourceId } from './playbook.packs.mjs';
 
 class UsageError extends Error {
   /** `usage` adds a pointer to help: true for the general usage, or a command's name for its own line. */
@@ -1460,7 +1460,7 @@ function assertNoRulesyncClash(target, packs, lock) {
 
 const linkSource = (pack) => join(pack.dir, 'packs', pack.name, 'playbooks');
 
-/** Copies `packs` into the target, or links them, deletes what they no longer ship, and rewrites the lock, the manifest and rulesync. */
+/** Copies `packs` into the target, or links them, deletes what they no longer ship, and rewrites the lock and the manifest. */
 function syncPacks(ctx, opts, packs, fetch, target, state) {
   const { lock, manifest } = state;
   const names = new Set(packs.map((p) => p.name));
@@ -1539,45 +1539,26 @@ function syncPacks(ctx, opts, packs, fetch, target, state) {
       summary.push(`wrote ${target.user ? dest : `.agents/playbooks/${name}`}`);
     }
     writePackState(batch, target, lockPacks, lockFiles, manifestPacks);
-    syncRulesync(batch, target, packs, notes);
   });
+  notes.push(...packs.flatMap((pack) => rulesyncNote(target, pack, lock.packs[pack.name])));
   const end = packs.map((p) => `${p.name} ${p.linked ? 'linked' : (lockPacks[p.name].commit?.slice(0, 12) ?? 'no commit')}`).join(', ');
   return { out: [...summary, `installed ${end}`, ...notes.map((n) => `info: ${n}`), ...pstackWarning(ctx)].join('\n'), status: 0 };
 }
 
 const pstackWarning = (ctx) => (ctx.pstack ? [] : [`warning: no pstack found, so nothing checked these playbooks. ${PSTACK_HELP}`]);
 
-/** One rulesync source per pack that ships skills or rules, in a target that can take it. Comments in the file survive. */
-function syncRulesync(batch, target, packs, notes) {
-  const carrying = packs.filter((p) => p.hasSkills || p.hasRules);
-  const path = target.rulesync;
-  let text = path && isFile(path) ? readFileSync(path, 'utf8') : null;
-  const original = text;
-  for (const pack of packs) {
-    const entry = rulesyncEntry(pack);
-    if (!isForgeSource(pack.source)) {
-      if (entry) notes.push(`${pack.name} ships skills or rules, but its source is local, and rulesync reads only forge sources, so they were not delivered`);
-      continue;
-    }
-    if (target.user) {
-      if (entry) notes.push(`${pack.name} ships skills or rules, but a --user install delivers playbooks only; add its skills through your harness`);
-      continue;
-    }
-    if (text === null) {
-      if (entry) notes.push(`${pack.name} ships skills or rules, but this repo has no rulesync.jsonc, so they were not delivered`);
-      continue;
-    }
-    const current = parseJsonc(text).sources ?? [];
-    const keys = rulesyncKeys(pack.source, pack.name);
-    const held = current.find((s) => keys.includes(s.source));
-    if (JSON.stringify(held) === JSON.stringify(entry ?? undefined)) continue;
-    for (const key of keys) text = removeSource(text, key);
-    if (entry) text = addSource(text, entry);
-  }
-  if (text !== null && text !== original) {
-    batch.write(path, text);
-    notes.push('rulesync.jsonc changed; run rulesync install');
-  } else if (carrying.length && text !== null && !target.user) notes.push('rulesync.jsonc already lists these packs');
+/** What is left to do by hand in rulesync.jsonc, which is the repo's own file, for one pack and its old lock entry. */
+function rulesyncNote(target, pack, was) {
+  const entry = rulesyncEntry(pack);
+  if (!entry) return rulesyncLeftover(target, pack.name, was);
+  if (!isForgeSource(pack.source)) return [`${pack.name} ships skills or rules, but its source is local, and rulesync reads only forge sources, so they were not delivered`];
+  if (target.user) return [`${pack.name} ships skills or rules, but a --user install delivers playbooks only; add its skills through your harness`];
+  return [`${pack.name} ships skills or rules; add this to "sources" in rulesync.jsonc, then run rulesync install:\n${JSON.stringify(entry)}`];
+}
+
+function rulesyncLeftover(target, name, was) {
+  const entry = !target.user && was && isForgeSource(was.source) && rulesyncEntry({ name, source: was.source, hasSkills: was.skills?.length, hasRules: was.rules?.length });
+  return entry ? [`${name} no longer ships skills or rules here; delete ${entry.source} from "sources" in rulesync.jsonc`] : [];
 }
 
 function requireInstalled(state, target, name) {
@@ -1649,22 +1630,13 @@ function runRemove(ctx, opts, [name]) {
   if (dependents.length) throw packFail(`refused: ${andList(dependents)} requires ${name}; remove ${dependents.length > 1 ? 'them' : 'it'} first`);
   const owned = Object.entries(lock.files).filter(([, e]) => e.pack === name);
   for (const [file, entry] of owned) assertUnedited(target, file, entry, null);
-  const source = lock.packs[name]?.source ?? manifest.packs.find((p) => p.name === name).source;
   const { [name]: _gone, ...lockPacks } = lock.packs;
   const lockFiles = Object.fromEntries(Object.entries(lock.files).filter(([, e]) => e.pack !== name));
   const manifestPacks = manifest.packs.filter((p) => p.name !== name);
-  const notes = [];
+  const notes = rulesyncLeftover(target, name, lock.packs[name]);
   guardedChange(target, (batch) => {
     for (const [file, entry] of owned) batch.remove(target.fileOf(file, entry));
     writePackState(batch, target, lockPacks, lockFiles, manifestPacks);
-    if (target.rulesync && isFile(target.rulesync)) {
-      const text = readFileSync(target.rulesync, 'utf8');
-      const next = rulesyncKeys(source, name).reduce(removeSource, text);
-      if (next !== text) {
-        batch.write(target.rulesync, next);
-        notes.push('rulesync.jsonc changed; run rulesync install');
-      }
-    }
     const top = target.user ? join(ctx.configDir, USER_DIR, PACK_DIR) : dirname(target.lockPath);
     const leaf = target.dirOf(name);
     if (lstatSync(leaf, { throwIfNoEntry: false })?.isSymbolicLink()) batch.remove(leaf);
