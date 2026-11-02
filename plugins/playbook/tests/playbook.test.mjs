@@ -84,7 +84,6 @@ test('show --json carries the same family as data', () => {
       { step: 5, file: 'babysitting-an-acme-pr', verb: 'In', quote: 'Order is conflicts, then threads, then CI', origin: 'babysit' },
       { step: 6, file: 'babysit-tester', verb: 'Replace', quote: 'Babysitting never authorizes merging', origin: 'babysit' },
     ],
-    handoffs: [],
     problems: [],
     pstackCheck: { status: 'ok', lines: [OK_LINE] },
   });
@@ -250,20 +249,6 @@ test('a team file without its scope word gets an info line', () => {
   assert.equal(r.status, 0);
 });
 
-test('a layer key and the numbered config layout are retired, and check says what to do', () => {
-  const w = world({
-    files: {
-      'playbooks/old.md': '---\nextends: babysit\nwhen: w\nlayer: user\n---\n\n- A note.\n',
-      '01-user/babysit.md': '---\nextends: babysit\nwhen: w\n---\n\n- A note.\n',
-    },
-    team: { 'old-acme.md': '---\nextends: babysit\nwhen: w\nlayer: org.standard\n---\n\n- A note.\n' },
-  });
-  const out = lines(w.run(['check']).stdout);
-  assert.ok(out.includes(`${w.config}/playbooks/old.md:4: layer: is retired, because extends sets the order; delete it`), out.join('\n'));
-  assert.ok(out.includes('.agents/playbooks/old-acme.md:4: layer: is retired, because extends sets the order; delete it'), out.join('\n'));
-  assert.ok(out.includes(`${w.config}/01-user:1: numbered layer folders are retired; move each file into playbooks/ (playbooks/orgs/<org>/ or playbooks/repos/<repo>/ to limit where it applies) under a unique name, as playbooks.md describes`), out.join('\n'));
-});
-
 test('the config dir is ~/.jawsome-playbooks, and the ~/.jstack folder from before 0.8.0 is ignored', () => {
   const w = world();
   const legacy = join(w.home, '.jstack');
@@ -276,7 +261,7 @@ test('the config dir is ~/.jawsome-playbooks, and the ~/.jstack folder from befo
   assert.match(w.run(['show', 'babysit'], { env: homeDefault }).stdout, /\[babysit-tester\]/);
 });
 
-test('the JSTACK_* names from before 0.8.0 and the old usage-log folder are ignored', () => {
+test('the JSTACK_* names from before 0.8.0 are ignored', () => {
   const w = world();
   const expected = w.run(['show', 'babysit']).stdout;
   assert.match(expected, /\[babysit-tester\]/);
@@ -284,14 +269,6 @@ test('the JSTACK_* names from before 0.8.0 and the old usage-log folder are igno
   assert.doesNotMatch(legacy.stdout, /\[babysit-tester\]/);
   const noPstack = w.run(['show', 'babysit'], { env: { PLAYBOOKS_PSTACK_DIR: null, JSTACK_PSTACK_DIR: PSTACK } });
   assert.doesNotMatch(noPstack.stdout, /\[babysit-tester\]/);
-  writeFileSync(join(w.config, 'config.json'), JSON.stringify({ ...readLayers(w.config), telemetry: true }));
-  const state = join(w.root, 'state');
-  const xdg = join(w.root, 'xdg');
-  mkdirSync(join(xdg, 'jstack'), { recursive: true });
-  w.run(['show', 'babysit'], { env: { JSTACK_STATE: state, XDG_STATE_HOME: xdg } });
-  assert.equal(existsSync(join(state, 'usage.jsonl')), false);
-  assert.equal(existsSync(join(xdg, 'jstack', 'usage.jsonl')), false);
-  assert.equal(lines(readFileSync(join(xdg, 'jawsome-playbooks', 'usage.jsonl'), 'utf8')).length, 1);
 });
 
 test('with no config the playbook is pstack alone', () => {
@@ -304,67 +281,10 @@ test('with no config the playbook is pstack alone', () => {
 3. Verify on the real surface.   [feature]
 4. Run **Opening a PR**, per **Nowhere**.   [feature]
 
-Hands off to:
-- opening-a-pr (step 4)
-
 pstack check-playbooks:
 not run: no .agents/playbooks
 `);
   assert.equal(r.status, 0);
-});
-
-const HANDOFFS = {
-  files: {
-    'playbooks/handoffs.md': `---
-when: handing work between playbooks
----
-
-1. Run **Opening a PR** once the diff is clean.
-2. Write it per **Comments**, then hand it to Shiping.
-3. Route that request to **Babysat**, or per \`playbooks/triage.md\`.
-4. Then run releasing-we and opening-a-pr.
-5. Hand the frontier to Babysit once green.
-6. Run read-only checks per PR.
-`,
-    'playbooks/repos/web/handoffs-web.md': `---
-extends: handoffs
-when: handing work between web playbooks
----
-
-- Then run releasing-web, or hand it to **Babysit**.
-`,
-  },
-};
-
-test('show withholds a playbook whose file hands off to a playbook nothing defines', () => {
-  const w = world(HANDOFFS);
-  const r = w.run(['compute', 'handoffs']);
-  assert.equal(r.stdout, `# handoffs (web · acme-eng · pstack 1.0.0)
-
-No steps: a file in the handoffs family has problems, so some of its edits would be lost. Fix the files below, then run \`playbook check\` until it passes.
-
-Problems:
-${w.config}/playbooks/handoffs.md:6: hands off to Shiping, which no playbook defines
-${w.config}/playbooks/handoffs.md:7: hands off to Babysat, which no playbook defines
-${w.config}/playbooks/handoffs.md:8: hands off to releasing-we, which no playbook defines
-
-pstack check-playbooks:
-ok
-`);
-  assert.equal(r.status, 1);
-});
-
-test('check flags a handoff nothing defines, and leaves section names and pstack text alone', () => {
-  const w = world(HANDOFFS);
-  const r = w.run(['check']);
-  assert.deepEqual(lines(r.stdout), [
-    OK_LINE,
-    `${w.config}/playbooks/handoffs.md:6: hands off to Shiping, which no playbook defines`,
-    `${w.config}/playbooks/handoffs.md:7: hands off to Babysat, which no playbook defines`,
-    `${w.config}/playbooks/handoffs.md:8: hands off to releasing-we, which no playbook defines`,
-    'check failed: 3 problems against pstack 1.0.0',
-  ]);
-  assert.equal(r.status, 1);
 });
 
 const LINKS = {
@@ -399,18 +319,14 @@ when: linking playbooks
   },
 };
 
-test('check reports a near-miss link as info, fails a step the playbook lacks, and leaves correct prose alone', () => {
+test('check fails a step the playbook lacks, and leaves correct prose alone', () => {
   const w = world(LINKS);
   const r = w.run(['check']);
   const links = `${w.config}/playbooks/links.md`;
-  const nearMiss = (line, phrase, stem) => `info: ${links}:${line}: "${phrase}" may name ${stem} but does not register as a handoff; if it is one, write playbooks/${stem}.md`;
   assert.deepEqual(lines(r.stdout), [
     OK_LINE,
     `${links}:9: watching-review-asks step 4, but watching-review-asks has 3 steps`,
     `${links}:10: babysit step 9, but babysit has 6 steps`,
-    nearMiss(5, 'Run babysit', 'babysit'),
-    nearMiss(6, 'runs reviewing-code', 'reviewing-code'),
-    nearMiss(11, 'Run babysit', 'babysit'),
     'check failed: 2 problems against pstack 1.0.0',
   ]);
   assert.equal(r.status, 1);
@@ -446,65 +362,6 @@ test('a step reference needs a whole playbook name, and reads a path and a range
     assert.equal(r.status, 1, line);
     assert.match(r.stdout, /babysit step 99, but babysit has 6 steps/, line);
   }
-});
-
-test('a handoff to a playbook only another scope defines is info, not a problem', () => {
-  const w = world({
-    files: {
-      'playbooks/orgs/other/syncing-a-ticket.md': `---
-when: moving a ticket on
----
-
-1. Move the ticket to done.
-`,
-      'playbooks/landing.md': `---
-when: landing a PR
----
-
-1. Once the last PR lands, run syncing-a-ticket.
-`,
-    },
-  });
-  const r = w.run(['check']);
-  assert.deepEqual(lines(r.stdout), [
-    OK_LINE,
-    `info: ${w.config}/playbooks/landing.md:5: hands off to syncing-a-ticket, which only playbooks/orgs/other defines`,
-    'check passed: pstack 1.0.0',
-  ]);
-  assert.equal(r.status, 0);
-  const json = JSON.parse(w.run(['check', '--json']).stdout);
-  assert.deepEqual(json.problems, []);
-  assert.deepEqual(json.info, [{ path: `${w.config}/playbooks/landing.md`, line: 5, message: 'hands off to syncing-a-ticket, which only playbooks/orgs/other defines' }]);
-});
-
-test('a handoff to a derived name resolves to its root family, and one to a dormant file is info', () => {
-  const w = world({ files: { 'playbooks/landing.md': '---\nwhen: landing\n---\n\n1. Then hand it to babysit-tester.\n2. Once it ships, run releasing-web-tester.\n' } });
-  const r = w.run(['show', 'landing', '--json']);
-  assert.equal(r.status, 0, r.stdout);
-  assert.deepEqual(JSON.parse(r.stdout).handoffs, [
-    { playbook: 'babysit', steps: [1], inNotes: false },
-    { playbook: 'releasing-web', steps: [2], inNotes: false },
-  ]);
-  const outside = w.run(['check'], { cwd: w.outside });
-  assert.ok(lines(outside.stdout).includes(`info: ${w.config}/playbooks/landing.md:6: hands off to releasing-web-tester, which is dormant here`), outside.stdout);
-  assert.equal(outside.status, 0);
-});
-
-test('a handoff inside an edit is checked, but the pstack words it quotes are not', () => {
-  const w = world({
-    files: {
-      'playbooks/feature-tester.md': `---
-extends: feature
-when: building a feature
----
-
-- **In** "Run **Opening a PR**, per **Nowhere**." Then hand it to **Shiping**.
-`,
-    },
-  });
-  const r = w.run(['check']);
-  assert.ok(lines(r.stdout).includes(`${w.config}/playbooks/feature-tester.md:6: hands off to Shiping, which no playbook defines`), r.stdout);
-  assert.ok(!r.stdout.includes('Nowhere'), r.stdout);
 });
 
 test('list shows each root with its kind and its active family', () => {
@@ -587,10 +444,9 @@ test('check reports every validator rule with path and line', () => {
     `${c}/playbooks/broken.md:7: quote not found: "no such words"`,
     `${c}/playbooks/gone.md:1: broken link -> ../nowhere.md`,
     `${c}/playbooks/solo.md:6: standalone playbook cannot carry edits`,
-    '.agents/playbooks/bad-team-acme.md:4: layer: is retired, because extends sets the order; delete it',
     '.agents/playbooks/bad-team-acme.md:7: quote not found: "the trunk ruleset"',
     '.agents/playbooks/triaging-in-web.md:2: team files extend bundled or team playbooks, and neither pstack 1.0.0 nor this repo has triage',
-    'check failed: 10 problems against pstack 1.0.0',
+    'check failed: 9 problems against pstack 1.0.0',
   ].sort());
   assert.equal(r.status, 1);
 });
@@ -616,15 +472,6 @@ test('a pstack checker failure with no playbook problems says so in the last lin
   assert.equal(r.status, 1);
 });
 
-test('check flags a layers key, since extends sets the order', () => {
-  const w = world();
-  const layers = readLayers(w.config);
-  writeFileSync(join(w.config, 'config.json'), JSON.stringify({ ...layers, layers: ['repo.overrides', 'user'] }));
-  const r = w.run(['check']);
-  assert.ok(lines(r.stdout).includes(`${w.config}/config.json:1: "layers" is retired: extends sets the order, so delete the key`), r.stdout);
-  assert.equal(r.status, 1);
-});
-
 test('compute withholds the steps when a file touching the playbook has problems, and exits 1', () => {
   const w = world(BROKEN);
   const r = w.run(['compute', 'babysit']);
@@ -637,7 +484,7 @@ test('compute withholds the steps when a file touching the playbook has problems
   assert.ok(!r.stdout.includes('solo.md'), 'problems in files that target other playbooks stay out');
   assert.equal(r.status, 1);
   const j = JSON.parse(w.run(['compute', 'babysit', '--json']).stdout);
-  assert.deepEqual([j.steps, j.notes, j.overrides, j.handoffs], [[], [], [], []]);
+  assert.deepEqual([j.steps, j.notes, j.overrides], [[], [], []]);
   assert.ok(j.problems.length > 0);
 });
 
@@ -818,38 +665,15 @@ test('an unknown playbook and a bad command are usage errors', () => {
 });
 
 
-test('compute logs one line per read only when telemetry is on', () => {
+test('a config that still sets telemetry parses, whatever the value, and nothing logs a read', () => {
   const w = world();
   const state = join(w.root, 'state');
-  const log = join(state, 'usage.jsonl');
-  w.run(['compute', 'babysit'], { env: { PLAYBOOKS_STATE: state } });
-  assert.equal(existsSync(log), false, 'telemetry is off by default');
-  writeFileSync(join(w.config, 'config.json'), JSON.stringify({ ...readLayers(w.config), telemetry: true }));
-  w.run(['compute', 'babysit'], { env: { PLAYBOOKS_STATE: state } });
-  w.run(['compute', 'triage', '--json'], { env: { PLAYBOOKS_STATE: state } });
-  w.run(['compute', 'no-such-playbook'], { env: { PLAYBOOKS_STATE: state } });
-  const reads = lines(readFileSync(log, 'utf8')).map((l) => JSON.parse(l));
-  assert.deepEqual(reads.map(({ playbook, repo, org, pstack }) => ({ playbook, repo, org, pstack })), [
-    { playbook: 'babysit', repo: 'web', org: 'acme', pstack: '1.0.0' },
-    { playbook: 'triage', repo: 'web', org: 'acme', pstack: '1.0.0' },
-  ]);
-  assert.ok(reads.every((r) => !Number.isNaN(Date.parse(r.ts))));
-});
-
-test('a telemetry value that is not a boolean is a config error', () => {
-  const w = world();
-  writeFileSync(join(w.config, 'config.json'), JSON.stringify({ ...readLayers(w.config), telemetry: 'yes' }));
-  const r = w.run(['check']);
-  assert.equal(r.status, 2);
-  assert.match(r.stderr, /"telemetry" must be true or false/);
-});
-
-test('a config dir that still has layers.json names the rename', () => {
-  const w = world();
-  renameSync(join(w.config, 'config.json'), join(w.config, 'layers.json'));
-  const r = w.run(['check']);
-  assert.equal(r.status, 2);
-  assert.equal(r.stderr, `${w.config}/layers.json: rename it to config.json\n`);
+  for (const telemetry of [true, 'yes']) {
+    writeFileSync(join(w.config, 'config.json'), JSON.stringify({ ...readLayers(w.config), telemetry }));
+    assert.equal(w.run(['show', 'babysit'], { env: { PLAYBOOKS_STATE: state, XDG_STATE_HOME: state } }).status, 0);
+    assert.equal(w.run(['check']).status, 0);
+  }
+  assert.equal(existsSync(state), false);
 });
 
 test('an unresolved extends fails show for every playbook, and says the steps may lack its edits', () => {

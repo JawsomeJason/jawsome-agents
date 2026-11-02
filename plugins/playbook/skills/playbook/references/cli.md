@@ -39,7 +39,6 @@ Bare `playbook`, `playbook help` and `--help` print the usage and exit 0. `playb
 | --- | --- | --- |
 | `PLAYBOOKS_CONFIG` | The config dir. | `.jawsome-playbooks` in the home directory. |
 | `PLAYBOOKS_PSTACK_DIR` | The pstack plugin folder, the one that holds `skills/poteto-mode/`. | The search order below. |
-| `PLAYBOOKS_STATE` | The folder that holds `usage.jsonl`, the read log that `telemetry` turns on. | `jawsome-playbooks` in `$XDG_STATE_HOME`, else in `.local/state` in the home directory. |
 
 Playbook picks the pstack folder in this order, and uses the first one that holds poteto-mode's playbooks:
 
@@ -68,20 +67,17 @@ The heading names the root, the repo, the forge owner or else the org, and the p
 
 These sections follow the steps, each only when it has entries, in this order:
 
-- `Hands off to:` lists each other family that the steps or notes send the work to, by its root. Each line gives the root and where it appears, such as `- opening-a-pr (step 8)` or `- shipping (notes)`.
 - `Notes:` lists each note with the stem of its file.
 - `Overrides:` lists each `In` or `Replace` on a step a different file wrote, such as `- step 6: babysit-sam replaced "Never merge" (babysit, after babysitting-an-acme-pr)`. The parentheses name the step's writer, then the files that edited the step earlier.
-- `Problems:` lists each problem in `config.json`, in a symlink, in a file of this family or one that extends a member, or in a file with an `extends` that names no playbook.
+- `Problems:` lists each problem in a symlink, in a file of this family or one that extends a member, or in a file with an `extends` that names no playbook.
 
-When a file in the family has a problem, `compute` withholds the playbook: it prints no steps, only a line that says so and points to `playbook check`, then `Problems:` and the pstack result, and exits 1. With `--json`, `steps`, `notes`, `overrides`, and `handoffs` are empty. A problem in `config.json` or a symlink alone, or a pstack checker failure alone, still prints the steps and exits 1.
+When a file in the family has a problem, `compute` withholds the playbook: it prints no steps, only a line that says so and points to `playbook check`, then `Problems:` and the pstack result, and exits 1. With `--json`, `steps`, `notes` and `overrides` are empty. A problem in a symlink alone, or a pstack checker failure alone, still prints the steps and exits 1.
 
 A file with an `extends` stem that no context defines edits nothing, and any playbook may be the one it meant. So `compute` of every playbook lists that file's problems and exits 1. It still prints the steps of a playbook the file does not touch, under a line that says they may be incomplete. With `--json`, the steps stay and `problems` carries the file's problems.
 
 `pstack check-playbooks:` comes last, with pstack's own checker result, or `ok`. `--json` prints the same data.
 
 When the installed pstack differs from the `pstack` in `config.json`, `compute` runs `check` first. A pass records the new version. A failure stops with exit 1, because an upgrade that moved the quoted text would otherwise apply edits in the wrong place.
-
-With `"telemetry": true` in `config.json`, `compute` appends one JSON line per playbook it finds to `usage.jsonl` in `PLAYBOOKS_STATE`: `ts`, `playbook`, `repo`, `org`, and `pstack`. The log stays on the machine, and a tool such as a usage counter reads it to tell which playbooks agents run. A failed write never fails the compute, because a read log must not block the work it records.
 
 ## map
 
@@ -177,7 +173,7 @@ rulesync drops a pack's skill or rule with exit 0 when the repo's own `.rulesync
 playbook check --packs .
 ```
 
-It fails, naming the file and line, on a `pack.json` that is missing, has the wrong `name`, or lacks `description`, `requires` that name no pack or form a cycle, a playbook with no `when:`, a `layer:` key, a change with no straight-quoted anchor, a standalone playbook with edits, a stem two packs share, a cycle in `extends`, a parent in a pack the file's pack does not require, and a symlink, in a pack file or on a pack folder that leaves the source. To require a word in every stem, such as an org name, add `packs/config.json` holding `{"nameWords": ["acme"]}`. With no such file there is no name rule. `--json` prints the shape `check --json` prints. Stale quotes need a pstack, so run `playbook check` in a repo that installs the pack.
+It fails, naming the file and line, on a `pack.json` that is missing, has the wrong `name`, or lacks `description`, `requires` that name no pack or form a cycle, a playbook with no `when:`, a change with no straight-quoted anchor, a standalone playbook with edits, a stem two packs share, a cycle in `extends`, a parent in a pack the file's pack does not require, and a symlink, in a pack file or on a pack folder that leaves the source. To require a word in every stem, such as an org name, add `packs/config.json` holding `{"nameWords": ["acme"]}`. With no such file there is no name rule. `--json` prints the shape `check --json` prints. Stale quotes need a pstack, so run `playbook check` in a repo that installs the pack.
 
 ### check --locked
 
@@ -194,8 +190,6 @@ It fails, naming the file and line, on a `pack.json` that is missing, has the wr
 | Rule | Message |
 | --- | --- |
 | frontmatter has `when` | `missing when:` |
-| no `layer:` key | `layer: is retired, because extends sets the order; delete it` |
-| no numbered or unnumbered layer folder at the config root | `numbered layer folders are retired; move each file into playbooks/ ...` |
 | each `extends` stem is defined in some context | `extends <x>, which no playbook defines` |
 | a team file extends only bundled or team stems | `team files extend bundled or team playbooks, and neither pstack <ver> nor this repo has <x>` |
 | a locked file holds its locked bytes | `hand-edited: its bytes differ from the lock ...`, or `the lock pins it, but it is missing; run playbook update` |
@@ -210,20 +204,13 @@ It fails, naming the file and line, on a `pack.json` that is missing, has the wr
 | two siblings do not Replace the same words | `replaces words that <x> also replaces in <playbook> step <N>; make one file extend the other` |
 | a standalone playbook has no edit lines | `standalone playbook cannot carry edits` |
 | no symlink in the config dir or `.agents/playbooks` is dangling | `broken link -> <target>` |
-| `.agents/playbooks` does not link into the config dir | `links into the config dir; team playbooks are committed copies, so replace the link with them` |
-| each handoff names a playbook some file or pstack defines | `hands off to <x>, which no playbook defines` |
 | `<playbook> step N`, `steps N, M` or `steps N-M` names a step the family has | `<x> step <N>, but <x> has <K> steps` |
-
-A handoff is a `playbooks/<stem>.md` path, or a playbook named right after `run`, `per`, `route ... to`, or `hand ... to`, as a bold title, a capitalized title, or a kebab-case stem. A title resolves to a stem the way poteto-mode resolves it: kebab case, hyphens kept, other punctuation dropped. A bold name that is a poteto-mode section or skill, such as **Comments**, is not a handoff. `check` reads only text a playbook file wrote, never the pstack words an edit quotes, because pstack owns its own text.
-
-A known playbook after `run`, `runs`, `running`, `ran` or `per`, in a form the handoff parser skips, such as lowercase `run babysit` or `runs reviewing-code`, prints `info: <path>:<line>: "<phrase>" may name <x> but does not register as a handoff; if it is one, write playbooks/<x>.md`. It does not fail the check or withhold a playbook, because the same words are often plain prose, such as `one PR per feature`.
 
 A step reference resolves `N` against the playbook's merged steps, so a reference that went stale when steps shifted fails, and `compute` withholds the playbook as it does for any other problem. A reference needs the whole playbook name, so `pre-shipping step 99` is not one, and it may be written `playbooks/<x>.md step N`. Both rules read only text a playbook file wrote.
 
 These print `info:` lines and do not fail the check:
 
 - A file whose parent only another context defines: `extends <x>, which only <where> defines, so this file is dormant here`, where `<where>` is a repo key or a scope folder. Its child gets `extends <x>, which is dormant here, so this file is too`.
-- A handoff to a playbook only another context defines, `hands off to <x>, which only <where> defines`, or to a dormant file, `hands off to <x>, which is dormant here`. A user file in `playbooks/` applies in every repo, so it can hand off to a playbook that exists in some repos only.
 - A team file with a team parent that the installed pstack's checker refuses: `extends a team file, and plain pstack refuses that until its check-playbooks accepts project parents, so playbook checked it instead`. `check` drops pstack's lines for that file and runs its own anchor check on it. A pstack that accepts it draws no line.
 - A team file whose name lacks its scope word, unless the lock pins it, because a pack file installs into many repos: `a team file name carries its scope word (<org> or <repo>), such as <x>-<org>.md`.
 

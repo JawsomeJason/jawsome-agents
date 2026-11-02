@@ -27,13 +27,12 @@ Each rule is tagged **[pstack-claude]** when pstack-claude provides it, so a tea
   "handle": "sam",
   "modeTrigger": "manual",
   "pstack": "1.2.3",
-  "telemetry": false,
   "orgs": { "acme": { "owners": ["acme-eng"] } },
   "repos": { "web": { "checkout": "/tmp/sam/code/web" } }
 }
 ```
 
-`orgs` maps an org to its forge owners and selects `playbooks/orgs/<org>/`. `repos` records each main checkout, so `check` and `doctor` find team files from any directory. `pstack` is the version the files last passed `check` against; playbook records it and never pins it. `telemetry` turns on the [read log](cli.md#compute). `handle` names the mode skill and is the default file-name qualifier. [playbook]
+`orgs` maps an org to its forge owners and selects `playbooks/orgs/<org>/`. `repos` records each main checkout, so `check` and `doctor` find team files from any directory. `pstack` is the version the files last passed `check` against; playbook records it and never pins it. `handle` names the mode skill and is the default file-name qualifier. [playbook]
 
 ## File format
 
@@ -51,7 +50,7 @@ when: one sentence naming the requests it serves
 - `when` is required. poteto-mode finds a standalone playbook only by it. [pstack-claude]
 - An edit line is a list item, a bold verb (`After`, `Before`, `Replace`, `In`), a quote in straight double quotes, then the change text. [pstack-claude] `After` and `Before` insert a step, `Replace` strikes the quoted words and adds the change after them, and `In` appends to the step. [pstack-claude]
 - A team file that extends only bundled stems and quotes only bundled text runs on plain pstack. [pstack-claude] A team file may also extend another team file in the repo, and plain pstack refuses that file until its checker accepts project parents, so shared content stays chain-free when teammates run plain pstack. [playbook] A user file may extend any bundled playbook, any active team file, or any active user file. [playbook]
-- `layer:` and the numbered folders (`01-user/`, `02-orgs/`, `03-repos/`) are retired, and `check` fails them. `source:` is a team review convention that playbook ignores. [playbook]
+- `source:` is a team review convention that playbook ignores. [playbook]
 
 ## Names
 
@@ -70,7 +69,6 @@ when: one sentence naming the requests it serves
 7. A quote matches, whitespace collapsed, only the text the file's ancestors wrote, never a sibling's. [playbook], generalizing pstack-claude's rule that team quotes match only bundled text. The result does not depend on the order siblings are read in.
 8. **Siblings** share a parent and neither descends from the other. Both apply. [pstack-claude] for team files, [playbook] for the rest. Their `In` and `After` text lands in apply order. Two siblings that `Replace` the same words fail `check`; make one extend the other. [playbook]
 9. Every step records the stem that wrote it and each stem that edited it. An `In` or `Replace` on a step a different file wrote is an override, which `show` lists for the agent to name. [playbook]
-10. A handoff names a playbook by stem or title and resolves to its root's family. [playbook]
 
 ## Check
 
@@ -88,9 +86,8 @@ when: one sentence naming the requests it serves
 | A stem that is bundled, or that another active file uses | fail, with a rename hint | [playbook] |
 | A quote that matches no step, or several, in what its ancestors leave | fail, naming the file that wrote it when that file is no ancestor | [playbook] |
 | Sibling `Replace` edits on the same words | fail | [playbook] |
-| A handoff or `<playbook> step N` that resolves to nothing | fail; a dormant target is info | [playbook] |
+| A `<playbook> step N` that names a step the family lacks | fail | [playbook] |
 | A team file name without its scope word | info | [playbook] |
-| `layer:` key, or a numbered config folder | fail | [playbook] |
 | A standalone playbook with edit lines | fail | [playbook] |
 
 [cli.md](cli.md#check) gives each message.

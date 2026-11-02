@@ -20,8 +20,6 @@ Terms the playbook plugin's docs and skills use, in alphabetical order. Each ent
 
 **Handle.** The short name the operator picks when running `setup`, stored as `handle` in `config.json`. It names the mode skill, `<handle>-mode`, and is the default qualifier in a user file's name, `<parent>-<handle>`. [playbook]
 
-**Handoff.** A point where a playbook sends the work to another playbook, which the mode skill then computes with `playbook show` and runs. In a playbook file it registers only as a `playbooks/<stem>.md` path, or as a playbook named right after `run`, `per`, `route ... to` or `hand ... to`, written as a bold title, a capitalized title or a kebab-case stem. A name resolves to its root's family. A lowercase `run babysit` does not register, and `check` never reads the handoff wording inside pstack's own text. [playbook]
-
 **Mode skill.** The operator's `<handle>-mode` skill, which pstack's automate-me writes during `setup`. It runs poteto-mode first, takes each playbook's steps from `playbook show` instead of applying project playbooks by hand, and names every override by the stem of the file that made it. [playbook]
 
 **Pack.** A named set of playbooks, with optional skills and rules, that a source repo holds in `packs/<name>/` and any repo installs as committed copies pinned in `.agents/playbooks.lock`. [playbook]
@@ -34,13 +32,13 @@ Terms the playbook plugin's docs and skills use, in alphabetical order. Each ent
 
 **`playbook`.** The command, `scripts/playbook.mjs` in the `playbook` skill, which needs only Node. Its commands are `list`, `show`, `map`, `install`, `update`, `remove`, `check`, `doctor` and `help`. [playbook]
 
-**`playbook check`.** Validates every team file and active user file against the installed pstack, after running pstack-claude's `check-playbooks.mjs` when the repo has `.agents/playbooks`. It reports stale or ambiguous quotes, missing parents, cycles, repeated stems, sibling `Replace` clashes, unresolved handoffs and step references, retired `layer:` keys and numbered folders, and broken links, and notes dormant files. A pass records the checked pstack version in `config.json`. [playbook]
+**`playbook check`.** Validates every team file and active user file against the installed pstack, after running pstack-claude's `check-playbooks.mjs` when the repo has `.agents/playbooks`. It reports stale or ambiguous quotes, missing parents, cycles, repeated stems, sibling `Replace` clashes, stale step references, and broken links, and notes dormant files. A pass records the checked pstack version in `config.json`. [playbook]
 
-**`playbook show`.** Prints a root's family with every member applied in apply order, and tags each step with the stem of the file that wrote it and each stem that edited it. Any member's name prints its root's family. Sections after the steps list the family, handoffs, notes, overrides and problems. `compute` is an alias of it. [playbook]
+**`playbook show`.** Prints a root's family with every member applied in apply order, and tags each step with the stem of the file that wrote it and each stem that edited it. Any member's name prints its root's family. Sections after the steps list the family, notes, overrides and problems. `compute` is an alias of it. [playbook]
 
 **Project playbook.** pstack-claude's name for a Markdown file in a repo's `.agents/playbooks/`, with `extends` and `when` frontmatter, that poteto-mode applies over the bundled steps. In playbook, a repo's team files are its project playbooks. [pstack-claude]
 
-**pstack (upstream).** The Cursor plugin at [cursor/plugins/pstack](https://github.com/cursor/plugins/tree/main/pstack), which provides poteto-mode and its playbooks. Upstream owns most of the playbook content, including the handoff wording inside it. pstack-claude carries its own policy changes to a few playbooks, such as Babysit, Autopilot and Shipping. It has no project playbooks, `extends` or `check-playbooks.mjs`, so playbook does not run on it.
+**pstack (upstream).** The Cursor plugin at [cursor/plugins/pstack](https://github.com/cursor/plugins/tree/main/pstack), which provides poteto-mode and its playbooks. Upstream owns most of the playbook content. pstack-claude carries its own policy changes to a few playbooks, such as Babysit, Autopilot and Shipping. It has no project playbooks, `extends` or `check-playbooks.mjs`, so playbook does not run on it.
 
 **pstack-claude.** The [port of pstack](https://github.com/michael-denyer/pstack-claude) for Claude Code, Codex, Pi, GitHub Copilot, Muse and other harnesses, installed as `pstack@pstack-claude`. It tracks upstream and carries named forks declared in `tools/forks.json`, such as the project playbooks paragraph in its `poteto-mode/SKILL.md` policy fork. Playbook builds on this port.
 
@@ -52,7 +50,7 @@ Terms the playbook plugin's docs and skills use, in alphabetical order. Each ent
 
 **Sibling.** A file that shares a parent with another and neither descends from the other. Both apply, and neither's quotes see the other's text. Their `In` and `After` text lands in apply order, and two siblings that `Replace` the same words fail `check`. [pstack-claude] for team siblings, [playbook] for the rest.
 
-**Standalone playbook.** A playbook a file defines on its own, with an empty `extends` and a unique stem, so its numbered steps are its body. poteto-mode matches it only by its `when` sentence [pstack-claude], and playbook also finds it by name through a handoff [playbook]. It cannot carry edit lines.
+**Standalone playbook.** A playbook a file defines on its own, with an empty `extends` and a unique stem, so its numbered steps are its body. poteto-mode matches it only by its `when` sentence [pstack-claude], and playbook also finds it by name [playbook]. It cannot carry edit lines.
 
 **Team file.** A playbook file in a repo's `.agents/playbooks/`, which the repo commits and a pull request changes. [pstack-claude] Chain-free, it extends only bundled playbooks and quotes only pstack's text, as pstack's checker requires. [pstack-claude] It may extend another team file, which plain pstack refuses. [playbook]
 

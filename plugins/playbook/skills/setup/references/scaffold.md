@@ -38,7 +38,7 @@ A worktree's common dir is the main checkout's `.git`, so every worktree of a re
 
 Record the main checkout as `repos.<repo>.checkout` in `config.json`, with the diff shown first, as for any other change to the file. `playbook check` reads it to find the repo's team playbooks from any directory, and `playbook doctor` reads it to check the repo.
 
-Link nothing into the checkout. Team playbooks are files the repo commits in `.agents/playbooks`, so a link there would hide the team's own files. When `.agents/playbooks` is a link into the config dir, the retired layout, `playbook doctor` fails it; show it to the operator, who replaces it with the committed files.
+Link nothing into the checkout. Team playbooks are files the repo commits in `.agents/playbooks`, so a link there would hide the team's own files.
 
 ## Link the mode skill into each skill folder
 
