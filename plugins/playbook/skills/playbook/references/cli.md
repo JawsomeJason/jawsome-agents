@@ -133,7 +133,7 @@ These fail with exit 1, name the file, and write nothing:
 | A repo lock with `link` | `.agents/playbooks.lock` |
 | A cycle in `extends`, a stale quote, or two files replacing the same words | the file, from the same validation as `check` |
 
-A file the repo owns with the same bytes as the pack's is adopted into the lock. A flat lock from before packs is read and verified, and `install` rewrites it. Files it pinned that no pack ships become repo-owned.
+A file the repo owns with the same bytes as the pack's is adopted into the lock. Files it pinned that no pack ships become repo-owned.
 
 ### rulesync
 

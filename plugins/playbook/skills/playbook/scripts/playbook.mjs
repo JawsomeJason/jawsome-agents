@@ -664,7 +664,6 @@ function readPlaybookFile(path, displayPath, kind, scope) {
     stem: basename(path, '.md'),
     extends: (front.extends?.value ?? '').split(',').map((s) => s.trim()).filter(Boolean),
     extendsLine: front.extends?.line ?? 1,
-    front,
     edits: parsed.edits,
     notes: parsed.notes,
     prose: parsed.prose,
@@ -687,7 +686,7 @@ function collectFiles(ctx) {
   const team = mdFiles(ctx.repo.agentsDir).map((name) => readPlaybookFile(join(ctx.repo.agentsDir, name), ctx.repo.teamDisplay(name), 'team', ctx.repo.name));
   const dirs = [...userDirs(ctx), ...userPackDirs(ctx.configDir).map((dir) => ['everywhere', dir])];
   const user = dirs.flatMap(([scope, dir]) => mdFiles(dir).map((name) => readPlaybookFile(join(dir, name), join(dir, name), 'user', scope)));
-  return { team, user, all: [...team, ...user] };
+  return { team, all: [...team, ...user] };
 }
 
 /** Dangling symlinks in .agents/playbooks (top level) and anywhere under the config dir, each reported once. */
@@ -1269,7 +1268,7 @@ function packState(target) {
   if (repoLink) throw packFail(`${target.lockShown}: ${repoLink}`);
   const manifest = readManifest(target.manifestPath);
   if (manifest.error) throw packFail(`${target.manifestShown}: not a valid manifest: ${manifest.error}`);
-  return { lock: lock ?? { packs: {}, files: {}, legacy: false }, manifest };
+  return { lock: lock ?? { packs: {}, files: {} }, manifest };
 }
 
 function writePackState(batch, target, lockPacks, lockFiles, manifestPacks) {

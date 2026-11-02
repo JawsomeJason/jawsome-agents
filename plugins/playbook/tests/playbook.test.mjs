@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { FIXTURES, PSTACK, git, lines, tempDir, world } from './helpers.mjs';
+import { FIXTURES, PSTACK, git, lines, world } from './helpers.mjs';
 
 const OK_LINE = "Every project playbook matches this pstack's playbooks.";
 const readLayers = (config) => JSON.parse(readFileSync(join(config, 'config.json'), 'utf8'));
