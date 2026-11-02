@@ -438,10 +438,16 @@ test('update prints a new rulesync line when a pack gains rules, and the line to
   const gained = w.forge(['update']);
   assert.equal(gained.status, 0);
   assert.ok(gained.stdout.includes(JSON.stringify({ source: 'acme-eng/agents:packs/p/skills', skills: ['*'], rules: ['*'], rulesPath: 'packs/p/rules' })), gained.stdout);
+  assert.doesNotMatch(gained.stdout, /delete /);
+  writePacks(w.bare, { p: { rules: true } });
+  const moved = w.forge(['update']);
+  assert.equal(moved.status, 0);
+  assert.match(moved.stdout, /p moved; delete acme-eng\/agents:packs\/p\/skills from "sources"/);
+  assert.ok(moved.stdout.includes(JSON.stringify({ source: 'acme-eng/agents:packs/p/rules', rules: ['*'], rulesPath: 'packs/p/rules' })), moved.stdout);
   writePacks(w.bare, { p: {} });
   const dropped = w.forge(['update']);
   assert.equal(dropped.status, 0);
-  assert.match(dropped.stdout, /delete acme-eng\/agents:packs\/p\/skills from "sources"/);
+  assert.match(dropped.stdout, /delete acme-eng\/agents:packs\/p\/rules from "sources"/);
   assert.equal(existsSync(join(w.repo, 'rulesync.jsonc')), false);
 });
 
@@ -761,7 +767,7 @@ test('check --packs passes a clean source with no pstack, and returns the check 
 test('check --packs names each broken rule with its file and line', () => {
   const noWhen = '---\nextends: babysit\n---\n\n- A note.\n';
   const root = sourceRepo({
-    a: { requires: ['ghost', 'c1'], playbooks: { 'no-when': noWhen, same: IN_BABYSIT, unquoted: patch('babysit', '- **In** Work the merge frontier x'), edits: standaloneBody('Step.').replace('1. Step.', '- **In** "x" y\n\n1. Step.') } },
+    a: { requires: ['ghost', 'c1'], playbooks: { 'no-when': noWhen, same: IN_BABYSIT, unquoted: patch('babysit', '- **In** Work the merge frontier x'), swapped: patch('babysit', '- **Swap** "Work the merge frontier" x'), edits: standaloneBody('Step.').replace('1. Step.', '- **In** "x" y\n\n1. Step.') } },
     b: { playbooks: { same: IN_BABYSIT, 'reaches-up': patch('no-when', '- A note.'), 'p-one': patch('p-two', '- A note.'), 'p-two': patch('p-one', '- A note.') } },
     c1: { requires: ['c2'] },
     c2: { requires: ['c1'] },
@@ -775,6 +781,7 @@ test('check --packs names each broken rule with its file and line', () => {
     /packs\/c[12]\/pack\.json:1: requires a cycle: /,
     /packs\/wrong\/pack\.json:1: "name" must be wrong/,
     /packs\/a\/playbooks\/unquoted\.md:\d+: a change has no straight-quoted/,
+    /packs\/a\/playbooks\/swapped\.md:6: \*\*Swap\*\* is not an edit verb; use After, Before, Replace or In/,
     /packs\/a\/playbooks\/edits\.md:\d+: standalone playbook cannot carry edits/,
     /packs\/b\/playbooks\/reaches-up\.md:\d+: extends no-when, in pack a, which pack b does not require/,
     /packs\/b\/playbooks\/p-[a-z]+\.md:\d+: extends a cycle: /,

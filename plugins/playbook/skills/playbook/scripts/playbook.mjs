@@ -28,6 +28,8 @@ const TEAM_MANIFEST = join('.agents', 'packs.json');
 
 const CHANGE = /^\s*(?:[-*]|\d+\.)\s+\*\*(After|Before|Replace|In)\*\*\s+"([^"]+)"[ \t]*(.*)$/;
 const CHANGE_VERB = /^\s*(?:[-*]|\d+\.)\s+\*\*(?:After|Before|Replace|In)\*\*/;
+// A bold word before a straight quote is the edit shape, so any other word there is a misspelled verb, not a note.
+const CHANGE_LIKE = /^\s*(?:[-*]|\d+\.)\s+\*\*(\w+)\*\*\s*"/;
 const LIST_ITEM = /^\s*(?:[-*]|\d+\.)\s+(.*)$/;
 const NUMBERED_STEP = /^\d+\.\s(.*)$/;
 const HEADING = /^#{1,6}\s+(.+)$/;
@@ -108,6 +110,7 @@ function parseLayerText(raw) {
   const prose = [];
   const notes = [];
   const malformed = [];
+  const badVerbs = [];
   const body = [];
   let open = null;
   for (let i = start; i < lines.length; i++) {
@@ -121,6 +124,12 @@ function parseLayerText(raw) {
     }
     if (CHANGE_VERB.test(line)) {
       malformed.push(i + 1);
+      open = null;
+      continue;
+    }
+    const like = CHANGE_LIKE.exec(line);
+    if (like) {
+      badVerbs.push({ line: i + 1, verb: like[1] });
       open = null;
       continue;
     }
@@ -138,7 +147,7 @@ function parseLayerText(raw) {
       open.text += ` ${line.trim()}`;
     }
   }
-  return { front, edits, notes, malformed, prose, body: body.join('\n') };
+  return { front, edits, notes, malformed, badVerbs, prose, body: body.join('\n') };
 }
 
 // A segment records the stem that wrote it and the stem whose Replace struck it, so each file can see only its ancestors' text.
@@ -642,7 +651,10 @@ function loadContext(opts, { pstackOptional = false } = {}) {
 function readPlaybookFile(path, displayPath, kind, scope) {
   const parsed = parseLayerText(readFileSync(path, 'utf8'));
   const { front } = parsed;
-  const problems = parsed.malformed.map((line) => ({ line, message: 'a change has no straight-quoted step text to anchor on' }));
+  const problems = [
+    ...parsed.malformed.map((line) => ({ line, message: 'a change has no straight-quoted step text to anchor on' })),
+    ...parsed.badVerbs.map(({ line, verb }) => ({ line, message: `**${verb}** is not an edit verb; use After, Before, Replace or In` })),
+  ];
   if (!front.when?.value) problems.push({ line: 1, message: 'missing when:' });
   return {
     path,
@@ -1406,11 +1418,19 @@ function rulesyncNote(target, pack, was) {
   if (!entry) return rulesyncLeftover(target, pack.name, was);
   if (!isForgeSource(pack.source)) return [`${pack.name} ships skills or rules, but its source is local, and rulesync reads only forge sources, so they were not delivered`];
   if (target.user) return [`${pack.name} ships skills or rules, but a --user install delivers playbooks only; add its skills through your harness`];
-  return [`${pack.name} ships skills or rules; add this to "sources" in rulesync.jsonc, then run rulesync install:\n${JSON.stringify(entry)}`];
+  // The key moves when a pack drops its skills but keeps rules, or comes from a new source, so the old one is named too.
+  const old = lockedEntry(target, pack.name, was);
+  return [
+    ...(old && old.source !== entry.source ? [`${pack.name} moved; delete ${old.source} from "sources" in rulesync.jsonc`] : []),
+    `${pack.name} ships skills or rules; add this to "sources" in rulesync.jsonc, then run rulesync install:\n${JSON.stringify(entry)}`,
+  ];
 }
 
+/** The rulesync source the lock entry `was` stood for, or null when it stood for none. */
+const lockedEntry = (target, name, was) => (!target.user && was && isForgeSource(was.source) && rulesyncEntry({ name, source: was.source, hasSkills: was.skills?.length, hasRules: was.rules?.length })) || null;
+
 function rulesyncLeftover(target, name, was) {
-  const entry = !target.user && was && isForgeSource(was.source) && rulesyncEntry({ name, source: was.source, hasSkills: was.skills?.length, hasRules: was.rules?.length });
+  const entry = lockedEntry(target, name, was);
   return entry ? [`${name} no longer ships skills or rules here; delete ${entry.source} from "sources" in rulesync.jsonc`] : [];
 }
 
