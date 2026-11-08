@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "common.py lookup",
+  "description": "What common.py lookup prints: where a step's result.json lives for these inputs, step version and parameters, and whether it exists.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "dir",
+    "file",
+    "key"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "hit",
+        "miss"
+      ],
+      "description": "hit: result.json exists, so skip the step. miss: run it, then commit."
+    },
+    "dir": {
+      "type": "string"
+    },
+    "file": {
+      "type": "string"
+    },
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files",
+        "inputs_sha12",
+        "params_sha8",
+        "folder"
+      ],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha12"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha12": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "inputs_sha12": {
+          "type": "string"
+        },
+        "params_sha8": {
+          "type": "string"
+        },
+        "folder": {
+          "type": "string",
+          "description": "<stem>-<inputs_sha12>/<step>-v<version>-<params_sha8>"
+        }
+      }
+    }
+  }
+}

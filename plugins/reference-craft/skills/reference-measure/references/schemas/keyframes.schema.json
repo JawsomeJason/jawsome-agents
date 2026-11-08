@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "keyframes result.json",
+  "description": "Scene-change keyframes of a recording, saved as small JPEGs beside result.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "keyframes"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "video",
+        "count",
+        "frame_error_ms",
+        "tag",
+        "method",
+        "keyframes"
+      ],
+      "properties": {
+        "video": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "codec",
+            "width",
+            "height",
+            "rotation",
+            "fps",
+            "duration"
+          ],
+          "properties": {
+            "codec": {
+              "type": "string"
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rotation": {
+              "type": "integer"
+            },
+            "fps": {
+              "type": "number"
+            },
+            "duration": {
+              "type": "number"
+            }
+          }
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frame_error_ms": {
+          "type": "number"
+        },
+        "tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+        },
+        "method": {
+          "type": "string"
+        },
+        "keyframes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "t_seconds",
+              "frame",
+              "path",
+              "diff_score"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "t_seconds": {
+                "type": "number"
+              },
+              "frame": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "round(t * average fps): an estimate for variable-frame-rate sources."
+              },
+              "path": {
+                "type": "string"
+              },
+              "diff_score": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

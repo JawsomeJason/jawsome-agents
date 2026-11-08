@@ -11,6 +11,7 @@ Agent skills that run in any harness that reads the [Agent Skills spec](https://
 | `playbook` | Applies team and personal playbook files over pstack's poteto-mode playbooks, and installs named packs of them into any repo as committed, hash-checked copies. See its [README](plugins/playbook/README.md). |
 | `claudecode-smart-usage` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/claudecode-smart-usage/README.md). |
 | `fauxkemon` | Rules, design system, sound design and project playbook for building a private, non-monetized pocket trading-card game that plays like the mobile original on phone, tablet and desktop. `tcg-pocket-rules` is the rules and economy reference, `pocket-deck-design-system` the tokens and components, `fauxkemon-sound` the audio catalogue and Web Audio architecture, `fauxkemon-playbook` the stack, milestones and definition of done. See its [README](plugins/fauxkemon/README.md). |
+| `reference-craft` | Skills for building against a reference UI. `reference-measure` turns screenshots and screen recordings into tagged, reproducible numbers (token colours with ΔE, layout in points, motion durations and easing or spring fits, audio onsets, loudness and ducking) while looking at few pixels. See its [README](plugins/reference-craft/README.md). |
 
 Invoke `standards` as `/standards [command] [scope]`:
 
@@ -42,6 +43,7 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 /plugin install claudecode-smart-usage@jawsome-agents
 /plugin install playbook@jawsome-agents
 /plugin install fauxkemon@jawsome-agents
+/plugin install reference-craft@jawsome-agents
 ```
 
 ### Every other harness
@@ -51,9 +53,10 @@ npx skills add JawsomeJason/jawsome-agents --skill standards
 npx skills add JawsomeJason/jawsome-agents --skill enforce --skill harden
 npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn
 npx skills add JawsomeJason/jawsome-agents --skill tcg-pocket-rules --skill pocket-deck-design-system --skill fauxkemon-playbook --skill fauxkemon-sound
+npx skills add JawsomeJason/jawsome-agents --skill reference-measure
 ```
 
-The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `tcg-pocket-rules`, `pocket-deck-design-system`, `fauxkemon-playbook` and `fauxkemon-sound` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
+The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `tcg-pocket-rules`, `pocket-deck-design-system`, `fauxkemon-playbook`, `fauxkemon-sound` and `reference-measure` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
 
 ### A repo that commits its skills with rulesync
 
@@ -87,6 +90,7 @@ node scripts/lint.mjs                              # lint the repo's skills and 
 node --test 'scripts/*.test.mjs'                   # tests for the lint and test-harnesses.mjs
 node --test 'plugins/standards/tests/*.test.mjs'   # tests for the standards scripts
 node --test 'plugins/playbook/tests/*.test.mjs'   # tests for playbook
+node --test 'plugins/reference-craft/tests/*.test.mjs'  # tests for the reference-craft scripts
 node scripts/test-harnesses.mjs                    # real runs in each installed harness
 ```
 

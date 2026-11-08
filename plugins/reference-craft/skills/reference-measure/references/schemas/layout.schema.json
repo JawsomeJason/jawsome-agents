@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "layout result.json",
+  "description": "Flat panels and buttons found in a screenshot, as % of the frame and points at a design width, with fill colour and an estimated corner radius.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "layout"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "size",
+        "design_width_pt",
+        "pt_per_px",
+        "boxes",
+        "background"
+      ],
+      "properties": {
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "design_width_pt": {
+          "type": "number"
+        },
+        "pt_per_px": {
+          "type": "number"
+        },
+        "boxes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x_pct",
+              "y_pct",
+              "w_pct",
+              "h_pct",
+              "x_pt",
+              "y_pt",
+              "w_pt",
+              "h_pt",
+              "error_pt",
+              "area_pct",
+              "fill",
+              "color",
+              "kind",
+              "radius_px",
+              "radius_pt",
+              "tag",
+              "method"
+            ],
+            "properties": {
+              "x_pct": {
+                "type": "number"
+              },
+              "y_pct": {
+                "type": "number"
+              },
+              "w_pct": {
+                "type": "number"
+              },
+              "h_pct": {
+                "type": "number"
+              },
+              "x_pt": {
+                "type": "number"
+              },
+              "y_pt": {
+                "type": "number"
+              },
+              "w_pt": {
+                "type": "number"
+              },
+              "h_pt": {
+                "type": "number"
+              },
+              "error_pt": {
+                "type": "number",
+                "description": "Three capture pixels in points: the stated accuracy of every size."
+              },
+              "area_pct": {
+                "type": "number"
+              },
+              "fill": {
+                "type": "number"
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "kind": {
+                "enum": [
+                  "panel",
+                  "background"
+                ]
+              },
+              "radius_px": {
+                "type": "number"
+              },
+              "radius_pt": {
+                "type": "number"
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "background": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x_pct",
+              "y_pct",
+              "w_pct",
+              "h_pct",
+              "x_pt",
+              "y_pt",
+              "w_pt",
+              "h_pt",
+              "error_pt",
+              "area_pct",
+              "fill",
+              "color",
+              "kind"
+            ],
+            "properties": {
+              "x_pct": {
+                "type": "number"
+              },
+              "y_pct": {
+                "type": "number"
+              },
+              "w_pct": {
+                "type": "number"
+              },
+              "h_pct": {
+                "type": "number"
+              },
+              "x_pt": {
+                "type": "number"
+              },
+              "y_pt": {
+                "type": "number"
+              },
+              "w_pt": {
+                "type": "number"
+              },
+              "h_pt": {
+                "type": "number"
+              },
+              "error_pt": {
+                "type": "number",
+                "description": "Three capture pixels in points: the stated accuracy of every size."
+              },
+              "area_pct": {
+                "type": "number"
+              },
+              "fill": {
+                "type": "number"
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "kind": {
+                "enum": [
+                  "panel",
+                  "background"
+                ]
+              },
+              "radius_px": {
+                "type": "number"
+              },
+              "radius_pt": {
+                "type": "number"
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

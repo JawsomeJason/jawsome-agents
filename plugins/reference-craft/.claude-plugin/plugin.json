@@ -1,0 +1,10 @@
+{
+  "name": "reference-craft",
+  "description": "Skills for building against a reference UI: measure screenshots and screen recordings, including sound timing, into tagged, reproducible numbers while spending few image tokens.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jason Featheringham",
+    "email": "jason@jawsomejason.com"
+  },
+  "license": "MIT"
+}

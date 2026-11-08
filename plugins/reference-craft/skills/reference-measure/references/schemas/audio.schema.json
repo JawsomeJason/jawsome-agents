@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "audio result.json",
+  "description": "Onsets with level, decay, loudness, centroid and pitch; integrated loudness; window loudness and ducking; and optional alignment to keyframes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "audio"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wav",
+        "duration_s",
+        "integrated_lufs",
+        "lra_lu",
+        "loudness_tag",
+        "loudness_method",
+        "windows",
+        "onset_count",
+        "onset_tag",
+        "onset_method",
+        "onsets"
+      ],
+      "properties": {
+        "wav": {
+          "type": "string"
+        },
+        "duration_s": {
+          "type": "number"
+        },
+        "integrated_lufs": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "lra_lu": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "loudness_tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+        },
+        "loudness_method": {
+          "type": "string"
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "start",
+              "end",
+              "lufs",
+              "ducking_db"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              },
+              "lufs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ducking_db": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "This window minus the baseline window, in dB; negative means quieter."
+              }
+            }
+          }
+        },
+        "onset_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onset_tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+        },
+        "onset_method": {
+          "type": "string"
+        },
+        "onsets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "t_seconds",
+              "peak_dbfs",
+              "decay_ms",
+              "decay_truncated",
+              "loudness_m_lufs",
+              "centroid_hz",
+              "pitch_hz"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "t_seconds": {
+                "type": "number"
+              },
+              "peak_dbfs": {
+                "type": "number"
+              },
+              "decay_ms": {
+                "type": "number"
+              },
+              "decay_truncated": {
+                "type": "boolean"
+              },
+              "loudness_m_lufs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "centroid_hz": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "pitch_hz": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "alignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fps",
+            "frame_ms",
+            "matched",
+            "median_offset_ms",
+            "tag",
+            "method",
+            "matches"
+          ],
+          "properties": {
+            "fps": {
+              "type": "number"
+            },
+            "frame_ms": {
+              "type": "number"
+            },
+            "matched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "median_offset_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The capture's audio/video skew: subtract it before reading any single sound-to-picture delay."
+            },
+            "tag": {
+              "enum": [
+                "measured",
+                "estimate"
+              ],
+              "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+            },
+            "method": {
+              "type": "string"
+            },
+            "matches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "onset",
+                  "t_seconds",
+                  "keyframe_index",
+                  "keyframe_dt_ms",
+                  "within_frame"
+                ],
+                "properties": {
+                  "onset": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "t_seconds": {
+                    "type": "number"
+                  },
+                  "keyframe_index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "keyframe_dt_ms": {
+                    "type": "number",
+                    "description": "Keyframe time minus onset time."
+                  },
+                  "within_frame": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -23,6 +23,12 @@ jobs:
       - run: node plugins/playbook/skills/playbook/scripts/playbook.mjs check --packs .
       - run: node --test 'scripts/*.test.mjs'
       - run: node --test 'plugins/standards/tests/*.test.mjs'
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: python3 -m venv "$RUNNER_TEMP/venv" && "$RUNNER_TEMP/venv/bin/pip" install -r plugins/reference-craft/skills/reference-measure/scripts/requirements.txt
+      - run: node --test 'plugins/reference-craft/tests/*.test.mjs'
+        env:
+          REFERENCE_MEASURE_PYTHON: ${{ runner.temp }}/venv/bin/python
+          REFERENCE_MEASURE_REQUIRE_DEPS: '1'
       - run: git clone --depth 1 https://github.com/michael-denyer/pstack-claude "$RUNNER_TEMP/pstack-claude"
       - run: node --test 'plugins/playbook/tests/*.test.mjs'
         env:

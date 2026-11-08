@@ -1,0 +1,430 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "colors result.json",
+  "description": "Median colours of boxes and grid cells, and dominant colours, each with its nearest design token by CIEDE2000.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "colors"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "size",
+        "token_count"
+      ],
+      "properties": {
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Width and height in pixels."
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "boxes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "box",
+              "rect_px",
+              "pixel_count",
+              "spread",
+              "warnings",
+              "hex",
+              "rgb",
+              "token",
+              "token_hex",
+              "delta_e",
+              "runner_up",
+              "verdict",
+              "tag",
+              "method"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "box": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "x, y, w, h as fractions of the image."
+              },
+              "rect_px": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "x, y, w, h in image pixels."
+              },
+              "pixel_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "spread": {
+                "type": "number",
+                "description": "The share of pixels more than 12 levels from the median in any channel; above 0.1 the box crossed an edge, text or gradient."
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hex": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                }
+              },
+              "token": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "token_hex": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "delta_e": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "runner_up": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "token",
+                      "delta_e"
+                    ],
+                    "properties": {
+                      "token": {
+                        "type": "string"
+                      },
+                      "delta_e": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ]
+              },
+              "verdict": {
+                "enum": [
+                  "exact",
+                  "match",
+                  "near",
+                  "none",
+                  "no-tokens"
+                ],
+                "description": "exact: dE <= 1. match: dE <= --match (default 3). near: up to twice that. none: no token fits; propose one, or check the capture."
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "grid": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "box",
+              "rect_px",
+              "pixel_count",
+              "spread",
+              "warnings",
+              "hex",
+              "rgb",
+              "token",
+              "token_hex",
+              "delta_e",
+              "runner_up",
+              "verdict",
+              "tag",
+              "method"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "box": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "x, y, w, h as fractions of the image."
+              },
+              "rect_px": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "x, y, w, h in image pixels."
+              },
+              "pixel_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "spread": {
+                "type": "number",
+                "description": "The share of pixels more than 12 levels from the median in any channel; above 0.1 the box crossed an edge, text or gradient."
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hex": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                }
+              },
+              "token": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "token_hex": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "delta_e": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "runner_up": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "token",
+                      "delta_e"
+                    ],
+                    "properties": {
+                      "token": {
+                        "type": "string"
+                      },
+                      "delta_e": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ]
+              },
+              "verdict": {
+                "enum": [
+                  "exact",
+                  "match",
+                  "near",
+                  "none",
+                  "no-tokens"
+                ],
+                "description": "exact: dE <= 1. match: dE <= --match (default 3). near: up to twice that. none: no token fits; propose one, or check the capture."
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "auto": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "share",
+              "hex",
+              "rgb",
+              "token",
+              "token_hex",
+              "delta_e",
+              "runner_up",
+              "verdict",
+              "tag",
+              "method"
+            ],
+            "properties": {
+              "share": {
+                "type": "number"
+              },
+              "hex": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                }
+              },
+              "token": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "token_hex": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "delta_e": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "runner_up": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "token",
+                      "delta_e"
+                    ],
+                    "properties": {
+                      "token": {
+                        "type": "string"
+                      },
+                      "delta_e": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ]
+              },
+              "verdict": {
+                "enum": [
+                  "exact",
+                  "match",
+                  "near",
+                  "none",
+                  "no-tokens"
+                ],
+                "description": "exact: dE <= 1. match: dE <= --match (default 3). near: up to twice that. none: no token fits; propose one, or check the capture."
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
