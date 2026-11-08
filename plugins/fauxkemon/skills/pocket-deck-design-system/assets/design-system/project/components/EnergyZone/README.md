@@ -1,6 +1,6 @@
 # EnergyZone
 
-The Energy stand at the bottom-right of the board. Measured: a round pale stand Ø 15.2% of screen width (`size-energy-stand`, 59px) at (88.8%, 86%) of the screen; this turn's Energy sits on it as a large glossy orb; a 20px badge at the stand's lower-right previews the next turn's type. The opponent's is mirrored at (19%, 15%) and smaller (Ø 44px).
+The Energy stand at the bottom-right of the board. Measured: a round pale stand Ø 15.2% of screen width (`size-energy-stand`, 59px) at (88.8%, 86%) of the screen. This turn's Energy sits on it as a large glossy orb. A 20px badge at the stand's lower-right previews the next turn's type. The opponent's is mirrored at (19%, 15%) and smaller (Ø 44px).
 
 ## The consumer provides
 
@@ -16,5 +16,5 @@ The current Energy is a button: drag it to a Pokémon, or press it (`aria-presse
 ## Rules
 
 - Anchor it bottom-right on phone, above the hand, in thumb reach.
-- On attach, the orb flies to the target over `dur-slow` along an arc (`ease-in-out`) and shrinks into a 26px badge; the preview then promotes with `ease-pop`.
+- On attach, the orb flies to the target over `dur-slow` along an arc (`ease-in-out`) and shrinks into a 26px badge. The preview then promotes with `ease-pop`.
 - Exactly one upcoming Energy is previewed, as in the original.

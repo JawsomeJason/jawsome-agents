@@ -1,6 +1,6 @@
 # Engine architecture
 
-A design for a rules engine that is correct, testable, replayable and shared by the UI and the AI. TypeScript is assumed; the shapes carry over to any language.
+A design for a rules engine that is correct, testable, replayable and shared by the UI and the AI. The examples use TypeScript. The shapes carry over to any language.
 
 ## Contents
 
@@ -17,8 +17,8 @@ A design for a rules engine that is correct, testable, replayable and shared by 
 ## 1. Principles
 
 - **Pure core.** `apply(state, action, rng) → { state, events }`. No DOM, timers, storage or network inside the engine package.
-- **One source of legality.** `legalActions(state, player)` is the only place rules decide what's allowed. The UI enables exactly those actions; the AI chooses among them; tests assert on them.
-- **Events drive presentation.** The reducer emits an ordered list of events (`EnergyAttached`, `CoinFlipped`, `DamageDealt`, `KnockedOut`, `PointsAwarded`…). The UI animates events in order; it never infers what happened by diffing state.
+- **One source of legality.** `legalActions(state, player)` is the only place rules decide what's allowed. The UI enables exactly those actions. The AI chooses among them. Tests assert on them.
+- **Events drive presentation.** The reducer emits an ordered list of events (`EnergyAttached`, `CoinFlipped`, `DamageDealt`, `KnockedOut`, `PointsAwarded`…). The UI animates events in order. It never infers what happened by diffing state.
 - **Data over code.** Card behaviour is data (effect ops). A per-card script is the escape hatch, not the default.
 - **Config over constants.** Anything that changed over the game's life lives in `RulesConfig`.
 
@@ -113,7 +113,7 @@ interface GameState {
 }
 ```
 
-Keep card definitions (`CardDef`) separate from card instances (`uid`). Every zone holds uids; each uid maps to one definition. Assert after every action that each uid lives in exactly one zone.
+Keep card definitions (`CardDef`) separate from card instances (`uid`). Every zone holds uids, and each uid maps to one definition. Assert after every action that each uid lives in exactly one zone.
 
 ## 3. Actions and legal moves
 
@@ -143,7 +143,7 @@ Retreat with mixed Energy: let the player pick which Energy to discard. Default 
 
 Reducer phases per action:
 
-1. Validate against `legalActions` (reject with a reason; never partially apply).
+1. Validate against `legalActions` (reject with a reason, and never apply partially).
 2. Pay costs (discard Energy, flip once-per-turn flags).
 3. Resolve effect ops in order, pausing on a `pendingChoice` when an op needs a player decision.
 4. Run KO checks → award points → open `awaitingPromotion` for each side that needs it → evaluate win conditions (section 6 of `battle-rules.md`).
@@ -158,7 +158,7 @@ A small vocabulary covers most Pocket card text. Write each op as a pure functio
 | Op | Parameters | Examples |
 | --- | --- | --- |
 | `damage` | `amount`, `target` (defender, choice of opponent's Pokémon, each Benched…), `applyWeakness` | Snipe attacks, bench spread |
-| `damageFormula` | `base`, `per` (energy on self/defender, Bench count, heads, damage on self), `amount` | "+30 for each Benched Pokémon", "30× heads" |
+| `damageFormula` | `base`, `per` (Energy on self or defender, Bench count, heads, damage on self), `amount` | "+30 for each Benched Pokémon", "30× heads" |
 | `placeCounters` | `amount`, `target` | Effects that aren't damage |
 | `heal` | `amount` or `all`, `target` | Potion, Erika |
 | `draw` | `count` | Professor's Research |
@@ -179,7 +179,7 @@ Workflow for card text:
 
 1. Write template parsers for the common wordings ("Flip a coin. If heads, …", "This attack does X more damage for each …", "Heal X damage from …"). Each parser returns ops or `null`.
 2. Every card whose text no parser handles gets a `custom` stub that throws "not implemented" in tests.
-3. Track coverage per set (parsed / custom / missing) and show it in a dev page, so the playable pool is honest.
+3. Track coverage per set (parsed, custom, missing) and show it in a dev page, so the playable pool is honest.
 4. Every card with an effect gets at least one test that plays it.
 
 ## 6. Randomness
@@ -198,14 +198,22 @@ Pocket has hidden information (hand, deck order, the next Energy beyond the prev
 | Intermediate | Greedy: score each legal action by one-ply lookahead (points gained, KO threat removed, Energy progress toward the best attack, Bench development). |
 | Advanced | Determinized search: sample the hidden state several times consistent with what's known, run a short lookahead or MCTS on each, and pick the action with the best average. Cap the time per decision (about 300 ms on a phone) and run it in a Web Worker. |
 
-Heuristic features that matter in Pocket: points to win for each side; whether the opponent can KO our Active next turn; Energy needed for each of our attacks; ex and Mega exposure (2 and 3 points at risk); Bench count against the no-promotion loss; Weakness hits; condition damage at Checkup.
+Heuristic features that matter in Pocket:
+
+- Points to win for each side.
+- Whether the opponent can KO our Active next turn.
+- Energy needed for each of our attacks.
+- ex and Mega exposure (2 and 3 points at risk).
+- Bench count against the no-promotion loss.
+- Weakness hits.
+- Condition damage at Checkup.
 
 Solo-mode AI decks: ship prebuilt decks per set and difficulty (see `game-modes.md`).
 
 ## 8. Persistence
 
 - Collection, decks, settings and pack logs go in IndexedDB with a **schema version** and pure migration functions per version.
-- Save game state as JSON: the engine state is already serializable (uids, seed state). Autosave after each turn so a closed tab resumes mid-game.
+- Save game state as JSON. The engine state is already serializable (uids, seed state). Autosave after each turn so a closed tab resumes mid-game.
 - Store card definitions as bundled static JSON per set, versioned by data import date. Collection entries reference card ids, never embedded copies.
 
 ## 9. Testing plan
@@ -214,4 +222,4 @@ Solo-mode AI decks: ship prebuilt decks per set and difficulty (see `game-modes.
 - **Card tests**: for each card with an effect, build a minimal state, play the card, assert the events and resulting state.
 - **Property tests**: random legal-action playouts from many seeds must never throw, must keep every uid in exactly one zone, must keep Bench ≤ 3 and damage a multiple of 10, and must end within the turn limit.
 - **Replay tests**: a recorded `(seed, actions[])` must reproduce the same final state and event log byte for byte.
-- **Odds tests**: open a million simulated packs per set; per-slot rarity frequencies must match `assets/pack-odds.json` within a tight tolerance.
+- **Odds tests**: open a million simulated packs per set. Per-slot rarity frequencies must match `assets/pack-odds.json` within a tight tolerance.

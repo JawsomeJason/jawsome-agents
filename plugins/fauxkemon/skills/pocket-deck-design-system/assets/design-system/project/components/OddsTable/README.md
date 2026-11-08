@@ -8,6 +8,6 @@ A semantic `<table class="pd-odds">` inside a Panel, with a `<caption>` naming t
 
 ## Rules
 
-- Three decimals for every non-zero rate; zero rates read "0%" in `ink-subtle`. Numerals are Jost, tabular.
-- Every pack links to its table; it is never more than one tap away.
+- Three decimals for every non-zero rate. Zero rates read "0%" in `ink-subtle`. Numerals are Jost, tabular.
+- Every pack links to its table. It is never more than one tap away.
 - On phone, the table scrolls horizontally inside its panel rather than shrinking text below 12px.

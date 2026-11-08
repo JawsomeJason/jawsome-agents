@@ -1,6 +1,6 @@
 # PlayerStrip
 
-The slanted dark strip carrying a player's name, optional clock and point discs. Measured: yours spans 0–44% of screen width at 93.5–96.6% of height (26px tall) with its right end slanted about 20°; the opponent's is mirrored at the top-right (7–10% of height).
+The slanted dark strip carrying a player's name, optional clock and point discs. Measured: yours spans 0–44% of screen width at 93.5–96.6% of height (26px tall) with its right end slanted about 20°. The opponent's is mirrored at the top-right (7–10% of height).
 
 ## The consumer provides
 
@@ -13,5 +13,5 @@ Names are 13px 600 in `ink-inverse` on `strip`. The PointTracker sits at the sla
 
 ## Rules
 
-- The strip is `min-inline-size: 44%` of its container; place it in the Board's design box, not in a flex row.
-- Points are announced by the Banner; the strip only shows them.
+- The strip is `min-inline-size: 44%` of its container. Place it in the Board's design box, not in a flex row.
+- Points are announced by the Banner. The strip only shows them.

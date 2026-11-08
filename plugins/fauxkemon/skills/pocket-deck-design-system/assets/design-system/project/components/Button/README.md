@@ -14,21 +14,21 @@ The pill button: the one way to trigger an action. Measured from the original's 
 
 ## The consumer provides
 
-A native `<button>` (or `<a>` for navigation) with `class="pd-button"`, a `data-variant`, and a text label. Icon-only buttons add `aria-label` and a 22px SVG; round ones add `data-shape="circle"` (53px, the original's back and close circles) or `data-shape="circle" data-size="sm"` (35px, the battle menu button).
+A native `<button>` (or `<a>` for navigation) with `class="pd-button"`, a `data-variant`, and a text label. Icon-only buttons add `aria-label` and a 22px SVG. Round ones add `data-shape="circle"` (53px, the original's back and close circles) or `data-shape="circle" data-size="sm"` (35px, the battle menu button).
 
 ## Attributes
 
 | Attribute | Values |
 | --- | --- |
 | `data-variant` | `primary`, `reward`, `danger`, `quiet`, `strip`, `end-turn`, or none |
-| `data-size` | `sm` (35px) for pills beside a primary; `lg` (49px, the original's Share and Open pills) for hero actions |
-| `data-shape="circle"` | round icon button; `data-icon-only` for a square one |
-| `disabled` / `aria-disabled="true"` | greyed `surface-sunken` fill with `ink-subtle` text, no gloss, no shadow |
+| `data-size` | `sm` (35px) for pills beside a primary. `lg` (49px, the original's Share and Open pills) for hero actions |
+| `data-shape="circle"` | round icon button. `data-icon-only` for a square one |
+| `disabled` or `aria-disabled="true"` | greyed `surface-sunken` fill with `ink-subtle` text, no gloss, no shadow |
 
 ## Rules
 
 - One `primary` per view. If two actions compete, one becomes the default pill.
-- Every size keeps a `size-tap` (44px) hit area; `sm` and `end-turn` draw smaller but must sit in a 44px row.
-- **Contrast tradeoff.** The original sets white text on its cyan pill, which fails 4.5:1. This system sets `on-brand` (a deep teal) on `brand` instead, so the pill reads and passes. Keep it; don't "fix" it back to white.
-- Press feedback is a 1px drop with a 0.98 scale over `dur-instant`; hover tint only on hover-capable pointers.
+- Every size keeps a `size-tap` (44px) hit area. `sm` and `end-turn` draw smaller but must sit in a 44px row.
+- **Contrast tradeoff.** The original sets white text on its cyan pill, which fails 4.5:1. This system sets `on-brand` (a deep teal) on `brand` instead, so the pill reads and passes. Keep it. Don't "fix" it back to white.
+- Press feedback is a 1px drop with a 0.98 scale over `dur-instant`. Hover tint only on hover-capable pointers.
 - Labels are verbs in sentence case, the way the original writes them: "Open", "End Turn" is the one title-case exception because it's the original's label.
