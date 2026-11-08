@@ -1,0 +1,118 @@
+{
+  "$comment": "Per-slot rarity odds as fractions. 'A1' is the in-game Offering Rates table of the A1 era. Add one entry per set from that set's Offering Rates; the engine re-normalizes each slot to sum to 1. Rarity keys: d1 d2 d3 d4 s1 s2 s3 crown shiny1 shiny2.",
+  "rarityLabels": {
+    "d1": "◊",
+    "d2": "◊◊",
+    "d3": "◊◊◊",
+    "d4": "◊◊◊◊",
+    "s1": "☆",
+    "s2": "☆☆",
+    "s3": "☆☆☆",
+    "crown": "♕",
+    "shiny1": "✵",
+    "shiny2": "✵✵"
+  },
+  "packPointsPerPack": 5,
+  "craftCost": {
+    "d1": 35,
+    "d2": 70,
+    "d3": 150,
+    "d4": 500,
+    "s1": 400,
+    "s2": 1250,
+    "s3": 1500,
+    "crown": 2500
+  },
+  "sets": {
+    "A1": {
+      "format": "standard5",
+      "rarePackChance": 0.0005,
+      "slots": {
+        "1-3": {
+          "d1": 1
+        },
+        "4": {
+          "d2": 0.9,
+          "d3": 0.05,
+          "d4": 0.01666,
+          "s1": 0.02572,
+          "s2": 0.005,
+          "s3": 0.00222,
+          "crown": 0.0004
+        },
+        "5": {
+          "d2": 0.6,
+          "d3": 0.2,
+          "d4": 0.06664,
+          "s1": 0.10288,
+          "s2": 0.02,
+          "s3": 0.00888,
+          "crown": 0.0016
+        }
+      },
+      "rarePackSlot": {
+        "s1": 0.4,
+        "s2": 0.5,
+        "s3": 0.05,
+        "crown": 0.05
+      }
+    },
+    "A2b": {
+      "format": "standard5",
+      "$comment": "Shiny-era example. Sourced: the shiny shares in slots 4 and 5 and in the Rare Pack (Game8). Derived: the other tiers, scaled down from A1 to make room. Replace with the set's real Offering Rates.",
+      "rarePackChance": 0.0005,
+      "slots": {
+        "1-3": {
+          "d1": 1
+        },
+        "4": {
+          "d2": 0.8905,
+          "d3": 0.0495,
+          "d4": 0.01649,
+          "s1": 0.02545,
+          "s2": 0.00495,
+          "s3": 0.0022,
+          "crown": 0.0004,
+          "shiny1": 0.00714,
+          "shiny2": 0.00333
+        },
+        "5": {
+          "d2": 0.5751,
+          "d3": 0.1917,
+          "d4": 0.06388,
+          "s1": 0.09862,
+          "s2": 0.01917,
+          "s3": 0.00851,
+          "crown": 0.0016,
+          "shiny1": 0.02857,
+          "shiny2": 0.01333
+        }
+      },
+      "rarePackSlot": {
+        "s1": 0.25641,
+        "s2": 0.32051,
+        "s3": 0.03205,
+        "crown": 0.03205,
+        "shiny1": 0.25641,
+        "shiny2": 0.10256
+      }
+    }
+  },
+  "formats": {
+    "standard5": {
+      "cards": 5,
+      "revealOrder": ["1-3", "1-3", "1-3", "4", "5"]
+    },
+    "sixCard": {
+      "cards": 6,
+      "chance": 0.0833,
+      "sixthSlot": "baby",
+      "sets": ["A4", "A4a"]
+    },
+    "deluxe4": {
+      "cards": 4,
+      "guarantee": "d4+",
+      "sets": ["A4b", "B4b"]
+    }
+  }
+}
