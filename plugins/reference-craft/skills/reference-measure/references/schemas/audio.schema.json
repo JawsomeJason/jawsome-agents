@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "audio result.json",
+  "description": "Integrated and momentary loudness, window loudness with ducking against a baseline, and optional onsets, from a PCM WAV file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "audio"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_rate",
+        "channels",
+        "duration_s",
+        "integrated_lufs",
+        "momentary_max",
+        "windows",
+        "loudness_tag",
+        "loudness_method"
+      ],
+      "properties": {
+        "sample_rate": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_s": {
+          "type": "number"
+        },
+        "integrated_lufs": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "momentary_max": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "lufs",
+                "t"
+              ],
+              "properties": {
+                "lufs": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "t": {
+                  "type": "number"
+                }
+              }
+            }
+          ]
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "start",
+              "end",
+              "lufs",
+              "ducking_db"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "start": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              },
+              "lufs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ducking_db": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "This window minus the baseline window, in dB. Negative means the window is quieter."
+              }
+            }
+          }
+        },
+        "loudness_tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+        },
+        "loudness_method": {
+          "type": "string"
+        },
+        "onsets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "t",
+              "peak_dbfs"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "t": {
+                "type": "number"
+              },
+              "peak_dbfs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "onset_error_ms": {
+          "type": "number"
+        },
+        "onset_tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+        },
+        "onset_method": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

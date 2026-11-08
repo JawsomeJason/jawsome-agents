@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "colors result.json",
+  "description": "Median colours of boxes or samples, each with its nearest design token by CIEDE2000.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "colors"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "image",
+        "token_count",
+        "colors"
+      ],
+      "properties": {
+        "image": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "width",
+                "height"
+              ],
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          ]
+        },
+        "token_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "hex",
+              "rgb",
+              "pixel_count",
+              "spread",
+              "warnings",
+              "token",
+              "token_hex",
+              "delta_e",
+              "runner_up",
+              "verdict",
+              "tag",
+              "method"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "hex": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "rgb": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                }
+              },
+              "rect_px": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "Box in image pixels: x, y, w, h. Present for --box and --grid."
+              },
+              "pixel_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "spread": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "token": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "token_hex": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "delta_e": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "runner_up": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "token",
+                      "delta_e"
+                    ],
+                    "properties": {
+                      "token": {
+                        "type": "string"
+                      },
+                      "delta_e": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                ]
+              },
+              "verdict": {
+                "enum": [
+                  "exact",
+                  "match",
+                  "near",
+                  "none",
+                  "no-tokens"
+                ],
+                "description": "exact: dE <= 1. match: dE <= --match (default 3). near: up to twice that. none: propose a new token or check the capture."
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

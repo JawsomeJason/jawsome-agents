@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fit-motion result.json",
+  "description": "Onset, settle and duration of one motion, and its progress fitted to easings and a damped spring.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "fit-motion"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "samples",
+        "fps",
+        "frame_ms",
+        "warnings"
+      ],
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fps": {
+          "type": "number"
+        },
+        "frame_ms": {
+          "type": "number",
+          "description": "One frame: the error bar on every time."
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "noise": {
+          "type": "number"
+        },
+        "peak": {
+          "type": "number"
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "onset_s": {
+          "type": "number"
+        },
+        "settle_s": {
+          "type": "number"
+        },
+        "duration_ms": {
+          "type": "number"
+        },
+        "duration_error_ms": {
+          "type": "number"
+        },
+        "timing_tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+        },
+        "timing_method": {
+          "type": "string"
+        },
+        "fits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "rmse"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "rmse": {
+                "type": "number"
+              },
+              "duration_ms": {
+                "type": "number"
+              },
+              "start_s": {
+                "type": "number"
+              },
+              "stiffness": {
+                "type": "number"
+              },
+              "damping": {
+                "type": "number"
+              },
+              "damping_ratio": {
+                "type": "number"
+              },
+              "response_s": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "Every candidate, best first. Easings carry a fitted duration and start; the spring carries stiffness, damping and damping ratio at mass 1, and response_s = 2 pi / sqrt(stiffness)."
+        },
+        "best_fit": {
+          "type": "object",
+          "required": [
+            "name",
+            "rmse"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "rmse": {
+              "type": "number"
+            },
+            "duration_ms": {
+              "type": "number"
+            },
+            "start_s": {
+              "type": "number"
+            },
+            "stiffness": {
+              "type": "number"
+            },
+            "damping": {
+              "type": "number"
+            },
+            "damping_ratio": {
+              "type": "number"
+            },
+            "response_s": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "overshoot_pct": {
+          "type": "number"
+        },
+        "fit_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fit_tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+        },
+        "fit_method": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

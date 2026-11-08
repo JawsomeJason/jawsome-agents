@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "layout result.json",
+  "description": "Boxes and lengths from capture pixels to % of the frame and points at a design width, with every capture's scale.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "layout"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "design_width_pt",
+        "grid_pt",
+        "captures",
+        "boxes",
+        "lengths",
+        "warnings"
+      ],
+      "properties": {
+        "design_width_pt": {
+          "type": "number"
+        },
+        "grid_pt": {
+          "type": "number"
+        },
+        "captures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "width",
+              "height",
+              "pt_per_px",
+              "scale_vs_first",
+              "aspect",
+              "height_pt"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pt_per_px": {
+                "type": "number"
+              },
+              "scale_vs_first": {
+                "type": "number"
+              },
+              "aspect": {
+                "type": "number"
+              },
+              "height_pt": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "boxes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "capture",
+              "x_pct",
+              "y_pct",
+              "w_pct",
+              "h_pct",
+              "x_pt",
+              "y_pt",
+              "w_pt",
+              "h_pt",
+              "w_pt_snapped",
+              "h_pt_snapped",
+              "error_pt",
+              "tag",
+              "method"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "capture": {
+                "type": "string"
+              },
+              "x_pct": {
+                "type": "number"
+              },
+              "y_pct": {
+                "type": "number"
+              },
+              "w_pct": {
+                "type": "number"
+              },
+              "h_pct": {
+                "type": "number"
+              },
+              "x_pt": {
+                "type": "number"
+              },
+              "y_pt": {
+                "type": "number"
+              },
+              "w_pt": {
+                "type": "number"
+              },
+              "h_pt": {
+                "type": "number"
+              },
+              "w_pt_snapped": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "h_pt_snapped": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "error_pt": {
+                "type": "number",
+                "description": "One capture pixel in points: the resolution of every value here."
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "lengths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "capture",
+              "px",
+              "pt",
+              "pt_snapped",
+              "error_pt",
+              "tag",
+              "method"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "capture": {
+                "type": "string"
+              },
+              "px": {
+                "type": "number"
+              },
+              "pt": {
+                "type": "number"
+              },
+              "pt_snapped": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "error_pt": {
+                "type": "number"
+              },
+              "tag": {
+                "enum": [
+                  "measured",
+                  "estimate"
+                ],
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+              },
+              "method": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

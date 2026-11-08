@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "align result.json",
+  "description": "Audio onsets mapped to the nearest keyframe, with the capture's audio/video skew.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "align"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fps",
+        "frame_ms",
+        "tolerance_ms",
+        "matched",
+        "onsets",
+        "median_offset_ms",
+        "tag",
+        "method",
+        "matches"
+      ],
+      "properties": {
+        "fps": {
+          "type": "number"
+        },
+        "frame_ms": {
+          "type": "number"
+        },
+        "tolerance_ms": {
+          "type": "number"
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "onsets": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "median_offset_ms": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tag": {
+          "enum": [
+            "measured",
+            "estimate"
+          ],
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+        },
+        "method": {
+          "type": "string"
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "onset_index",
+              "t",
+              "keyframe_index",
+              "keyframe_t",
+              "dt_ms",
+              "within_tolerance"
+            ],
+            "properties": {
+              "onset_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "t": {
+                "type": "number"
+              },
+              "keyframe_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "keyframe_t": {
+                "type": "number"
+              },
+              "dt_ms": {
+                "type": "number",
+                "description": "Keyframe time minus onset time."
+              },
+              "within_tolerance": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

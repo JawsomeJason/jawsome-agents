@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contact-sheet result.json",
+  "description": "A plan for one low-resolution contact sheet per batch and small crops: tile positions, labels and output sizes. No image is written.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "version",
+    "inputs",
+    "params",
+    "result"
+  ],
+  "properties": {
+    "step": {
+      "const": "contact-sheet"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The script version. A new version writes a new folder and leaves old results alone."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha12"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha12": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{12}$"
+          }
+        }
+      },
+      "description": "Each input file with the first 12 hex digits of its SHA-256. The cache folder is keyed on these."
+    },
+    "params": {
+      "type": "object",
+      "description": "The parameters the result was computed with. Different parameters write a different folder."
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "frame_count",
+        "sheets",
+        "crops",
+        "pixels_full_frames",
+        "pixels_viewed",
+        "viewed_fraction"
+      ],
+      "properties": {
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "width",
+            "height"
+          ],
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "frame_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sheets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "cols",
+              "rows",
+              "tile_w",
+              "tile_h",
+              "width",
+              "height",
+              "tiles"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cols": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "rows": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tile_w": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tile_h": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tiles": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "frame_index",
+                    "t",
+                    "x",
+                    "y",
+                    "label"
+                  ],
+                  "properties": {
+                    "frame_index": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "t": {
+                      "type": "number"
+                    },
+                    "x": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "y": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "crops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "source_rect",
+              "out_w",
+              "out_h",
+              "scale"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source_rect": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "description": "x, y, w, h in source pixels."
+              },
+              "out_w": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "out_h": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "scale": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "pixels_full_frames": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pixels_viewed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "viewed_fraction": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
