@@ -1,0 +1,639 @@
+{
+  "version": 1,
+  "buses": {
+    "music": {
+      "defaultGain": 0.7
+    },
+    "sfx": {
+      "defaultGain": 1.0
+    },
+    "ui": {
+      "defaultGain": 0.9
+    }
+  },
+  "duck": {
+    "bigMoment": {
+      "amount": 0.35,
+      "attack": 0.05,
+      "hold": 1.2,
+      "release": 0.6
+    },
+    "pause": {
+      "amount": 0.2,
+      "attack": 0.05,
+      "hold": 1.0,
+      "release": 0.4
+    }
+  },
+  "events": {
+    "ui.tap": {
+      "bus": "ui",
+      "files": ["ui/select_001.ogg", "ui/select_002.ogg"],
+      "gainDb": -10,
+      "pitchVarCents": 20,
+      "gainVarDb": 1,
+      "maxVoices": 2,
+      "cooldownMs": 40
+    },
+    "ui.back": {
+      "bus": "ui",
+      "files": ["ui/back_001.ogg"],
+      "gainDb": -10
+    },
+    "ui.toggle.on": {
+      "bus": "ui",
+      "files": ["ui/toggle_001.ogg"],
+      "gainDb": -10
+    },
+    "ui.toggle.off": {
+      "bus": "ui",
+      "files": ["ui/toggle_002.ogg"],
+      "gainDb": -10
+    },
+    "ui.error": {
+      "bus": "ui",
+      "files": ["ui/error_004.ogg"],
+      "gainDb": -8,
+      "haptic": [35]
+    },
+    "pack.swipe": {
+      "bus": "sfx",
+      "files": [
+        "pack/wrapper_01.ogg",
+        "pack/wrapper_02.ogg",
+        "pack/wrapper_03.ogg"
+      ],
+      "gainDb": -14,
+      "pitchVarCents": 60,
+      "gainVarDb": 2
+    },
+    "pack.snap": {
+      "bus": "sfx",
+      "files": ["ui/tick_001.ogg"],
+      "gainDb": -16,
+      "haptic": [10]
+    },
+    "pack.tap": {
+      "bus": "sfx",
+      "files": ["ui/open_002.ogg"],
+      "gainDb": -12
+    },
+    "pack.tear": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": [
+            "pack/tear_01.ogg",
+            "pack/tear_02.ogg",
+            "pack/tear_03.ogg",
+            "pack/tear_04.ogg"
+          ],
+          "gainDb": -6,
+          "pitchVarCents": 40,
+          "followGesture": {
+            "rateMin": 0.9,
+            "rateMax": 1.3
+          }
+        },
+        {
+          "files": ["whoosh/whoosh_01.ogg"],
+          "gainDb": -14,
+          "delayMs": 0
+        },
+        {
+          "files": ["pack/foil_tail_01.ogg"],
+          "gainDb": -18,
+          "delayMs": 120,
+          "onGestureEnd": true
+        },
+        {
+          "files": ["magic/sparkle_soft_01.ogg"],
+          "gainDb": -20,
+          "delayMs": 160,
+          "onGestureEnd": true
+        }
+      ],
+      "duck": "bigMoment",
+      "haptic": {
+        "during": [30, 20],
+        "end": [60]
+      }
+    },
+    "pack.pop": {
+      "bus": "sfx",
+      "files": ["pack/pop_01.ogg"],
+      "gainDb": -16,
+      "cents": -300,
+      "haptic": [18]
+    },
+    "card.slide": {
+      "bus": "sfx",
+      "files": [
+        "card/slide_01.ogg",
+        "card/slide_02.ogg",
+        "card/slide_03.ogg",
+        "card/slide_04.ogg",
+        "card/slide_05.ogg",
+        "card/slide_06.ogg"
+      ],
+      "gainDb": -12,
+      "pitchVarCents": 60,
+      "gainVarDb": 1.5,
+      "maxVoices": 4
+    },
+    "card.flip": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": [
+            "card/flick_01.ogg",
+            "card/flick_02.ogg",
+            "card/flick_03.ogg"
+          ],
+          "gainDb": -12,
+          "pitchVarCents": 50
+        },
+        {
+          "files": [
+            "card/place_01.ogg",
+            "card/place_02.ogg",
+            "card/place_03.ogg",
+            "card/place_04.ogg"
+          ],
+          "gainDb": -8,
+          "delayMs": 30,
+          "pitchVarCents": 40
+        }
+      ],
+      "haptic": [12]
+    },
+    "card.reveal.rare1": {
+      "bus": "sfx",
+      "synth": "arpeggio",
+      "notes": ["C6", "G6", "C7"],
+      "spacingMs": 70,
+      "gainDb": -12,
+      "reverbSend": 0.25,
+      "duck": "bigMoment",
+      "haptic": [20, 40, 30]
+    },
+    "card.reveal.rare2": {
+      "bus": "sfx",
+      "synth": "arpeggio",
+      "notes": ["C6", "E6", "G6", "C7", "E7"],
+      "spacingMs": 65,
+      "gainDb": -11,
+      "reverbSend": 0.3,
+      "layers": [
+        {
+          "files": ["magic/sparkle_01.ogg"],
+          "gainDb": -14,
+          "delayMs": 80
+        }
+      ],
+      "duck": "bigMoment",
+      "haptic": [20, 40, 30, 40, 45]
+    },
+    "card.reveal.rare3": {
+      "bus": "sfx",
+      "synth": "arpeggio",
+      "notes": ["G5", "C6", "E6", "G6", "C7", "E7", "G7"],
+      "spacingMs": 60,
+      "gainDb": -10,
+      "reverbSend": 0.35,
+      "layers": [
+        {
+          "files": ["magic/shimmer_01.ogg"],
+          "gainDb": -12,
+          "delayMs": 60
+        },
+        {
+          "files": ["impact/bloom_low_01.ogg"],
+          "gainDb": -16
+        }
+      ],
+      "duck": "bigMoment",
+      "haptic": [20, 40, 30, 40, 45, 40, 60]
+    },
+    "card.reveal.pause": {
+      "bus": "sfx",
+      "synth": "riser",
+      "durationMs": 750,
+      "silenceAfterMs": 200,
+      "gainDb": -14,
+      "duck": "pause",
+      "haptic": {
+        "during": [400]
+      }
+    },
+    "pack.godpack": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["impact/soft_heavy_01.ogg"],
+          "gainDb": -8,
+          "cents": -700
+        },
+        {
+          "files": ["jingle/steel_07.ogg"],
+          "gainDb": -8,
+          "delayMs": 60
+        },
+        {
+          "files": ["magic/shimmer_long_01.ogg"],
+          "gainDb": -12,
+          "delayMs": 120,
+          "fadeOutMs": 2000
+        }
+      ],
+      "duck": "bigMoment",
+      "haptic": [60, 40, 60, 40, 120]
+    },
+    "card.tap": {
+      "bus": "sfx",
+      "files": ["ui/open_001.ogg", "card/flick_02.ogg"],
+      "gainDb": -14
+    },
+    "coin.flip": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["coin/flick_01.ogg"],
+          "gainDb": -10
+        },
+        {
+          "files": ["coin/spin_tail_01.ogg"],
+          "gainDb": -12,
+          "delayMs": 40,
+          "rateRamp": {
+            "from": 1.15,
+            "to": 0.85,
+            "ms": 900
+          }
+        }
+      ],
+      "haptic": {
+        "during": [15, 60, 15, 80, 15, 110]
+      }
+    },
+    "coin.heads": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["coin/land_01.ogg"],
+          "gainDb": -8
+        },
+        {
+          "synth": "pip2",
+          "notes": ["E6", "G#6"],
+          "delayMs": 60,
+          "gainDb": -14
+        }
+      ],
+      "haptic": [35]
+    },
+    "coin.tails": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["coin/land_02.ogg"],
+          "gainDb": -10,
+          "cents": -200
+        },
+        {
+          "synth": "pip",
+          "notes": ["C5"],
+          "delayMs": 60,
+          "gainDb": -16,
+          "detuneCents": 15
+        }
+      ],
+      "haptic": [18]
+    },
+    "energy.generate": {
+      "bus": "sfx",
+      "files": ["magic/sparkle_soft_01.ogg", "magic/sparkle_soft_02.ogg"],
+      "gainDb": -14,
+      "pitchVarCents": 30
+    },
+    "energy.attach": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["ui/glass_003.ogg"],
+          "gainDb": -10
+        },
+        {
+          "synth": "pip",
+          "notes": ["G6"],
+          "gainDb": -18,
+          "durationMs": 80
+        }
+      ],
+      "haptic": [10]
+    },
+    "card.draw": {
+      "bus": "sfx",
+      "files": ["card/slide_02.ogg", "card/slide_05.ogg"],
+      "gainDb": -14,
+      "pitchVarCents": 60
+    },
+    "card.play": {
+      "bus": "sfx",
+      "files": ["card/place_01.ogg", "card/place_03.ogg"],
+      "gainDb": -8,
+      "pitchVarCents": 40,
+      "haptic": [12]
+    },
+    "card.evolve": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "synth": "riser",
+          "durationMs": 650,
+          "gainDb": -16
+        },
+        {
+          "synth": "arpeggio",
+          "notes": ["C6", "E6", "G6", "C7"],
+          "spacingMs": 50,
+          "delayMs": 650,
+          "gainDb": -11,
+          "reverbSend": 0.3
+        },
+        {
+          "files": ["ui/glass_002.ogg"],
+          "delayMs": 650,
+          "gainDb": -14
+        }
+      ],
+      "haptic": [35]
+    },
+    "card.retreat": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["whoosh/whoosh_01.ogg"],
+          "gainDb": -10
+        },
+        {
+          "files": ["card/place_02.ogg"],
+          "delayMs": 220,
+          "gainDb": -10
+        }
+      ]
+    },
+    "attack.select": {
+      "bus": "sfx",
+      "files": ["ui/confirmation_002.ogg"],
+      "gainDb": -10,
+      "haptic": [10]
+    },
+    "attack.hit": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": [
+            "impact/body_01.ogg",
+            "impact/body_02.ogg",
+            "impact/body_03.ogg"
+          ],
+          "gainDb": -6,
+          "pitchVarCents": 25,
+          "gainByDamage": {
+            "30": 0,
+            "60": 2,
+            "999": 4
+          }
+        },
+        {
+          "filesByType": {
+            "fire": ["type/fire_01.ogg"],
+            "water": ["type/water_01.ogg"],
+            "lightning": ["type/zap_01.ogg"],
+            "grass": ["type/leaf_01.ogg"],
+            "psychic": ["type/psy_01.ogg"],
+            "fighting": ["type/punch_01.ogg"],
+            "darkness": ["type/dark_01.ogg"],
+            "metal": ["type/clang_01.ogg"],
+            "colorless": ["type/thud_01.ogg"]
+          },
+          "gainDb": -8,
+          "delayMs": -15
+        },
+        {
+          "synth": "subThump",
+          "gainDb": -10,
+          "onlyIfDamageOver": 60
+        }
+      ],
+      "haptic": {
+        "byDamage": {
+          "30": [35],
+          "60": [50],
+          "999": [70]
+        }
+      }
+    },
+    "status.poison": {
+      "bus": "sfx",
+      "files": ["status/bubble_01.ogg"],
+      "gainDb": -12
+    },
+    "status.burn": {
+      "bus": "sfx",
+      "files": ["status/crackle_01.ogg"],
+      "gainDb": -12
+    },
+    "status.sleep": {
+      "bus": "sfx",
+      "synth": "pipDown",
+      "notes": ["E5", "C5", "A4"],
+      "spacingMs": 140,
+      "gainDb": -16
+    },
+    "status.paralysis": {
+      "bus": "sfx",
+      "files": ["status/zap_short_01.ogg"],
+      "gainDb": -12
+    },
+    "status.confusion": {
+      "bus": "sfx",
+      "files": ["status/warble_01.ogg"],
+      "gainDb": -12
+    },
+    "damage.counter": {
+      "bus": "sfx",
+      "files": ["ui/tick_002.ogg"],
+      "gainDb": -16,
+      "maxVoices": 3
+    },
+    "ko": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["impact/body_heavy_01.ogg"],
+          "gainDb": -4
+        },
+        {
+          "synth": "sweepDown",
+          "fromHz": 600,
+          "toHz": 150,
+          "durationMs": 500,
+          "gainDb": -14,
+          "delayMs": 40
+        },
+        {
+          "files": ["whoosh/whoosh_02.ogg"],
+          "gainDb": -12,
+          "delayMs": 80
+        }
+      ],
+      "duck": "bigMoment",
+      "haptic": [70, 60, 35]
+    },
+    "point.awarded": {
+      "bus": "sfx",
+      "synth": "arpeggio",
+      "notes": ["G5", "C6", "E6"],
+      "spacingMs": 80,
+      "gainDb": -12,
+      "haptic": [20, 50, 20]
+    },
+    "turn.mine": {
+      "bus": "sfx",
+      "files": ["ui/chime_turn_01.ogg"],
+      "gainDb": -14,
+      "haptic": [15]
+    },
+    "turn.theirs": {
+      "bus": "sfx",
+      "files": ["ui/chime_turn_02.ogg"],
+      "gainDb": -16,
+      "cents": -300
+    },
+    "timer.tick": {
+      "bus": "ui",
+      "synth": "pip",
+      "notes": ["A6"],
+      "durationMs": 60,
+      "gainDb": -18,
+      "haptic": [8]
+    },
+    "timer.final": {
+      "bus": "ui",
+      "synth": "pip",
+      "notes": ["C7"],
+      "durationMs": 120,
+      "gainDb": -14,
+      "haptic": [25]
+    },
+    "battle.win": {
+      "bus": "sfx",
+      "files": ["jingle/pizzi_12.ogg"],
+      "gainDb": -8,
+      "duck": "bigMoment",
+      "haptic": [40, 60, 40, 60, 80]
+    },
+    "battle.lose": {
+      "bus": "sfx",
+      "files": ["jingle/lose_01.ogg"],
+      "gainDb": -10,
+      "duck": "bigMoment"
+    },
+    "mission.complete": {
+      "bus": "sfx",
+      "layers": [
+        {
+          "files": ["jingle/tada_01.ogg"],
+          "gainDb": -10
+        },
+        {
+          "files": ["magic/sparkle_01.ogg"],
+          "gainDb": -16,
+          "delayMs": 100
+        }
+      ],
+      "haptic": [20, 50, 20]
+    },
+    "points.tick": {
+      "bus": "ui",
+      "files": ["coin/ping_01.ogg"],
+      "gainDb": -18,
+      "pitchVarCents": 15,
+      "maxVoices": 3,
+      "cooldownMs": 35
+    },
+    "points.done": {
+      "bus": "ui",
+      "files": ["ui/confirmation_003.ogg"],
+      "gainDb": -12
+    },
+    "wonder.shuffle": {
+      "bus": "sfx",
+      "files": ["card/shuffle_01.ogg"],
+      "gainDb": -12
+    },
+    "wonder.hover": {
+      "bus": "ui",
+      "files": ["ui/tick_001.ogg"],
+      "gainDb": -18,
+      "cooldownMs": 60
+    },
+    "wonder.select": {
+      "bus": "sfx",
+      "files": ["ui/open_003.ogg"],
+      "gainDb": -12,
+      "haptic": [12]
+    }
+  },
+  "music": {
+    "title": {
+      "file": "music/title.ogg",
+      "loop": true,
+      "gainDb": -3
+    },
+    "home": {
+      "file": "music/home.ogg",
+      "loop": true,
+      "gainDb": -3
+    },
+    "collection": {
+      "file": "music/collection.ogg",
+      "loop": true,
+      "gainDb": -4
+    },
+    "packSelect": {
+      "file": "music/pack_select.ogg",
+      "loop": true,
+      "gainDb": -6
+    },
+    "packResults": {
+      "file": "music/pack_results.ogg",
+      "loop": true,
+      "gainDb": -3
+    },
+    "wonderPick": {
+      "file": "music/wonder_pick.ogg",
+      "loop": true,
+      "gainDb": -3
+    },
+    "battle": {
+      "stems": {
+        "setup": "music/battle_setup.ogg",
+        "primary": "music/battle_primary.ogg",
+        "crunchAhead": "music/battle_crunch_ahead.ogg",
+        "crunchBehind": "music/battle_crunch_behind.ogg"
+      },
+      "loop": true,
+      "crossfadeMs": 900,
+      "gainDb": -3
+    },
+    "battleEnd": {
+      "file": "music/battle_end.ogg",
+      "loop": true,
+      "gainDb": -6
+    }
+  },
+  "$comment": "Event-to-sound manifest template. files = round-robin pool; layers = play all with their own delayMs (negative leads); synth keys map to the generators in references/web-audio.md; haptic arrays are vibration patterns, {during,end} for gesture-tracked sounds; duck names a profile; gainByDamage and byDamage use 'at most' buckets. File names are placeholders for the sounds you choose from assets/sound-sources.json."
+}
