@@ -41,6 +41,10 @@ A plugin named `claudecode-<name>` is built for Claude Code alone, as mods and h
 
 The skills CLI always searches each listed plugin's `skills/` folder and skips only internal skills, so a `SKILL.md` inside a `claudecode-` plugin either hides from it or says up front which harness it needs. It sets `metadata.internal: true`, or it sets a `compatibility` that names Claude Code (such as `Requires Claude Code`) and a `description` that starts with `Claude Code only:`. An unmarked skill would install into harnesses that can't run it, and the lint fails it.
 
+## Public content
+
+This repo is public. A plugin for building a replica of another product carries only the project's own work: no official marks of that product, no look measured from it, and no image, audio or video of it. Measured values and captures belong in a private repo, because a published measured look is the original's trade dress, and names make the repo findable. The lint checks every file the repo ships, skills included. `official-mark` fails on the marks listed in `scripts/lint-rules.json` and on a claim that a value came from an official render or screenshot. `media-file` fails on any image, audio or video file outside the paths in `media.allow`, which lists only the original glyphs of `pocket-deck-kit`. The patterns use character classes, so the lint file spells no mark out.
+
 ## Formatting
 
 Prettier formats every Markdown file, with `proseWrap: never`, so each paragraph and list item is one line. A diff then shows the sentence that changed instead of a reflowed block, and each reader's editor wraps it to its own width. Run `npm install` once, then `npm run format` before you commit. CI runs `npm run format:check` and fails on any file Prettier would change. Prettier is a dev dependency of the repo only: the Runtimes rule still holds for the skills, which ship no `package.json`. `scripts/lint-fixtures/` is excluded, because each fixture holds the exact Markdown its test expects.

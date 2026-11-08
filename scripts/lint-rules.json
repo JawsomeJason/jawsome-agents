@@ -20,7 +20,30 @@
   "dependencyManifests": ["requirements.txt", "pyproject.toml", "Pipfile", "Gemfile"],
   "lockfiles": ["package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "poetry.lock", "Pipfile.lock", "uv.lock", "Gemfile.lock"],
   "claudeOnlyExempt": ["harness-tool", "model-name", "vendor-name"],
+  "media": {
+    "extensions": ["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "tif", "tiff", "ico", "svg", "heic", "heif", "psd", "mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "aif", "aiff", "mp4", "m4v", "mov", "webm", "mkv", "avi"],
+    "allow": ["plugins/pocket-deck-kit/skills/pocket-deck-glyphs/assets/glyphs/"]
+  },
   "denylists": [
+    {
+      "rule": "official-mark",
+      "message": "names the original game, its makers or its measured look; this repo is public, so keep official marks and measured trade dress out",
+      "scopes": ["public"],
+      "skipInlineCode": false,
+      "flags": "i",
+      "patterns": [
+        "\\bp[o]k[eé]\\s?m[o]n",
+        "\\bp[o]k[é](?!\\s?m[o]n)",
+        "\\bn[i]ntendo\\b",
+        "\\bgame ?fr[e]ak\\b",
+        "\\bcr[e]atures inc\\b",
+        "\\bd[e]na\\b",
+        "\\btcg ?p[o]cket\\b",
+        "\\bp[t]cgp\\b",
+        "\\bf[a]uxkemon\\b",
+        "\\bm[e]asured from (?:an? )?official\\b"
+      ]
+    },
     {
       "rule": "harness-tool",
       "message": "names a harness tool; describe the action with a verb instead",
