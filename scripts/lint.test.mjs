@@ -16,6 +16,7 @@ const expected = {
   'description-length': 'description-length',
   'description-length-multiline': 'description-length',
   'description-missing': 'description-missing',
+  'dependency-undeclared': 'dependency-undeclared',
   'doc-scope': 'time-word',
   'fence-length': 'fence-length',
   'generated-time-word': 'time-word',
@@ -26,6 +27,7 @@ const expected = {
   'link-broken': 'link-broken',
   'link-escape': 'link-escape',
   'link-space': 'link-broken',
+  'lockfile': 'package-file',
   'marketplace-plugins': 'marketplace-plugins',
   'marketplace-source-object': 'marketplace-plugins',
   'model-name': 'model-name',
@@ -51,7 +53,7 @@ const expected = {
   'claude-only-name': 'claude-only-name',
 };
 
-const passing = ['clean', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete', 'claude-only-allowed', 'claude-only-labeled'];
+const passing = ['clean', 'dependency-declared', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete', 'claude-only-allowed', 'claude-only-labeled'];
 
 test('every fixture directory has an expectation', () => {
   const dirs = readdirSync(fileURLToPath(new URL('./lint-fixtures', import.meta.url))).filter((d) => !passing.includes(d));
@@ -119,6 +121,16 @@ test('a private denylist named by STANDARDS_LINT_PRIVATE_DENYLIST adds its terms
 
 test('a ``` line inside a ```` fence stays code, so a time word there passes', () => {
   assert.deepEqual(lint(fixture('fence-nested')), []);
+});
+
+test('a skill that ships a dependency manifest passes only with a compatibility field, and the manifest needs no output schema', () => {
+  assert.deepEqual(lint(fixture('dependency-declared')), []);
+  assert.deepEqual(lint(fixture('dependency-undeclared')).map((e) => [e.file.split('/').slice(-2).join('/'), e.rule]), [['scripts/requirements.txt', 'dependency-undeclared']]);
+  assert.match(lint(fixture('dependency-undeclared'))[0].message, /non-empty compatibility/);
+});
+
+test('a skill that ships a lockfile fails even with a compatibility field', () => {
+  assert.deepEqual(lint(fixture('lockfile')).map((e) => [e.file.split('/').slice(-2).join('/'), e.rule]), [['scripts/uv.lock', 'package-file']]);
 });
 
 test('a skill script is scanned, and only a schema\'s top-level $schema URL is exempt', () => {

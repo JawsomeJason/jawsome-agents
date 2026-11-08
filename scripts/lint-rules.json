@@ -17,6 +17,8 @@
   "manifestIdentityKeys": ["author", "owner"],
   "claudeOnlyPrefix": "claudecode-",
   "scriptSchemaExempt": ["playbook"],
+  "dependencyManifests": ["requirements.txt", "pyproject.toml", "Pipfile", "Gemfile"],
+  "lockfiles": ["package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "poetry.lock", "Pipfile.lock", "uv.lock", "Gemfile.lock"],
   "claudeOnlyExempt": ["harness-tool", "model-name", "vendor-name"],
   "denylists": [
     {
