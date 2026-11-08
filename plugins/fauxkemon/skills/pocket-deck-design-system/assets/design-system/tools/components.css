@@ -1,0 +1,1473 @@
+/* Pocket Deck components — loads after tokens.css. Every value comes from a token
+   (var(--…)) except geometry that only exists inside one component. All rules sit in
+   the `pocket-deck` cascade layer, so unlayered app CSS always wins.
+
+   Card geometry is measured from official card renders and expressed in cqi (1% of
+   card width). Vertical positions were measured as % of card height; `--h` converts
+   them (card height = 139.68% of width). Screen geometry is measured from official
+   phone screenshots at 390×844 and expressed in % of the design box. */
+
+@layer pocket-deck.base, pocket-deck.primitives, pocket-deck.compositions;
+
+/* ------------------------------------------------------------------ base */
+@layer pocket-deck.base {
+  .pd-app {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-text);
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :where(.pd-app, [class^="pd-"], [class*=" pd-"]):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  .pd-visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Type identity: one block per type sets the variables every component reads. */
+  :where([data-type="grass"])     { --pd-type: var(--type-grass);     --pd-on-type: var(--on-type-grass);     --pd-tint: var(--type-grass-tint);     --pd-glyph: var(--pd-glyph-grass);     --pd-body: var(--card-grass);     --pd-body-edge: var(--card-grass-edge);     --pd-disc: var(--disc-grass);     --pd-disc-hi: var(--disc-grass-hi);     --pd-disc-shade: var(--disc-grass-shade); }
+  :where([data-type="fire"])      { --pd-type: var(--type-fire);      --pd-on-type: var(--on-type-fire);      --pd-tint: var(--type-fire-tint);      --pd-glyph: var(--pd-glyph-fire);      --pd-body: var(--card-fire);      --pd-body-edge: var(--card-fire-edge);      --pd-disc: var(--disc-fire);      --pd-disc-hi: var(--disc-fire-hi);      --pd-disc-shade: var(--disc-fire-shade); }
+  :where([data-type="water"])     { --pd-type: var(--type-water);     --pd-on-type: var(--on-type-water);     --pd-tint: var(--type-water-tint);     --pd-glyph: var(--pd-glyph-water);     --pd-body: var(--card-water);     --pd-body-edge: var(--card-water-edge);     --pd-disc: var(--disc-water);     --pd-disc-hi: var(--disc-water-hi);     --pd-disc-shade: var(--disc-water-shade); }
+  :where([data-type="lightning"]) { --pd-type: var(--type-lightning); --pd-on-type: var(--on-type-lightning); --pd-tint: var(--type-lightning-tint); --pd-glyph: var(--pd-glyph-lightning); --pd-body: var(--card-lightning); --pd-body-edge: var(--card-lightning-edge); --pd-disc: var(--disc-lightning); --pd-disc-hi: var(--disc-lightning-hi); --pd-disc-shade: var(--disc-lightning-shade); }
+  :where([data-type="psychic"])   { --pd-type: var(--type-psychic);   --pd-on-type: var(--on-type-psychic);   --pd-tint: var(--type-psychic-tint);   --pd-glyph: var(--pd-glyph-psychic);   --pd-body: var(--card-psychic);   --pd-body-edge: var(--card-psychic-edge);   --pd-disc: var(--disc-psychic);   --pd-disc-hi: var(--disc-psychic-hi);   --pd-disc-shade: var(--disc-psychic-shade); }
+  :where([data-type="fighting"])  { --pd-type: var(--type-fighting);  --pd-on-type: var(--on-type-fighting);  --pd-tint: var(--type-fighting-tint);  --pd-glyph: var(--pd-glyph-fighting);  --pd-body: var(--card-fighting);  --pd-body-edge: var(--card-fighting-edge);  --pd-disc: var(--disc-fighting);  --pd-disc-hi: var(--disc-fighting-hi);  --pd-disc-shade: var(--disc-fighting-shade); }
+  :where([data-type="darkness"])  { --pd-type: var(--type-darkness);  --pd-on-type: var(--on-type-darkness);  --pd-tint: var(--type-darkness-tint);  --pd-glyph: var(--pd-glyph-darkness);  --pd-body: var(--card-darkness);  --pd-body-edge: var(--card-darkness-edge);  --pd-disc: var(--disc-darkness);  --pd-disc-hi: var(--disc-darkness-hi);  --pd-disc-shade: var(--disc-darkness-shade); --pd-card-ink: var(--card-ink-light); --pd-card-label: var(--card-ink-light); }
+  :where([data-type="metal"])     { --pd-type: var(--type-metal);     --pd-on-type: var(--on-type-metal);     --pd-tint: var(--type-metal-tint);     --pd-glyph: var(--pd-glyph-metal);     --pd-body: var(--card-metal);     --pd-body-edge: var(--card-metal-edge);     --pd-disc: var(--disc-metal);     --pd-disc-hi: var(--disc-metal-hi);     --pd-disc-shade: var(--disc-metal-shade); }
+  :where([data-type="dragon"])    { --pd-type: var(--type-dragon);    --pd-on-type: var(--on-type-dragon);    --pd-tint: var(--type-dragon-tint);    --pd-glyph: var(--pd-glyph-dragon);    --pd-body: var(--card-dragon);    --pd-body-edge: var(--card-dragon-edge);    --pd-disc: var(--disc-dragon);    --pd-disc-hi: var(--disc-dragon-hi);    --pd-disc-shade: var(--disc-dragon-shade); }
+  :where([data-type="colorless"]) { --pd-type: var(--type-colorless); --pd-on-type: var(--on-type-colorless); --pd-tint: var(--type-colorless-tint); --pd-glyph: var(--pd-glyph-colorless); --pd-body: var(--card-colorless); --pd-body-edge: var(--card-colorless-edge); --pd-disc: var(--disc-colorless); --pd-disc-hi: var(--disc-colorless-hi); --pd-disc-shade: var(--disc-colorless-shade); }
+}
+
+/* ------------------------------------------------------------ primitives */
+@layer pocket-deck.primitives {
+
+  /* Button ------------------------------------------------------------- */
+  .pd-button {
+    --pd-btn-bg: var(--surface);
+    --pd-btn-fg: var(--ink-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-block-size: var(--size-tap);
+    min-inline-size: var(--size-tap);
+    padding: 0 var(--space-5);
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--pd-btn-bg);
+    color: var(--pd-btn-fg);
+    font-family: var(--font-text);
+    font-size: 15px;
+    line-height: 20px;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+    box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition: transform var(--dur-instant) var(--ease-out), background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  /* Glossy fills: a lighter top band, as on the original's cyan pills. */
+  .pd-button[data-variant="primary"], .pd-button[data-variant="reward"], .pd-button[data-variant="danger"] {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08) 48%, rgba(255, 255, 255, 0) 52%);
+    box-shadow: 0 3px 8px color-mix(in oklab, var(--pd-btn-bg) 45%, transparent), inset 0 -2px 0 rgba(0, 0, 0, 0.10);
+  }
+  .pd-button[data-variant="primary"] { --pd-btn-bg: var(--brand); --pd-btn-fg: var(--on-brand); }
+  .pd-button[data-variant="reward"]  { --pd-btn-bg: var(--reward); --pd-btn-fg: var(--on-reward); }
+  .pd-button[data-variant="danger"]  { --pd-btn-bg: var(--danger); --pd-btn-fg: var(--on-danger); }
+  .pd-button[data-variant="quiet"]   { --pd-btn-bg: transparent; --pd-btn-fg: var(--brand-ink); box-shadow: none; }
+  .pd-button[data-variant="strip"]   { --pd-btn-bg: var(--strip); --pd-btn-fg: var(--ink-inverse); box-shadow: var(--shadow-1); }
+  /* End Turn: pale fill with an indigo-to-cyan hairline. */
+  .pd-button[data-variant="end-turn"] {
+    --pd-btn-bg: var(--surface-raised);
+    --pd-btn-fg: var(--ink-muted);
+    min-inline-size: 101px;
+    min-block-size: 36px;
+    border: 2px solid transparent;
+    background: linear-gradient(var(--pd-btn-bg), var(--pd-btn-bg)) padding-box, var(--gradient-end-turn) border-box;
+    font-size: 16px;
+  }
+  .pd-button[data-size="sm"] { min-block-size: 35px; padding: 0 var(--space-4); font-size: 14px; }
+  .pd-button[data-size="lg"] { min-block-size: 49px; padding: 0 var(--space-8); font-size: 17px; line-height: 24px; }
+  .pd-button[data-shape="circle"] { inline-size: var(--size-icon-button); block-size: var(--size-icon-button); padding: 0; --pd-btn-bg: var(--surface-raised); }
+  .pd-button[data-shape="circle"][data-size="sm"] { inline-size: 35px; block-size: 35px; }
+  .pd-button[data-shape="circle"][data-variant="strip"] { --pd-btn-bg: var(--strip); }
+  .pd-button[data-shape="circle"][data-variant="primary"] { --pd-btn-bg: var(--brand); }
+  .pd-button[data-icon-only] { padding: 0; }
+  .pd-button svg { inline-size: 22px; block-size: 22px; flex: none; }
+  .pd-button[data-shape="circle"] svg { inline-size: 24px; block-size: 24px; }
+  @media (hover: hover) {
+    .pd-button:hover { background-color: color-mix(in oklab, var(--pd-btn-bg) 92%, var(--pd-btn-fg)); }
+    .pd-button[data-variant="quiet"]:hover { background-color: var(--brand-tint); }
+  }
+  .pd-button:active { transform: translateY(1px) scale(0.98); }
+  .pd-button[data-variant="primary"]:active { --pd-btn-bg: var(--brand-strong); }
+  .pd-button:disabled, .pd-button[aria-disabled="true"] { --pd-btn-bg: var(--surface-sunken); --pd-btn-fg: var(--ink-subtle); background-image: none; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Toggle --------------------------------------------------------------
+     <label class="pd-toggle"><input type="checkbox" role="switch"><span class="pd-toggle__track"></span>Auto</label> */
+  .pd-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-block-size: var(--size-tap);
+    color: var(--ink-muted);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+  .pd-toggle input { position: absolute; opacity: 0; inline-size: 1px; block-size: 1px; }
+  .pd-toggle__track {
+    position: relative;
+    inline-size: 64px;
+    block-size: 26px;
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    box-shadow: inset 0 1px 3px rgba(20, 32, 43, 0.14), 0 1px 0 rgba(255, 255, 255, 0.8);
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  .pd-toggle__track::after {
+    content: "";
+    position: absolute;
+    inset-block-start: 3px;
+    inset-inline-start: 3px;
+    inline-size: 20px;
+    block-size: 20px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in oklab, var(--surface-sunken) 60%, var(--line-strong));
+    box-shadow: var(--shadow-1);
+    transition: translate var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+  }
+  .pd-toggle input:checked + .pd-toggle__track { background: var(--toggle-on); }
+  .pd-toggle input:checked + .pd-toggle__track::after { translate: 38px 0; background: var(--ink-inverse); }
+  .pd-toggle input:focus-visible + .pd-toggle__track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .pd-toggle input:disabled ~ * { opacity: 0.5; }
+
+  /* Chip --------------------------------------------------------------- */
+  .pd-chip {
+    --pd-chip-bg: var(--surface);
+    --pd-chip-fg: var(--ink-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-block-size: 28px;
+    padding: 0 var(--space-3);
+    border: 1.5px solid transparent;
+    border-radius: var(--radius-pill);
+    background: var(--pd-chip-bg);
+    color: var(--pd-chip-fg);
+    font-family: var(--font-text);
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    box-shadow: var(--shadow-1);
+  }
+  .pd-chip[data-tone="brand"]   { --pd-chip-bg: var(--brand); --pd-chip-fg: var(--on-brand); }
+  .pd-chip[data-tone="reward"]  { --pd-chip-bg: var(--reward); --pd-chip-fg: var(--on-reward); }
+  .pd-chip[data-tone="danger"]  { --pd-chip-bg: var(--danger); --pd-chip-fg: var(--on-danger); }
+  .pd-chip[data-tone="success"] { --pd-chip-bg: var(--success); --pd-chip-fg: var(--on-success); }
+  .pd-chip[data-tone="strip"]   { --pd-chip-bg: var(--strip); --pd-chip-fg: var(--ink-inverse); }
+  .pd-chip[data-tone="type"]    { --pd-chip-bg: var(--pd-type); --pd-chip-fg: var(--pd-on-type); }
+  .pd-chip[data-tone="tint"]    { --pd-chip-bg: var(--pd-tint); --pd-chip-fg: var(--ink); }
+  button.pd-chip { cursor: pointer; min-block-size: 36px; touch-action: manipulation; }
+  .pd-chip[aria-pressed="true"] { --pd-chip-bg: var(--strip); --pd-chip-fg: var(--ink-inverse); }
+  .pd-chip .pd-energy { --pd-badge-size: 16px; margin-inline-start: calc(var(--space-1) * -1); }
+
+  /* RainbowRule -------------------------------------------------------- */
+  .pd-rule {
+    display: block;
+    inline-size: 100%;
+    block-size: 2px;
+    margin: 0;
+    border: 0;
+    background: var(--gradient-rainbow);
+  }
+  .pd-rule[data-tone="brand"] { background: var(--brand); }
+
+  /* EnergyBadge ---------------------------------------------------------
+     A glossy type disc: base colour, rim light at 35% 30%, shade at the bottom, a thin
+     dark ring, and the type glyph in the on-type colour. */
+  .pd-energy {
+    --pd-badge-size: var(--size-energy-badge);
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    inline-size: var(--pd-badge-size);
+    block-size: var(--pd-badge-size);
+    border-radius: var(--radius-pill);
+    background:
+      radial-gradient(circle at 35% 30%, var(--pd-disc-hi) 0 18%, transparent 55%),
+      radial-gradient(circle at 50% 100%, var(--pd-disc-shade) 0 30%, transparent 70%),
+      var(--pd-disc);
+    box-shadow: inset 0 0 0 calc(var(--pd-badge-size) * 0.06) color-mix(in oklab, var(--pd-disc-shade) 70%, var(--ink));
+    vertical-align: middle;
+  }
+  .pd-energy::before {
+    content: "";
+    inline-size: 60%;
+    block-size: 60%;
+    background: var(--pd-on-type);
+    -webkit-mask: var(--pd-glyph) center / contain no-repeat;
+    mask: var(--pd-glyph) center / contain no-repeat;
+  }
+  .pd-energy[data-size="xs"] { --pd-badge-size: 16px; }
+  .pd-energy[data-size="sm"] { --pd-badge-size: 20px; }
+  .pd-energy[data-size="lg"] { --pd-badge-size: 44px; }
+  .pd-energy[data-size="xl"] { --pd-badge-size: 64px; }
+  .pd-energy[data-state="empty"] { background: transparent; box-shadow: inset 0 0 0 2px var(--slot-edge); }
+  .pd-energy[data-state="empty"]::before { display: none; }
+
+  /* RarityMark --------------------------------------------------------- */
+  .pd-rarity {
+    --pd-rarity-color: var(--rarity-diamond);
+    --pd-rarity-glyph: var(--pd-glyph-diamond);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.08em;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .pd-rarity[data-tier="star"]  { --pd-rarity-color: var(--rarity-star);  --pd-rarity-glyph: var(--pd-glyph-star); }
+  .pd-rarity[data-tier="crown"] { --pd-rarity-color: var(--rarity-crown); --pd-rarity-glyph: var(--pd-glyph-crown); }
+  .pd-rarity[data-tier="shiny"] { --pd-rarity-color: var(--rarity-shiny); --pd-rarity-glyph: var(--pd-glyph-shiny); }
+  .pd-rarity > i {
+    display: block;
+    inline-size: 1em;
+    block-size: 1em;
+    background: var(--pd-rarity-color);
+    -webkit-mask: var(--pd-rarity-glyph) center / contain no-repeat;
+    mask: var(--pd-rarity-glyph) center / contain no-repeat;
+  }
+
+  /* PointTracker --------------------------------------------------------
+     Three 13px discs: dark when unearned, a gold coin with a blue italic numeral when earned. */
+  .pd-points {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    counter-reset: pd-point;
+  }
+  .pd-points__pip {
+    display: grid;
+    place-items: center;
+    inline-size: 13px;
+    block-size: 13px;
+    border-radius: var(--radius-pill);
+    background: var(--point-empty);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.35);
+    font-family: var(--font-numeral);
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 800;
+    font-style: italic;
+    color: var(--coin-ink);
+    transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-pop);
+  }
+  .pd-points__pip[data-filled] {
+    counter-increment: pd-point;
+    background: radial-gradient(circle at 35% 30%, #fff8c4 0 20%, transparent 60%), var(--reward);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--reward) 60%, var(--on-reward)), 0 1px 2px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+  }
+  .pd-points__pip[data-filled]::before { content: counter(pd-point); }
+  .pd-points__label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted); margin-inline-start: var(--space-1); }
+  .pd-points[data-size="lg"] { gap: 6px; }
+  .pd-points[data-size="lg"] .pd-points__pip { inline-size: 24px; block-size: 24px; font-size: 15px; }
+
+  /* HpMeter ------------------------------------------------------------
+     The floating HP read-out on a board card: a heavy numeral with a white stroke and a
+     mint bar on a white track. Anchored to the card's top-right by BoardSlot. The numbers are
+     --pd-hp / --pd-hp-max (the bare --hp name is the bar's colour token). */
+  .pd-hp {
+    display: inline-grid;
+    justify-items: end;
+    gap: 2px;
+  }
+  .pd-hp__value {
+    font-family: var(--font-numeral);
+    font-size: 28px;
+    line-height: 28px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--hp-ink);
+    paint-order: stroke fill;
+    -webkit-text-stroke: 4px var(--board-rim);
+    text-shadow: 0 1px 2px rgba(20, 32, 43, 0.25);
+    font-variant-numeric: tabular-nums;
+  }
+  .pd-hp__value small { font-size: 12px; font-weight: 700; -webkit-text-stroke-width: 3px; margin-inline-start: 1px; }
+  .pd-hp__track {
+    inline-size: var(--pd-hp-track, 52px);
+    block-size: 7px;
+    border-radius: var(--radius-pill);
+    background: var(--board-rim);
+    box-shadow: 0 1px 2px rgba(20, 32, 43, 0.25);
+    overflow: hidden;
+  }
+  .pd-hp__fill {
+    display: block;
+    block-size: 100%;
+    inline-size: calc(var(--pd-hp) / var(--pd-hp-max, 100) * 100%);
+    border-radius: inherit;
+    background: var(--hp);
+    transition: inline-size var(--dur-slow) var(--ease-out);
+  }
+  .pd-hp[data-size="sm"] .pd-hp__value { font-size: 20px; line-height: 20px; -webkit-text-stroke-width: 3px; }
+  .pd-hp[data-size="sm"] .pd-hp__track { --pd-hp-track: 38px; block-size: 6px; }
+
+  /* Panel -------------------------------------------------------------- */
+  .pd-panel {
+    position: relative;
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 24px;
+    box-shadow: 0 6px 18px rgba(60, 80, 120, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    padding: var(--space-4);
+    overflow: hidden;
+  }
+  .pd-panel[data-elevation="2"] { background: var(--surface-raised); box-shadow: var(--shadow-2); }
+  .pd-panel[data-elevation="3"] { background: var(--surface-raised); box-shadow: var(--shadow-3); padding: var(--space-6); }
+  .pd-panel[data-tone="reward"] { background: var(--reward-tint); box-shadow: none; }
+  .pd-panel[data-tone="sunken"] { background: var(--surface-sunken); box-shadow: none; }
+  .pd-panel[data-tone="set"] { background: linear-gradient(115deg, color-mix(in oklab, var(--pd-hero, var(--hero-set)) 70%, white) 0 38%, var(--pd-hero, var(--hero-set)) 40%); color: var(--ink); }
+  .pd-panel[data-sheen]::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 50% 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.45) 30%, rgba(255, 255, 255, 0.45) 62%, transparent 62%);
+    pointer-events: none;
+  }
+  [data-theme="dark"] .pd-panel[data-sheen]::before { background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.07) 30%, rgba(255, 255, 255, 0.07) 62%, transparent 62%); }
+  /* Dark theme keeps light text, so the set tile deepens toward surface instead of lifting toward white. */
+  [data-theme="dark"] .pd-panel[data-tone="set"] { background: linear-gradient(115deg, color-mix(in oklab, var(--pd-hero, var(--hero-set)) 70%, var(--surface)) 0 38%, var(--pd-hero, var(--hero-set)) 40%); }
+  .pd-panel[data-sheet] { border-radius: 20px 20px 0 0; background: var(--surface-raised); }
+  .pd-panel__title { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: 18px; line-height: 24px; font-weight: 700; }
+  .pd-panel__title[data-align="center"] { text-align: center; }
+  .pd-panel__divider { border: 0; border-block-start: 1px solid var(--line); margin: var(--space-3) 0; }
+
+  /* SpeechBubble: the pack screen's highlight bubble. */
+  .pd-bubble {
+    position: relative;
+    background: var(--surface-raised);
+    border-radius: 20px;
+    padding: var(--space-3);
+    box-shadow: var(--shadow-2), inset 0 0 0 4px var(--surface);
+  }
+  .pd-bubble::after {
+    content: "";
+    position: absolute;
+    inset-block-end: -11px;
+    inset-inline-start: calc(50% - 12px);
+    border: 12px solid transparent;
+    border-block-end: 0;
+    border-block-start-color: var(--surface-raised);
+  }
+}
+
+/* ---------------------------------------------------------- compositions */
+@layer pocket-deck.compositions {
+
+  /* TabBar ----------------------------------------------------------------
+     Five label-less slate line icons; the current one is filled; a red dot top-right. */
+  .pd-tabbar {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    min-block-size: var(--size-tabbar);
+    padding: 0 var(--space-2) env(safe-area-inset-bottom);
+    background: var(--ground);
+    z-index: var(--z-tabbar);
+  }
+  .pd-tabbar a {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-inline-size: 56px;
+    min-block-size: var(--size-tap);
+    border-radius: var(--radius-md);
+    color: var(--ink-muted);
+    text-decoration: none;
+    touch-action: manipulation;
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  .pd-tabbar a svg { inline-size: 26px; block-size: 26px; stroke-width: 1.8; }
+  .pd-tabbar a[aria-current="page"] { color: var(--strip); }
+  .pd-tabbar a[aria-current="page"] svg { fill: currentColor; }
+  .pd-tabbar a[aria-current="page"] svg [data-cut] { fill: var(--ground); }
+  .pd-tabbar__dot {
+    position: absolute;
+    inset-block-start: 8px;
+    inset-inline-end: 12px;
+    inline-size: 9px;
+    block-size: 9px;
+    border-radius: var(--radius-pill);
+    background: var(--notice);
+    box-shadow: 0 0 0 2px var(--ground);
+  }
+
+  /* PocketCard ---------------------------------------------------------
+     A size container; everything inside is positioned in cqi (1% of card width) using
+     the measured anatomy. --h is 1% of card height. */
+  .pd-card {
+    --h: 1.3968cqi;
+    --pd-card-ink: var(--card-ink);
+    --pd-card-label: var(--card-label);
+    --pd-frame: var(--card-frame);
+    container: pd-card / inline-size;
+    position: relative;
+    inline-size: var(--pd-card-width, var(--size-card-inspect));
+    aspect-ratio: var(--card-aspect);
+    border-radius: 3.67cqi / 2.67%;
+    box-shadow: var(--shadow-card);
+    color: var(--pd-card-ink);
+    font-family: var(--font-text);
+    line-height: 1.22;
+    transform-style: preserve-3d;
+    transform: perspective(1200px) rotateX(calc(var(--pd-tilt-y, 0) * -10deg)) rotateY(calc(var(--pd-tilt-x, 0) * 12deg));
+    -webkit-user-select: none;
+    user-select: none;
+    isolation: isolate;
+  }
+  .pd-card:not([data-pd-tilt]) { transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+
+  /* Frame: brushed silver border (gradient in the border box), body behind the content. */
+  .pd-card__frame {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 4cqi solid transparent;
+    background:
+      radial-gradient(90% 70% at 50% 60%, var(--pd-body, var(--card-colorless)), var(--pd-body-edge, var(--card-colorless-edge))) padding-box,
+      repeating-linear-gradient(100deg, var(--card-frame-highlight) 0 0.5cqi, var(--pd-frame) 0.5cqi 1.6cqi, var(--card-frame-shade) 1.6cqi 1.9cqi, var(--pd-frame) 1.9cqi 3cqi) border-box;
+    box-shadow: inset 0 0 0 0.4cqi rgba(255, 255, 255, 0.55), inset 0 0 0 0.8cqi rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+  /* A soft white vignette behind the text region keeps body text legible on every type. */
+  .pd-card__frame::before {
+    content: "";
+    position: absolute;
+    inset: calc(48 * var(--h) - 4cqi) 0 calc(14 * var(--h)) 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.22) 12%, rgba(255, 255, 255, 0.22) 88%, rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+  }
+  .pd-card[data-type="darkness"] .pd-card__frame::before { background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.18) 12%, rgba(0, 0, 0, 0.18) 88%, rgba(0, 0, 0, 0) 100%); }
+
+  /* Stage pill, top-left over the frame. */
+  .pd-card__stage {
+    position: absolute;
+    inset-block-start: calc(4.36 * var(--h));
+    inset-inline-start: 2.5cqi;
+    box-sizing: border-box;
+    min-inline-size: 14.5cqi;
+    block-size: calc(3.52 * var(--h));
+    padding: 0 2cqi;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(180deg, var(--card-pill), var(--card-pill-deep));
+    box-shadow: inset 0 0 0 0.3cqi rgba(255, 255, 255, 0.8), 0 0.3cqi 0.6cqi rgba(0, 0, 0, 0.18);
+    display: grid;
+    place-items: center;
+    font-size: 2.2cqi;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--card-label);
+    white-space: nowrap;
+    z-index: 2;
+  }
+  /* Evolves-from: an octagonal thumb and a slanted band over the top of the art. */
+  .pd-card__evolves {
+    position: absolute;
+    inset-block-start: calc(7.76 * var(--h));
+    inset-inline-start: 4cqi;
+    display: flex;
+    align-items: center;
+    z-index: 3;
+    font-size: 2cqi;
+    line-height: 1;
+    font-weight: 600;
+    color: var(--ink-inverse);
+  }
+  .pd-card__evolves > i {
+    display: block;
+    inline-size: 11.83cqi;
+    block-size: calc(6.91 * var(--h));
+    background: var(--pd-body-edge, var(--card-colorless-edge));
+    clip-path: polygon(1cqi 0, calc(100% - 1cqi) 0, 100% 1cqi, 100% calc(100% - 1cqi), calc(100% - 1cqi) 100%, 1cqi 100%, 0 calc(100% - 1cqi), 0 1cqi);
+    box-shadow: inset 0 0 0 0.4cqi rgba(255, 255, 255, 0.7);
+  }
+  .pd-card__evolves > span {
+    margin-inline-start: 0.8cqi;
+    padding: 0 3cqi 0 0.9cqi;
+    block-size: calc(2.55 * var(--h));
+    display: grid;
+    align-items: center;
+    background: color-mix(in oklab, var(--card-evolves-band) 60%, transparent);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 2.5cqi) 100%, 0 100%);
+    white-space: nowrap;
+  }
+
+  /* Header row: name from 18% in, HP right-aligned at 87.2%, type disc at 91.3%. */
+  .pd-card__head {
+    position: absolute;
+    inset-block-start: calc(3.9 * var(--h));
+    inset-inline: 18cqi 12.83cqi;
+    block-size: calc(4.6 * var(--h));
+    display: flex;
+    align-items: baseline;
+    gap: 1.4cqi;
+    z-index: 2;
+  }
+  .pd-card__name {
+    flex: 1 1 auto;
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: 6.6cqi;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pd-card__ex {
+    display: inline-block;
+    margin-inline-start: 1.7cqi;
+    font-family: var(--font-numeral);
+    font-style: italic;
+    font-weight: 800;
+    font-size: 1.05em;
+    letter-spacing: -0.03em;
+    background: linear-gradient(180deg, var(--card-ex-gold-1), var(--card-ex-gold-2) 55%, var(--card-ex-gold-3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-stroke: 0.3cqi var(--card-ex-outline);
+    paint-order: stroke fill;
+  }
+  .pd-card__hp {
+    flex: none;
+    font-family: var(--font-numeral);
+    font-size: 6.9cqi;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .pd-card__hp small { font-family: var(--font-text); font-size: 3.2cqi; font-weight: 700; margin-inline-end: 0.3cqi; letter-spacing: 0; }
+  .pd-card__head > .pd-energy { position: absolute; inset-inline-end: -9.8cqi; inset-block-start: calc(-0.65 * var(--h)); --pd-badge-size: 6.5cqi; }
+
+  /* Art frame: a bevelled light frame at 7.33% / 9.21%, 85.5 wide, 41.33% tall; the
+     illustration sits 1cqi inside it and the dex strip runs along its bottom. */
+  .pd-card__art {
+    position: absolute;
+    inset-block-start: calc(9.21 * var(--h));
+    inset-inline-start: 7.33cqi;
+    box-sizing: border-box;
+    inline-size: 85.5cqi;
+    block-size: calc(41.33 * var(--h));
+    border-radius: 1cqi;
+    padding: calc(0.61 * var(--h)) 1cqi calc(2.78 * var(--h));
+    background: linear-gradient(160deg, var(--card-frame-highlight), var(--card-frame) 50%, var(--card-frame-highlight));
+    box-shadow: inset 0 0 0 0.33cqi rgba(255, 255, 255, 0.9), 0 0.3cqi 0.8cqi rgba(0, 0, 0, 0.18);
+    z-index: 1;
+  }
+  .pd-card__art > img, .pd-card__art > .pd-card__layers, .pd-card__art::before {
+    position: absolute;
+    inset: calc(0.61 * var(--h)) 1cqi calc(2.78 * var(--h));
+    border-radius: 0.6cqi;
+    overflow: hidden;
+  }
+  .pd-card__art::before {
+    content: "";
+    background:
+      radial-gradient(60% 70% at 70% 30%, color-mix(in oklab, var(--pd-body, var(--card-colorless)) 55%, transparent), transparent 70%),
+      radial-gradient(50% 60% at 20% 80%, color-mix(in oklab, var(--pd-body, var(--card-colorless)) 35%, transparent), transparent 70%),
+      linear-gradient(160deg, var(--card-frame-highlight), color-mix(in oklab, var(--pd-body, var(--card-colorless)) 30%, var(--card-frame-highlight)));
+  }
+  .pd-card__art > img { inline-size: 83.5cqi; block-size: calc(37.58 * var(--h)); object-fit: cover; display: block; z-index: 1; }
+  .pd-card__dex {
+    position: absolute;
+    inset-block-end: calc(0.6 * var(--h));
+    inset-inline: 1cqi;
+    block-size: calc(2.18 * var(--h));
+    display: grid;
+    place-items: center;
+    background: var(--card-dex-bar);
+    font-size: 1.7cqi;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--card-label);
+    white-space: nowrap;
+  }
+  /* Parallax layers (ex, Immersive): .pd-card__layers > .pd-card__layer[data-depth="back|mid|front"] */
+  .pd-card__layers { z-index: 1; transform-style: preserve-3d; }
+  .pd-card__layer { position: absolute; inset: -6%; background-size: cover; background-position: center; }
+  .pd-card__layer[data-depth="back"]  { translate: calc(var(--pd-tilt-x, 0) * -2.5%) calc(var(--pd-tilt-y, 0) * -2.5%); }
+  .pd-card__layer[data-depth="mid"]   { translate: calc(var(--pd-tilt-x, 0) * 1.5%) calc(var(--pd-tilt-y, 0) * 1.5%); }
+  .pd-card__layer[data-depth="front"] { translate: calc(var(--pd-tilt-x, 0) * 4%) calc(var(--pd-tilt-y, 0) * 4%); }
+  .pd-card[data-art="layered"] .pd-card__art { overflow: visible; }
+  .pd-card[data-art="layered"] .pd-card__layer[data-depth="front"] { inset: -14% -6% -6%; }
+
+  /* Body region: 50.9%–85.8% of height; content centres unless an Ability leads. */
+  .pd-card__body {
+    position: absolute;
+    inset-block-start: calc(50.9 * var(--h));
+    inset-inline: 7cqi 6.67cqi;
+    box-sizing: border-box;
+    block-size: calc(34.9 * var(--h));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: calc(1.2 * var(--h));
+    z-index: 2;
+  }
+  .pd-card__body:has(.pd-card__ability) { justify-content: flex-start; padding-block-start: calc(2.9 * var(--h)); }
+  .pd-card__ability { display: grid; grid-template-columns: 22.5cqi 1fr; align-items: center; column-gap: 1cqi; row-gap: calc(1.2 * var(--h)); margin-block-end: calc(1.6 * var(--h)); }
+  .pd-card__ability-label {
+    block-size: calc(3.15 * var(--h));
+    padding: 0 2cqi;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, #df2b37, var(--card-ability), #7c0411);
+    box-shadow: inset 0 0 0 0.3cqi var(--card-ability-outline), inset 0 0.3cqi 0 rgba(255, 255, 255, 0.35);
+    color: #fff;
+    font-size: 2.2cqi;
+    line-height: calc(3.15 * var(--h));
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .pd-card__ability-name { font-size: 5cqi; line-height: 1; font-weight: 700; color: var(--card-ability-ink); }
+  .pd-card[data-type="darkness"] .pd-card__ability-name { color: #ff8c7a; }
+  .pd-card__ability .pd-card__text { grid-column: 1 / -1; }
+  .pd-card__attack {
+    display: grid;
+    grid-template-columns: 23.5cqi 1fr auto;
+    align-items: center;
+    column-gap: 0;
+    min-block-size: calc(5.3 * var(--h));
+  }
+  .pd-card__attack + .pd-card__attack { margin-block-start: calc(3.2 * var(--h)); }
+  .pd-card__cost { display: inline-flex; gap: 0.45cqi; margin-inline-start: -0.4cqi; }
+  .pd-card__cost .pd-energy { --pd-badge-size: 5.3cqi; }
+  .pd-card__attack-name { font-size: 4.9cqi; line-height: 1; font-weight: 700; padding-inline-end: 2cqi; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pd-card__damage {
+    font-family: var(--font-numeral);
+    font-size: 6.2cqi;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+  .pd-card__text {
+    grid-column: 1 / -1;
+    margin: calc(1.2 * var(--h)) 0 0;
+    font-size: 3.8cqi;
+    line-height: 1.22;
+    font-weight: 500;
+    color: var(--pd-card-ink);
+  }
+  .pd-card__text[data-size="lg"] { font-size: 4.6cqi; }
+
+  /* Footer capsules: Weakness (7.33–48.3%) and Retreat (52–93%) at 85.8% height. */
+  .pd-card__foot {
+    position: absolute;
+    inset-block-start: calc(85.82 * var(--h));
+    inset-inline-start: 7.33cqi;
+    inline-size: 85.67cqi;
+    display: grid;
+    grid-template-columns: 41cqi 41cqi;
+    column-gap: 3.67cqi;
+    z-index: 2;
+    font-size: 2.1cqi;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--card-label);
+  }
+  .pd-card__foot > span {
+    display: flex;
+    align-items: center;
+    gap: 1cqi;
+    block-size: calc(3.27 * var(--h));
+    padding-inline: 6.8cqi 2cqi;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(180deg, var(--card-pill), var(--card-pill-deep));
+    box-shadow: inset 0 0 0 0.3cqi rgba(255, 255, 255, 0.75), 0 0.2cqi 0.4cqi rgba(0, 0, 0, 0.15);
+    white-space: nowrap;
+  }
+  .pd-card__foot > span:last-child { padding-inline-start: 5cqi; }
+  .pd-card__foot .pd-energy { --pd-badge-size: 3.7cqi; }
+  .pd-card__foot b { font-family: var(--font-numeral); font-size: 4.6cqi; font-weight: 800; color: var(--card-ink); letter-spacing: -0.01em; }
+  .pd-card__foot > span > span { display: inline-flex; gap: 0.63cqi; margin-inline-start: auto; }
+  .pd-card__foot > span:last-child > span { margin-inline-start: 1.6cqi; }
+
+  /* Bottom strip: illustrator and rarity at left; flavour or the ex rule at right. */
+  .pd-card__illus {
+    position: absolute;
+    inset-block-start: calc(89.3 * var(--h));
+    inset-inline-start: 6.67cqi;
+    font-size: 2cqi;
+    line-height: 1;
+    font-weight: 600;
+    color: var(--pd-card-label);
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .pd-card__meta {
+    position: absolute;
+    inset-block-start: calc(91.27 * var(--h));
+    inset-inline-start: 7cqi;
+    display: flex;
+    align-items: center;
+    gap: 2cqi;
+    font-size: 2cqi;
+    line-height: 1;
+    font-weight: 600;
+    color: var(--pd-card-label);
+    z-index: 2;
+  }
+  .pd-card__meta .pd-rarity { font-size: 4cqi; gap: 0.08cqi; --pd-rarity-color: var(--card-rarity-diamond); }
+  .pd-card__meta .pd-rarity[data-tier="star"] { --pd-rarity-color: var(--card-rarity-star); }
+  .pd-card__meta .pd-rarity[data-tier="shiny"] { --pd-rarity-color: var(--card-rarity-shiny); }
+  .pd-card__meta .pd-rarity[data-tier="crown"] { --pd-rarity-color: var(--card-rarity-crown); }
+  .pd-card__flavor {
+    position: absolute;
+    inset-block-start: calc(90.18 * var(--h));
+    inset-inline-end: 6.83cqi;
+    max-inline-size: 48.3cqi;
+    margin: 0;
+    font-size: 2.7cqi;
+    line-height: 1.22;
+    font-weight: 500;
+    font-style: italic;
+    text-align: end;
+    color: var(--pd-card-ink);
+    z-index: 2;
+  }
+  /* ex rule box: a slanted gold slab with a black tab. */
+  .pd-card__rule {
+    position: absolute;
+    inset-block-start: calc(90 * var(--h));
+    inset-inline: 33.33cqi 4cqi;
+    box-sizing: border-box;
+    block-size: calc(7.1 * var(--h));
+    margin: 0;
+    padding: calc(2.55 * var(--h)) 4cqi 0 2.67cqi;
+    background: linear-gradient(180deg, var(--card-ex-gold-1), var(--card-ex-gold-2) 55%, var(--card-ex-gold-3));
+    clip-path: polygon(2.3cqi 0, 100% 0, 100% 100%, 0 100%);
+    box-shadow: inset 0 0 0 0.3cqi rgba(255, 255, 255, 0.5);
+    font-size: 2.6cqi;
+    line-height: calc(2.25 * var(--h));
+    font-weight: 600;
+    color: var(--card-rule-ink);
+    z-index: 2;
+  }
+  .pd-card__rule::before {
+    content: attr(data-tab);
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 1.67cqi;
+    inline-size: 19.67cqi;
+    block-size: calc(2.55 * var(--h));
+    background: var(--card-ex-tab);
+    color: var(--card-ex-tab-ink);
+    font-size: 2cqi;
+    line-height: calc(2.55 * var(--h));
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-transform: uppercase;
+    clip-path: polygon(0.9cqi 0, 100% 0, calc(100% - 0.9cqi) 100%, 0 100%);
+  }
+
+  /* Trainers: light body, header band with the kind at left and TRAINER at right. */
+  .pd-card[data-kind="trainer"] {
+    --pd-body: var(--card-trainer-body);
+    --pd-body-edge: var(--card-trainer-body);
+    --pd-kind: var(--card-item);
+    --pd-kind-box: var(--card-item-box);
+    --pd-kind-box-deep: var(--card-item-box-deep);
+  }
+  .pd-card[data-kind="trainer"][data-trainer="supporter"] { --pd-kind: var(--card-supporter); --pd-kind-box: var(--card-supporter-box); --pd-kind-box-deep: var(--card-supporter-box-deep); }
+  .pd-card[data-kind="trainer"] .pd-card__frame::before { display: none; }
+  .pd-card__band {
+    position: absolute;
+    inset-block-start: calc(3.27 * var(--h));
+    inset-inline-start: 4.5cqi;
+    box-sizing: border-box;
+    inline-size: 91.17cqi;
+    block-size: calc(3.52 * var(--h));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 9.3cqi 0 0.17cqi;
+    background: var(--card-trainer-band);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    z-index: 2;
+    font-size: 3.6cqi;
+    line-height: 1;
+    font-weight: 700;
+  }
+  .pd-card__band > b { color: var(--pd-kind); }
+  .pd-card__band > i { font-style: normal; font-size: 4.2cqi; letter-spacing: 0.1em; color: var(--card-trainer-word); paint-order: stroke fill; -webkit-text-stroke: 0.5cqi var(--surface-raised); font-family: var(--font-numeral); font-weight: 600; }
+  .pd-card[data-kind="trainer"] .pd-card__head { inset-block-start: calc(7.9 * var(--h)); inset-inline: 5.67cqi 8cqi; }
+  .pd-card[data-kind="trainer"] .pd-card__name { font-size: 6.3cqi; }
+  .pd-card[data-kind="trainer"] .pd-card__art { inset-block-start: calc(13.58 * var(--h)); block-size: calc(39.52 * var(--h)); padding-block-end: calc(0.6 * var(--h)); }
+  .pd-card[data-kind="trainer"] .pd-card__art::before, .pd-card[data-kind="trainer"] .pd-card__art > img { inset-block-end: calc(0.6 * var(--h)); block-size: auto; }
+  .pd-card[data-kind="trainer"] .pd-card__body { inset-block-start: calc(53.1 * var(--h)); inset-inline: 11.67cqi 11.5cqi; block-size: calc(35.87 * var(--h)); justify-content: center; }
+  .pd-card[data-kind="trainer"] .pd-card__text { font-size: 4cqi; line-height: 1.25; text-align: center; }
+  .pd-card[data-kind="trainer"] .pd-card__rule {
+    inset-block-start: calc(88.97 * var(--h));
+    inset-inline: 31.67cqi 4cqi;
+    block-size: calc(7.76 * var(--h));
+    padding: calc(1 * var(--h)) 4cqi 0 2.17cqi;
+    background: linear-gradient(180deg, var(--pd-kind-box), var(--pd-kind-box-deep));
+    color: var(--card-ink);
+    font-size: 2.5cqi;
+    line-height: calc(2.79 * var(--h));
+  }
+  .pd-card[data-kind="trainer"] .pd-card__rule::before { display: none; }
+
+  /* Full art (☆ and up): the illustration fills the frame, text is stroked. */
+  .pd-card[data-art="full"] .pd-card__art {
+    inset: 0;
+    inline-size: auto;
+    block-size: auto;
+    border-radius: inherit;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    z-index: 0;
+  }
+  .pd-card[data-art="full"] .pd-card__art::before, .pd-card[data-art="full"] .pd-card__art > img, .pd-card[data-art="full"] .pd-card__art > .pd-card__layers { inset: 0; inline-size: 100%; block-size: 100%; border-radius: inherit; }
+  .pd-card[data-art="full"] .pd-card__dex, .pd-card[data-art="full"] .pd-card__frame::before { display: none; }
+  .pd-card[data-art="full"] { --pd-card-ink: var(--card-fullart-ink); --pd-card-label: var(--card-fullart-ink); }
+  .pd-card[data-art="full"] :is(.pd-card__name, .pd-card__hp, .pd-card__attack-name, .pd-card__damage, .pd-card__text, .pd-card__ability-name, .pd-card__illus, .pd-card__meta, .pd-card__flavor) {
+    color: var(--card-fullart-ink);
+    paint-order: stroke fill;
+    -webkit-text-stroke: 0.66cqi var(--card-fullart-outline);
+  }
+  .pd-card[data-art="full"] :is(.pd-card__attack-name, .pd-card__ability-name) { -webkit-text-stroke-width: 0.5cqi; }
+  .pd-card[data-art="full"] .pd-card__text { -webkit-text-stroke-width: 0.35cqi; }
+  .pd-card[data-art="full"] :is(.pd-card__illus, .pd-card__meta, .pd-card__flavor) { -webkit-text-stroke-width: 0.25cqi; }
+  .pd-card[data-art="full"] .pd-card__stage, .pd-card[data-art="full"] .pd-card__foot > span { background: color-mix(in oklab, var(--card-fullart-outline) 55%, transparent); color: var(--card-fullart-ink); box-shadow: inset 0 0 0 0.3cqi rgba(255, 255, 255, 0.25); }
+  .pd-card[data-art="full"] .pd-card__foot b { color: var(--card-fullart-ink); }
+
+  /* Immersive (☆☆☆): charcoal frame with a big rounded window and a white stroke. */
+  .pd-card[data-finish="immersive"] { --pd-frame: var(--card-frame-immersive); }
+  .pd-card[data-finish="immersive"] .pd-card__frame { background: var(--card-frame-immersive); border-color: transparent; }
+  .pd-card[data-finish="immersive"] .pd-card__art { inset: 4cqi; inline-size: auto; block-size: auto; border-radius: 16cqi; box-shadow: inset 0 0 0 0.8cqi var(--board-rim), inset 0 0 0 4cqi var(--card-frame-immersive); }
+  .pd-card[data-finish="immersive"] .pd-card__art::before, .pd-card[data-finish="immersive"] .pd-card__art > img, .pd-card[data-finish="immersive"] .pd-card__art > .pd-card__layers { inset: 4cqi; border-radius: 12cqi; }
+
+  /* Frame colours per rarity. */
+  .pd-card[data-finish="foil"]  { --pd-frame: var(--card-frame-rare); }
+  .pd-card[data-finish="ex"]    { --pd-frame: var(--card-frame-ex); }
+  .pd-card[data-finish="shiny"] { --pd-frame: var(--card-frame-shiny); }
+  .pd-card[data-finish="crown"] { --pd-frame: var(--card-frame-crown); --pd-body: var(--card-crown-body-2); --pd-body-edge: var(--card-crown-body-1); }
+  .pd-card[data-finish="crown"] .pd-card__meta .pd-rarity { --pd-rarity-color: var(--card-rarity-crown); }
+
+  /* Size steps: hide what can't be read. */
+  @container pd-card (inline-size < 220px) {
+    .pd-card__text, .pd-card__rule, .pd-card__flavor, .pd-card__illus, .pd-card__dex, .pd-card__evolves { display: none; }
+    .pd-card__foot > span { padding-inline: 2cqi; justify-content: center; }
+    .pd-card__foot > span > :not(b):not(span):not(.pd-energy) { display: none; }
+  }
+  @container pd-card (inline-size < 140px) {
+    .pd-card__body, .pd-card__foot, .pd-card__stage, .pd-card__meta, .pd-card__frame::before { display: none; }
+    .pd-card__head { inset-inline-start: 6cqi; }
+    .pd-card__name { font-size: 8.5cqi; }
+    .pd-card__hp { font-size: 8.5cqi; }
+    .pd-card__hp small { display: none; }
+    .pd-card__art { inset-block-start: calc(13 * var(--h)); block-size: calc(70 * var(--h)); }
+    .pd-card__art > img, .pd-card__art::before, .pd-card__art > .pd-card__layers { inset-block-end: 1cqi; block-size: auto; }
+  }
+
+  /* Finishes -------------------------------------------------------------
+     Variables from the tilt driver: --pd-pointer-x/y (0–100%), --pd-tilt-x/y (-1…1),
+     --pd-from-center (0 at rest … 1 at the edges), --pd-active (0 resting … 1 held).
+     Layer order, back to front: body, illustration, frame holo (::before), front FX (::after). */
+  .pd-card::before, .pd-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .pd-card::before { z-index: 1; }
+  .pd-card::after { z-index: 3; }
+  /* Glare: every card is glossy; a soft specular band follows the pointer. Strength scales with activity. */
+  .pd-card[data-finish]::after { opacity: calc(0.35 + var(--pd-active, 0) * 0.65); }
+  .pd-card[data-finish="sheen"]::after {
+    background: radial-gradient(farthest-corner circle at var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%), rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.12) 35%, rgba(0, 0, 0, 0.12) 90%);
+    mix-blend-mode: soft-light;
+  }
+  /* ◊◊◊: holo on the frame border and over the illustration only (the body stays matte). */
+  .pd-card[data-finish="foil"]::before {
+    opacity: 1;
+    background:
+      repeating-linear-gradient(calc(115deg + var(--pd-tilt-x, 0) * 25deg),
+        color-mix(in oklab, var(--type-fire) 55%, transparent) 0 7%,
+        color-mix(in oklab, var(--type-lightning) 55%, transparent) 7% 14%,
+        color-mix(in oklab, var(--type-grass) 55%, transparent) 14% 21%,
+        color-mix(in oklab, var(--type-water) 55%, transparent) 21% 28%,
+        color-mix(in oklab, var(--type-psychic) 55%, transparent) 28% 35%);
+    background-size: 300% 300%;
+    background-position: var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%);
+    -webkit-mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    mask-composite: exclude;
+    border: 4cqi solid transparent;
+    mix-blend-mode: color-dodge;
+    opacity: calc(0.25 + var(--pd-from-center, 0) * 0.6);
+  }
+  .pd-card[data-finish="foil"] .pd-card__art::after {
+    content: "";
+    position: absolute;
+    inset: calc(0.61 * var(--h)) 1cqi calc(2.78 * var(--h));
+    border-radius: 0.6cqi;
+    z-index: 2;
+    pointer-events: none;
+    background:
+      linear-gradient(115deg, transparent calc(var(--pd-pointer-x, 50%) - 30%), rgba(255, 255, 255, 0.5) var(--pd-pointer-x, 50%), transparent calc(var(--pd-pointer-x, 50%) + 30%)),
+      repeating-linear-gradient(calc(110deg + var(--pd-tilt-x, 0) * 20deg), color-mix(in oklab, var(--pd-type) 40%, transparent) 0 6%, transparent 6% 12%);
+    mix-blend-mode: overlay;
+    opacity: calc(0.3 + var(--pd-from-center, 0) * 0.7);
+  }
+  .pd-card[data-finish="foil"]::after { background: radial-gradient(farthest-corner circle at var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%), rgba(255, 255, 255, 0.5), transparent 45%); mix-blend-mode: soft-light; }
+  /* ◊◊◊◊ ex: dark silver frame under a strong rainbow; the art is layered (parallax) and a sparkle pass sits in front. */
+  .pd-card[data-finish="ex"]::before {
+    opacity: 1;
+    background:
+      repeating-linear-gradient(calc(100deg + var(--pd-tilt-x, 0) * 30deg),
+        #ff6b6b 0 6%, #ffd166 6% 12%, #7bed9f 12% 18%, #70d6ff 18% 24%, #c77dff 24% 30%, #ff6b6b 30% 36%);
+    background-size: 300% 300%;
+    background-position: var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%);
+    -webkit-mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    mask-composite: exclude;
+    border: 4cqi solid transparent;
+    mix-blend-mode: screen;
+    opacity: calc(0.45 + var(--pd-from-center, 0) * 0.5);
+  }
+  .pd-card[data-finish="ex"]::after {
+    background:
+      radial-gradient(farthest-corner circle at var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%), rgba(255, 255, 255, 0.5), transparent 40%),
+      radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 0.35cqi, transparent 0.6cqi) 0 0 / 7cqi 7cqi,
+      radial-gradient(circle, rgba(255, 255, 255, 0.8) 0 0.25cqi, transparent 0.5cqi) 3.5cqi 2cqi / 7cqi 7cqi;
+    background-position: center, calc(var(--pd-pointer-x, 50%) * 0.3) calc(var(--pd-pointer-y, 50%) * 0.3), calc(var(--pd-pointer-x, 50%) * -0.2) calc(var(--pd-pointer-y, 50%) * -0.2);
+    mix-blend-mode: screen;
+    -webkit-mask: linear-gradient(#000, #000) 7.33cqi calc(9.21 * var(--h)) / 85.5cqi calc(41.33 * var(--h)) no-repeat;
+    mask: linear-gradient(#000, #000) 7.33cqi calc(9.21 * var(--h)) / 85.5cqi calc(41.33 * var(--h)) no-repeat;
+  }
+  /* ☆ / ☆☆ holo: a full-face rainbow × phase texture. The centre mask keeps the face-on view
+     clean; the reflection grows with --pd-from-center so it reads only as the card tilts. */
+  .pd-card[data-finish="holo"]::after {
+    background:
+      linear-gradient(115deg, transparent calc(var(--pd-pointer-x, 50%) - 35%), rgba(255, 255, 255, 0.6) var(--pd-pointer-x, 50%), transparent calc(var(--pd-pointer-x, 50%) + 35%)),
+      repeating-linear-gradient(calc(110deg + var(--pd-tilt-x, 0) * 20deg),
+        color-mix(in oklab, var(--type-fire) 45%, transparent) 0 8%,
+        color-mix(in oklab, var(--type-lightning) 45%, transparent) 8% 16%,
+        color-mix(in oklab, var(--type-grass) 45%, transparent) 16% 24%,
+        color-mix(in oklab, var(--type-water) 45%, transparent) 24% 32%,
+        color-mix(in oklab, var(--type-psychic) 45%, transparent) 32% 40%),
+      repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.18) 0 0.4cqi, transparent 0.4cqi 1.3cqi);
+    background-size: 100% 100%, 300% 300%, auto;
+    background-position: center, var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%), center;
+    mix-blend-mode: color-dodge;
+    opacity: calc(0.15 + var(--pd-from-center, 0) * 0.55);
+    -webkit-mask: radial-gradient(60% 60% at var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%), rgba(0, 0, 0, calc(0.15 + var(--pd-from-center, 0) * 0.85)) 0, #000 100%);
+    mask: radial-gradient(60% 60% at var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%), rgba(0, 0, 0, calc(0.15 + var(--pd-from-center, 0) * 0.85)) 0, #000 100%);
+  }
+  .pd-card[data-finish="holo"]::before {
+    opacity: 1;
+    background: repeating-linear-gradient(calc(110deg + var(--pd-tilt-x, 0) * 20deg), rgba(255, 255, 255, 0.55) 0 8%, color-mix(in oklab, var(--pd-type, var(--type-colorless)) 45%, white) 8% 16%);
+    background-size: 300% 300%;
+    background-position: var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%);
+    -webkit-mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    mask-composite: exclude;
+    border: 1.6cqi solid transparent;
+    opacity: calc(0.5 + var(--pd-from-center, 0) * 0.5);
+  }
+  [data-theme="dark"] .pd-card[data-finish="holo"]::after, [data-theme="dark"] .pd-card[data-finish="immersive"]::after { mix-blend-mode: overlay; }
+  /* ☆☆☆ Immersive: a conic sheen over the window, as the art pane turns. */
+  .pd-card[data-finish="immersive"]::after {
+    background:
+      radial-gradient(40% 30% at var(--pd-pointer-x, 50%) var(--pd-pointer-y, 30%), rgba(255, 255, 255, 0.55), transparent 70%),
+      conic-gradient(from calc(var(--pd-tilt-x, 0) * 90deg) at 50% 40%,
+        color-mix(in oklab, var(--type-water) 45%, transparent),
+        color-mix(in oklab, var(--type-psychic) 45%, transparent),
+        color-mix(in oklab, var(--type-fire) 45%, transparent),
+        color-mix(in oklab, var(--type-lightning) 45%, transparent),
+        color-mix(in oklab, var(--type-grass) 45%, transparent),
+        color-mix(in oklab, var(--type-water) 45%, transparent));
+    mix-blend-mode: color-dodge;
+    opacity: calc(0.2 + var(--pd-from-center, 0) * 0.4);
+  }
+  /* ✵ Shiny: cyan-mint frame, prism bands and sparkle motes (two staggered lattices). */
+  .pd-card[data-finish="shiny"]::before {
+    opacity: 1;
+    background: repeating-linear-gradient(calc(120deg + var(--pd-tilt-x, 0) * 30deg), #99f3f5 0 10%, #d6fff7 10% 20%, #9ad4ff 20% 30%);
+    background-size: 300% 300%;
+    background-position: var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%);
+    -webkit-mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    mask-composite: exclude;
+    border: 4cqi solid transparent;
+    opacity: 0.8;
+  }
+  .pd-card[data-finish="shiny"]::after {
+    background:
+      radial-gradient(circle at var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%), rgba(255, 255, 255, 0.5), transparent 40%),
+      repeating-linear-gradient(calc(60deg + var(--pd-tilt-y, 0) * 40deg), rgba(255, 255, 255, 0) 0 9%, rgba(160, 255, 240, 0.35) 9% 11%, rgba(255, 255, 255, 0) 11% 20%),
+      radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 0.5cqi, transparent 0.8cqi) 0 0 / 9cqi 9cqi,
+      radial-gradient(circle, rgba(200, 255, 250, 0.9) 0 0.35cqi, transparent 0.6cqi) 4.5cqi 4.5cqi / 9cqi 9cqi;
+    background-position: center, center, calc(var(--pd-pointer-x, 50%) * 0.4) calc(var(--pd-pointer-y, 50%) * 0.4), calc(var(--pd-pointer-x, 50%) * -0.3) calc(var(--pd-pointer-y, 50%) * -0.3);
+    mix-blend-mode: screen;
+    opacity: calc(0.35 + var(--pd-from-center, 0) * 0.5);
+  }
+  /* ♕ Crown: gold frame and body; the holo cycles from gold toward teal. */
+  .pd-card[data-finish="crown"]::before {
+    opacity: 1;
+    background: repeating-linear-gradient(calc(110deg + var(--pd-tilt-x, 0) * 30deg), #fcd518 0 12%, #fff3a8 12% 20%, #5fe3d0 20% 28%, #fcd518 28% 40%);
+    background-size: 300% 300%;
+    background-position: var(--pd-pointer-x, 50%) var(--pd-pointer-y, 50%);
+    -webkit-mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) border-box, linear-gradient(#000 0 0) padding-box;
+    mask-composite: exclude;
+    border: 4cqi solid transparent;
+    opacity: calc(0.6 + var(--pd-from-center, 0) * 0.4);
+  }
+  .pd-card[data-finish="crown"]::after {
+    background:
+      linear-gradient(115deg, transparent calc(var(--pd-pointer-x, 50%) - 30%), rgba(255, 245, 200, 0.7) var(--pd-pointer-x, 50%), transparent calc(var(--pd-pointer-x, 50%) + 30%)),
+      repeating-linear-gradient(calc(100deg + var(--pd-tilt-x, 0) * 20deg), rgba(252, 213, 24, 0.35) 0 8%, rgba(95, 227, 208, 0.3) 8% 16%);
+    mix-blend-mode: overlay;
+  }
+  /* Parallel foil (reprints): fine diagonal lines plus a glare. */
+  .pd-card[data-finish="parallel"]::after {
+    background:
+      repeating-linear-gradient(135deg, rgba(255, 255, 255, 0) 0 3cqi, rgba(255, 255, 255, 0.35) 3cqi 3.6cqi),
+      linear-gradient(115deg, transparent calc(var(--pd-pointer-x, 50%) - 30%), rgba(255, 255, 255, 0.45) var(--pd-pointer-x, 50%), transparent calc(var(--pd-pointer-x, 50%) + 30%));
+    mix-blend-mode: soft-light;
+  }
+  .pd-card[aria-selected="true"], .pd-card[data-selected] { box-shadow: var(--shadow-3), 0 0 0 2px var(--glow), 0 0 18px 6px color-mix(in oklab, var(--glow) 70%, transparent); }
+  .pd-card[data-dragging] { box-shadow: var(--shadow-3); z-index: var(--z-drag); }
+  @media (prefers-reduced-motion: reduce) {
+    .pd-card { transition: box-shadow var(--dur-fast) linear; }
+  }
+
+  /* CardBack ----------------------------------------------------------- */
+  .pd-card-back {
+    position: relative;
+    inline-size: var(--pd-card-width, var(--size-card-hand));
+    aspect-ratio: var(--card-aspect);
+    border-radius: 3.67cqi / 2.67%;
+    box-shadow: var(--shadow-card);
+    border: 6px solid transparent;
+    background:
+      radial-gradient(circle at 50% 50%, var(--brand-tint) 0 14%, transparent 14.5%),
+      radial-gradient(circle at 50% 50%, var(--reward) 0 18%, transparent 18.5%),
+      conic-gradient(from 45deg, var(--hero-battle) 25%, color-mix(in oklab, var(--hero-battle) 70%, var(--ink)) 0 50%, var(--hero-battle) 0 75%, color-mix(in oklab, var(--hero-battle) 70%, var(--ink)) 0) 0 0 / 22% 16% padding-box,
+      linear-gradient(160deg, var(--card-frame-highlight), var(--card-frame) 45%, var(--card-frame-highlight) 70%, var(--card-frame)) border-box;
+    overflow: hidden;
+  }
+  .pd-card-back::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.22) 50%, transparent 65%);
+  }
+
+  /* DexTile ---------------------------------------------------------------
+     Collection grid: 5 columns at 17.4% of phone width (pitch 18.4%), 1% gutters. */
+  .pd-dex-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--pd-dex-cols, 5), minmax(0, 1fr));
+    gap: 10px 1cqi;
+    padding: 0 4.4%;
+    container-type: inline-size;
+  }
+  .pd-dex-tile {
+    position: relative;
+    display: grid;
+    gap: var(--space-1);
+    justify-items: center;
+    border-radius: var(--radius-sm);
+    color: var(--ink-subtle);
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .pd-dex-tile .pd-card { --pd-card-width: 100%; }
+  .pd-dex-tile__empty {
+    inline-size: 100%;
+    aspect-ratio: var(--card-aspect);
+    border-radius: 3.67cqi / 2.67%;
+    background: var(--surface-sunken);
+    box-shadow: inset 0 0 0 1px var(--line);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-numeral);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink-subtle);
+  }
+  .pd-dex-tile__count {
+    position: absolute;
+    inset-block-end: 20px;
+    inset-inline-start: 0;
+    min-inline-size: 24px;
+    padding: 0 var(--space-1);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--strip);
+    color: var(--ink-inverse);
+    font-family: var(--font-numeral);
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .pd-dex-tile .pd-chip { position: absolute; inset-block-start: var(--space-1); inset-inline-start: var(--space-1); min-block-size: 20px; padding: 0 var(--space-2); font-size: 10px; }
+
+  /* Board -----------------------------------------------------------------
+     The battle mat: a portrait design box (9:19.5) whose background is the field, split at
+     the centre line, with the white-rimmed board circle (Ø 73% of height) centred on it.
+     Children are laid out by the app; .pd-board__row[data-side="opp"] foreshortens the far side. */
+  .pd-board {
+    position: relative;
+    inline-size: var(--pd-board-width, 390px);
+    aspect-ratio: 9 / 19.5;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, var(--field-opp) 0 46.6%, var(--field) 46.6% 100%);
+    isolation: isolate;
+  }
+  .pd-board::before {
+    content: "";
+    position: absolute;
+    inline-size: 159%;
+    aspect-ratio: 1;
+    inset-inline-start: 50%;
+    inset-block-start: 46.6%;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 50%, var(--board-rim) 0 3.2%, transparent 3.4%),
+      linear-gradient(180deg, var(--board-opp) 0 44%, var(--board-band) 48% 52%, var(--board) 56% 100%);
+    box-shadow: 0 0 0 1.5cqh var(--board-rim), 0 10px 30px rgba(20, 32, 43, 0.18);
+    z-index: -1;
+  }
+  .pd-board__row { position: absolute; inset-inline: 0; display: flex; justify-content: center; gap: 2.3%; }
+  .pd-board__row[data-side="opp"] { transform: perspective(900px) rotateX(14deg) scale(0.85, 0.8); transform-origin: 50% 100%; }
+  .pd-board__center { position: absolute; inset-block-start: 46.6%; inset-inline: 0; border-block-start: 1px solid color-mix(in oklab, var(--board-rim) 50%, transparent); }
+
+  /* BoardSlot ---------------------------------------------------------- */
+  .pd-slot {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: var(--pd-slot-width, var(--size-card-board));
+    aspect-ratio: var(--card-aspect);
+    border-radius: 10px;
+  }
+  .pd-slot[data-zone="bench"] { --pd-slot-width: var(--size-card-hand); }
+  .pd-slot:empty, .pd-slot[data-empty] {
+    background: color-mix(in oklab, var(--board-rim) 35%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--slot-edge) 70%, transparent);
+  }
+  .pd-slot[data-drop="none"] { opacity: 0.45; }
+  .pd-slot .pd-card { --pd-card-width: 100%; }
+  .pd-slot[data-drop="valid"] {
+    box-shadow: 0 0 0 2px var(--glow), 0 0 14px 5px color-mix(in oklab, var(--glow) 70%, transparent), inset 0 0 0 1px var(--slot-edge);
+    background: color-mix(in oklab, var(--board-rim) 50%, transparent);
+    animation: pd-slot-pulse 1.4s var(--ease-in-out) infinite;
+  }
+  .pd-slot[data-drop="over"] {
+    box-shadow: 0 0 0 3px var(--glow), 0 0 20px 8px color-mix(in oklab, var(--glow) 80%, transparent);
+    background: color-mix(in oklab, var(--board-rim) 60%, transparent);
+    transform: scale(1.04);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .pd-slot .pd-hp {
+    position: absolute;
+    inset-block-start: -10px;
+    inset-inline-end: -6px;
+    z-index: 2;
+  }
+  .pd-slot__energy {
+    position: absolute;
+    inset-block-end: -8px;
+    inset-inline-start: -6px;
+    z-index: 2;
+    display: flex;
+    gap: 0;
+  }
+  .pd-slot__energy .pd-energy { --pd-badge-size: var(--size-energy-badge); margin-inline-end: -3px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 0 0 1.5px color-mix(in oklab, var(--pd-disc-shade) 70%, var(--ink)); }
+  .pd-slot__status {
+    position: absolute;
+    inset-block-start: 32px;
+    inset-inline-end: -6px;
+    z-index: 2;
+    display: flex;
+    gap: 2px;
+  }
+  .pd-slot__status .pd-energy { --pd-badge-size: 18px; }
+  @keyframes pd-slot-pulse {
+    50% { box-shadow: 0 0 0 2px var(--glow), 0 0 22px 9px color-mix(in oklab, var(--glow) 60%, transparent), inset 0 0 0 1px var(--slot-edge); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pd-slot[data-drop="valid"] { animation: none; }
+    .pd-slot[data-drop="over"] { transform: none; }
+  }
+
+  /* PlayerStrip -------------------------------------------------------------
+     Name and points on a dark slanted strip: yours bottom-left (slanted right end),
+     the opponent's top-right (mirrored). */
+  .pd-strip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-inline-size: 44%;
+    min-block-size: 26px;
+    padding: 0 22px 0 var(--space-3);
+    background: var(--strip);
+    color: var(--ink-inverse);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pd-strip[data-side="opp"] { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%); padding: 0 var(--space-3) 0 22px; flex-direction: row-reverse; }
+  .pd-strip .pd-points { margin-inline-start: auto; }
+  .pd-strip[data-side="opp"] .pd-points { margin-inline: 0 auto; }
+  .pd-strip__timer { font-family: var(--font-numeral); font-weight: 700; opacity: 0.9; }
+
+  /* EnergyZone --------------------------------------------------------------
+     A round pale stand (Ø size-energy-stand) with the current orb on top and the next
+     type in a small badge at its lower-right. The stand glows in the type colour while an
+     orb sits on it. */
+  .pd-energy-zone {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: var(--size-energy-stand);
+    block-size: var(--size-energy-stand);
+    border-radius: var(--radius-pill);
+    background: radial-gradient(circle at 50% 30%, #fff 0 20%, #d4e8fc 60%, #cee3f9 100%);
+    box-shadow: var(--shadow-2), inset 0 -3px 6px rgba(20, 32, 43, 0.12), inset 0 2px 0 rgba(255, 255, 255, 0.9);
+  }
+  .pd-energy-zone__current {
+    display: grid;
+    place-items: center;
+    inline-size: 100%;
+    block-size: 100%;
+    border-radius: var(--radius-pill);
+    border: 0;
+    background: none;
+    padding: 0;
+    cursor: grab;
+    touch-action: none;
+  }
+  .pd-energy-zone__current:has(.pd-energy:not([data-state="empty"])) { box-shadow: 0 0 16px 4px color-mix(in oklab, var(--pd-type, var(--glow)) 55%, transparent); }
+  .pd-energy-zone__current .pd-energy[data-state="empty"] { box-shadow: inset 0 0 0 2px var(--slot-edge); }
+  .pd-energy-zone__current .pd-energy { --pd-badge-size: 72%; transition: transform var(--dur-base) var(--ease-pop); box-shadow: 0 3px 6px rgba(20, 32, 43, 0.3), inset 0 0 0 2px color-mix(in oklab, var(--pd-disc-shade) 70%, var(--ink)); }
+  .pd-energy-zone__current[aria-pressed="true"] .pd-energy { transform: scale(1.1); box-shadow: 0 0 0 3px var(--glow), 0 0 16px 4px color-mix(in oklab, var(--glow) 70%, transparent); }
+  .pd-energy-zone__current:disabled { cursor: default; }
+  .pd-energy-zone__next {
+    position: absolute;
+    inset-block-end: -2px;
+    inset-inline-end: -6px;
+    display: grid;
+    place-items: center;
+    inline-size: 20px;
+    block-size: 20px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-1), inset 0 0 0 1.5px var(--line);
+  }
+  .pd-energy-zone__next .pd-energy { --pd-badge-size: 14px; }
+  .pd-energy-zone__next .pd-energy::before { display: none; }
+
+  /* HandFan ------------------------------------------------------------ */
+  .pd-hand {
+    --pd-card-width: var(--size-card-hand);
+    --pd-fan-step: 6deg;
+    display: flex;
+    justify-content: center;
+    padding: var(--space-6) var(--space-4) 0;
+    z-index: var(--z-hand);
+  }
+  .pd-hand > * {
+    flex: none;
+    margin-inline: calc(var(--pd-card-width) * -0.2);
+    transform-origin: 50% 320%;
+    rotate: calc((var(--i) - (var(--n) - 1) / 2) * var(--pd-fan-step));
+    transition: translate var(--dur-base) var(--ease-out), rotate var(--dur-base) var(--ease-out);
+  }
+  .pd-hand > [aria-selected="true"], .pd-hand > [data-selected] { translate: 0 -28px; rotate: 0deg; z-index: 1; }
+  @media (hover: hover) {
+    .pd-hand > :hover { translate: 0 -16px; z-index: 1; }
+  }
+
+  /* Banner --------------------------------------------------------------------
+     Full-width diagonal bands for turn changes, attacks and results. */
+  .pd-banner {
+    --pd-banner-bg: var(--hero-battle);
+    --pd-banner-fg: #fff;
+    display: inline-grid;
+    justify-items: start;
+    gap: 2px;
+    min-inline-size: 260px;
+    padding: var(--space-3) var(--space-8) var(--space-3) var(--space-6);
+    background: var(--pd-banner-bg);
+    color: var(--pd-banner-fg);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%);
+    box-shadow: var(--shadow-3);
+    z-index: var(--z-toast);
+    animation: pd-banner-in var(--dur-base) var(--ease-pop) both;
+  }
+  .pd-banner[data-tone="attack"]  { --pd-banner-bg: var(--gradient-attack); }
+  .pd-banner[data-tone="danger"]  { --pd-banner-bg: var(--danger); }
+  .pd-banner[data-tone="reward"]  { --pd-banner-bg: linear-gradient(100deg, #f4b42a, var(--reward)); --pd-banner-fg: var(--on-reward); }
+  .pd-banner[data-tone="neutral"] { --pd-banner-bg: var(--strip); }
+  .pd-banner__title { font-family: var(--font-display); font-size: 36px; line-height: 40px; font-weight: 700; font-style: italic; letter-spacing: -0.01em; text-shadow: 0 2px 4px rgba(20, 32, 43, 0.35); }
+  .pd-banner__detail { font-size: 15px; line-height: 20px; font-weight: 600; opacity: 0.92; }
+  @keyframes pd-banner-in {
+    from { opacity: 0; transform: translateX(-24px) scaleX(0.96); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pd-banner { animation: pd-banner-fade var(--dur-fast) linear both; }
+    @keyframes pd-banner-fade { from { opacity: 0; } }
+  }
+
+  /* BoosterPack -------------------------------------------------------------
+     A tall foil wrapper (w/h ≈ 0.51) with a header band; the cut line is the band's lower
+     edge, 8.5% from the top, and it carries a faint glowing streak before it's touched. */
+  .pd-pack {
+    position: relative;
+    inline-size: var(--pd-pack-width, 200px);
+    aspect-ratio: 0.51;
+    border: 0;
+    padding: 0;
+    color: #fff;
+    background: none;
+    cursor: pointer;
+    touch-action: none;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.22));
+  }
+  .pd-pack__body, .pd-pack__top {
+    position: absolute;
+    inset-inline: 0;
+    background:
+      radial-gradient(70% 45% at 50% 42%, color-mix(in oklab, var(--pd-type, var(--hero-battle)) 70%, white), transparent 72%),
+      repeating-linear-gradient(115deg, rgba(255, 255, 255, 0) 0 14px, rgba(255, 255, 255, 0.10) 14px 16px),
+      linear-gradient(170deg, var(--pd-type, var(--hero-battle)), color-mix(in oklab, var(--pd-type, var(--hero-battle)) 55%, var(--ink)));
+    background-size: 100% 160%, auto, auto;
+  }
+  .pd-pack__top {
+    inset-block-start: 0;
+    block-size: 8.5%;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background-position: 0 0;
+    -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 6px) no-repeat, conic-gradient(from -45deg at 50% 100%, #000 90deg, transparent 0) bottom / 12px 6px repeat-x;
+    mask: linear-gradient(#000 0 0) top / 100% calc(100% - 6px) no-repeat, conic-gradient(from -45deg at 50% 100%, #000 90deg, transparent 0) bottom / 12px 6px repeat-x;
+    transition: translate var(--dur-reveal) var(--ease-out), rotate var(--dur-reveal) var(--ease-out), opacity var(--dur-reveal) var(--ease-in);
+  }
+  .pd-pack__body {
+    inset-block: calc(8.5% - 6px) 0;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    background-position: 0 100%;
+    display: grid;
+    align-content: end;
+    justify-items: center;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    text-align: center;
+    -webkit-mask: conic-gradient(from 135deg at 50% 0, #000 90deg, transparent 0) top / 12px 6px repeat-x, linear-gradient(#000 0 0) bottom / 100% calc(100% - 6px) no-repeat;
+    mask: conic-gradient(from 135deg at 50% 0, #000 90deg, transparent 0) top / 12px 6px repeat-x, linear-gradient(#000 0 0) bottom / 100% calc(100% - 6px) no-repeat;
+  }
+  .pd-pack__set { font-family: var(--font-display); font-size: 22px; line-height: 26px; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+  .pd-pack__variant { font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.92; }
+  .pd-pack__cut {
+    position: absolute;
+    inset-inline: 6%;
+    inset-block-start: calc(8.5% - 3px);
+    block-size: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85) 30% 70%, transparent);
+    box-shadow: 0 0 8px 2px rgba(120, 240, 255, 0.5);
+    z-index: 1;
+  }
+  .pd-pack__cut::after {
+    content: "";
+    position: absolute;
+    inset-block-start: -6px;
+    inset-inline-start: calc(var(--pd-cut, 0) * 100% - 6px);
+    inline-size: 12px;
+    block-size: 12px;
+    border-radius: var(--radius-pill);
+    background: white;
+    box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8), 0 0 24px 8px rgba(120, 240, 255, 0.6);
+    opacity: var(--pd-cut-visible, 0);
+  }
+  .pd-pack[data-state="cut"] .pd-pack__top { translate: 24% -140%; rotate: 18deg; opacity: 0; }
+  .pd-pack[data-state="cut"] .pd-pack__cut { opacity: 0; }
+  .pd-pack:active { scale: 0.99; }
+  @media (prefers-reduced-motion: reduce) {
+    .pd-pack__top { transition: opacity var(--dur-fast) linear; }
+    .pd-pack[data-state="cut"] .pd-pack__top { translate: none; rotate: none; }
+  }
+
+  /* OddsTable ---------------------------------------------------------- */
+  .pd-odds {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    line-height: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pd-odds caption {
+    caption-side: top;
+    padding-block-end: var(--space-2);
+    text-align: start;
+    font-family: var(--font-display);
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 700;
+  }
+  .pd-odds th, .pd-odds td { padding: var(--space-2) var(--space-3); border-block-end: 1px solid var(--line); }
+  .pd-odds thead th { font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.02em; color: var(--ink-muted); text-align: end; }
+  .pd-odds thead th:first-child, .pd-odds tbody th { text-align: start; }
+  .pd-odds tbody th { font-weight: 600; }
+  .pd-odds td { text-align: end; font-family: var(--font-numeral); font-weight: 600; }
+  .pd-odds td[data-zero] { color: var(--ink-subtle); }
+  .pd-odds tfoot td { border: 0; padding-block-start: var(--space-3); text-align: start; font-family: var(--font-text); font-weight: 500; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+}
