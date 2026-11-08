@@ -2,7 +2,7 @@
 name: reference-measure
 description: Measures a reference UI from screenshots and screen recordings, including sound timing, as reproducible numbers while spending few image tokens. Colours become nearest design tokens with a CIEDE2000 distance, boxes become % of the frame and points at a design width, motion becomes onset, duration, easing or spring with an error bar, and audio becomes onsets, loudness and ducking. Every value carries its method and a measured or estimate tag, and outputs are cached by input hash so reruns cost nothing. Use when matching a build to captures of an existing product, pulling tokens, spacing, durations, easings or sound cues out of a screenshot or video, checking a spec against a reference, or whenever you are about to open many full-resolution frames to eyeball a detail.
 license: MIT
-compatibility: The optional scripts need Node.js 18 or later and nothing else. Decoding video or compressed audio needs a media CLI or an image or audio library; every step names a fallback.
+compatibility: The scripts require Python 3 with Pillow, numpy, OpenCV, librosa and soundfile (scripts/requirements.txt), and the ffmpeg and ffprobe CLIs for video and audio. common.py and the cache need only the standard library. Without the dependencies, every step has a by-hand procedure and an output schema.
 ---
 
 # Reference measure
@@ -25,27 +25,31 @@ A reference capture answers questions only when its answers are numbers. "The bu
 ## Workflow
 
 1. **Inventory.** List every capture with its pixel size, and for video its frame rate, duration, rotation and whether it has audio. Pick the design width the spec uses. Note captures that differ in scale.
-2. **Plan the views.** Run `contact-sheet.mjs` for the batch and look at the one sheet it plans, to learn what is where. Name the questions each screen or segment must answer.
-3. **Segment video.** Detect scene changes into a keyframe list and measure per segment. Rerun detection densely on a sub-range when one segment hides several states.
-4. **Measure.** Colours with `colors.mjs`, boxes and lengths with `layout.mjs`, motion with a per-frame CSV into `fit-motion.mjs`, sound with `audio.mjs` and `align.mjs`. Open a small crop only for what the numbers cannot settle, such as which element a box caught.
+2. **Segment and look once.** Run `keyframes.py --sheet` on each recording and look at the one contact sheet it writes, to learn what is where. Name the questions each screen or segment must answer.
+3. **Re-detect densely.** When one segment hides several states, rerun `keyframes.py` on that sub-range with `--start`, `--end` and a lower `--threshold`.
+4. **Measure.** Colours with `colors.py`, panels with `layout.py`, motion with `timing.py` on a region and window, sound with `audio.py` (with `--separate` under music, `--align` to the keyframes, `--window` for ducking). Open a small crop (`--crops`) only for what the numbers cannot settle.
 5. **Compare.** Set each value beside the spec value, with its tag, method and error bar, and list the deltas.
 6. **Report.** Hand back the deltas for approval in the shape [references/provenance.md](references/provenance.md) gives. Change the spec only for the deltas the reader accepts.
 
 ## Scripts
 
-Every script reads plain files, writes `result.json` into its cache folder, prints a few summary lines and the result path, and exits 2 with one line on a usage error. Each output follows a schema in `references/schemas/`, so when a script fails or cannot run, write the same file by hand. Run any script with `--help`. Details and examples: [references/scripts.md](references/scripts.md).
+Every script caches into `.reference-measure/` keyed by input hash, script version and parameters, prints a few summary lines and `result: <path>`, and exits 2 with one line on a usage error. Each output follows a schema in `references/schemas/`. Run any script with `--help`; details are in [references/scripts.md](references/scripts.md).
 
 | Script | Reads | Gives |
 | --- | --- | --- |
-| `contact-sheet.mjs` | frame times and the source size | one sheet plan per batch, crop rectangles, the share of pixels viewed |
-| `colors.mjs` | a PNG and boxes, or pixel samples; a tokens file | box medians, nearest token, ΔE, runner-up, spread warnings |
-| `layout.mjs` | captures and pixel boxes or lengths | % of frame, points at the design width, capture scales |
-| `fit-motion.mjs` | a CSV of per-frame progress or difference | onset, settle, duration ± one frame, ranked easing and spring fits, overshoot |
-| `audio.mjs` | a PCM WAV | integrated and momentary loudness, window loudness, ducking, onsets |
-| `align.mjs` | onset times and keyframes | nearest keyframe per onset, the capture's audio/video skew |
-| `cache.mjs` | inputs, a step name, version and params | the cache slot for a step run by hand, and a commit into it |
+| `keyframes.py` | a recording | scene-change keyframes as small JPEGs, and with `--sheet` one contact sheet per batch |
+| `timing.py` | a recording and a region and window, or a CSV of per-frame samples | onset, settle, duration ± one frame, ranked easing and spring fits, overshoot, optional path |
+| `colors.py` | an image, boxes or a grid, a tokens file | box medians, nearest token, ΔE, runner-up, verdict, spread warnings, dominant colours |
+| `layout.py` | a screenshot | flat panels as % of the frame and points at a design width, fill colour, corner radius |
+| `audio.py` | a recording or audio file | onsets with level, decay, centroid and pitch; integrated loudness; ducking; keyframe alignment and skew |
+| `common.py` | inputs, a step name, version and params | the cache slot for a step run by hand, and a commit into it |
 
-The scripts use no media decoder. Frame extraction, scene detection, region differencing and audio extraction take a media CLI or an image or audio library, called as an optional capability; each reference file gives the procedure and a fallback when neither exists.
+## When the dependencies are missing
+
+The scripts need the Python packages in `scripts/requirements.txt` and the media CLI named in `compatibility`. Check before the first run, because a half-run step wastes the inventory work.
+
+- **If the environment allows installs,** ask the user, then install the packages into a virtual environment from `scripts/requirements.txt` and the media CLI with the system package manager. The skill never installs anything by itself, because the user owns the environment.
+- **Otherwise,** do each step by hand with whatever image, audio or video tools exist, following the procedure in its reference file, and write `result.json` to the step's schema so later steps read it the same way. `common.py` needs only the standard library, so the cache still works. When even that fails, ask the user for exported frames or numbers, and tag what you derive from them as you would a script's output.
 
 ## Hygiene
 

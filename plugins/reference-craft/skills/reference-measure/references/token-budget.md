@@ -11,21 +11,21 @@ Image input is the largest cost in a measuring session, and it buys the least: a
 
 Never open a full-resolution frame. When a crop at 400 px is not enough, the question is a number: measure it.
 
-## Planning a sheet
+## Making the sheet
 
-Run `contact-sheet.mjs` with the source size and the frame list. It picks the column count that gives the largest tiles on one sheet and splits the batch only when tiles would fall under the minimum. Its `viewed_fraction` is the share of full-frame pixels the plan shows; a typical batch of two dozen phone frames on one sheet is under 3%.
+`keyframes.py --sheet` writes the sheet for a recording's keyframes. It picks the column count that gives the largest tiles on one sheet within the long-side cap, and splits the batch evenly only when tiles would fall under the minimum; `sheets.json` lists each sheet with its tile size. Two dozen phone frames fit one 1200 px sheet with tiles near 160 px wide, a few percent of the pixels of the frames themselves.
 
 ```sh
-node scripts/contact-sheet.mjs --source 1170x2532 --frames keyframes.json --crop cta:0.1,0.8,0.8,0.08
+python3 scripts/keyframes.py clip.mp4 --sheet --sheet-long 1200 --min-tile 120
 ```
 
-Compose the sheet with whatever is at hand, at the plan's tile size and positions. With a media CLI that has a tile filter (for example `ffmpeg`), one command does it:
+For screenshots, or without the scripts, compose a sheet with whatever is at hand. A media CLI with a tile filter does it in one command:
 
 ```sh
 ffmpeg -i clip.mp4 -vf "select='eq(n\,0)+gt(scene\,0.2)',scale=158:-2,tile=6x4:padding=4" -frames:v 1 -fps_mode vfr sheet.jpg
 ```
 
-Without one, any image library can paste resized frames onto a canvas. Without an image tool at all, skip the sheet: read the numbers each script prints and ask the user for the one or two screenshots that matter.
+Any image library can paste resized frames onto a canvas instead. Without an image tool at all, skip the sheet: read the numbers each script prints and ask the user for the one or two screenshots that matter. Crops come from `colors.py --crops` and `layout.py --crops`, already capped at 400 px.
 
 ## Habits that keep the budget
 

@@ -17,7 +17,7 @@ Compare each value with the current spec and hand back the differences as propos
 | --- | --- | --- | --- | --- | --- | --- |
 | button height | 44 pt | 48.0 pt ±0.3 | +4 | measured | `layout` v1, box `cta`, capture `home`, 390 pt wide | change to 48 |
 | button fill | gold-500 | #f2c94c → gold-400 ΔE 0.8 | token | measured | `colors` v1, box `cta`, median of 702×36 px | change token |
-| sheet open | 300 ms | 400 ms (fit) | +100 | estimate | `fit-motion` v1, 24 samples at 60 fps | change to 400 ms ease-out-cubic |
+| sheet open | 300 ms | 400 ms (fit) | +100 | estimate | `timing` v1, 24 samples at 60 fps | change to 400 ms ease-out-cubic |
 
 Change the spec only for the rows the reader accepts, and keep the method with each value you write in.
 

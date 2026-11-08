@@ -7,41 +7,23 @@ A pixel value means nothing without its capture. Report every box twice:
 - **% of the frame**: x and w of the width, y and h of the height. These transfer between captures of the same screen class.
 - **Points at a stated design width**: `pt = px × design_width / capture_width`. These are what a spec and a build use.
 
-One capture pixel is the resolution of every value, so `layout.mjs` gives it as `error_pt`. A 1170 px capture measured at 390 pt has `error_pt` 0.3.
+`layout.py` gives every size with `error_pt`, its accuracy in points: three capture pixels, because the flat-region finder places an edge to within about that. A 1170 px capture at 390 pt has `error_pt` 1.0.
 
 ## Capture scale
 
-Captures from different devices, zoom levels or export settings have different px-per-pt scales. `layout.mjs` lists each capture's `pt_per_px` and its scale against the first, and warns when they differ, so you compare in points, never in pixels. A different aspect ratio means a different screen class: a vertical position in % does not carry over, because tall screens add space where the layout flexes.
+Captures from different devices, zoom levels or export settings have different px-per-pt scales. Each `layout.py` result states its `pt_per_px`; when two captures differ, compare their values in points, never in pixels, and say so in the report. A different aspect ratio means a different screen class: a vertical position in % does not carry over, because tall screens add space where the layout flexes.
 
-## Measuring a box
-
-Find edges from numbers, not from a look: walk a row or column of pixels across the element and take the first and last positions where the colour leaves the background by more than the noise. Anti-aliased edges blend over one or two pixels; take the half-way crossing. A shadow is not the box: it fades gradually, where the box edge steps.
-
-Write the boxes and lengths into a spec file and convert them in one run:
-
-```json
-{
-  "design_width": 390,
-  "captures": [{ "name": "home", "width": 1170, "height": 2532 }],
-  "boxes": [
-    {
-      "name": "cta",
-      "capture": "home",
-      "x": 117,
-      "y": 2100,
-      "w": 936,
-      "h": 150
-    }
-  ],
-  "lengths": [{ "name": "card-radius", "capture": "home", "px": 36 }]
-}
-```
+## Finding panels
 
 ```sh
-node scripts/layout.mjs --spec layout.json
+python3 scripts/layout.py shot.png --design-width 390
 ```
 
-Boxes may be given as fractions with `"unit": "frac"`. `lengths` takes radii, gaps and paddings. Snapped values (`w_pt_snapped`, `pt_snapped`) round to the `grid_pt` step (default 4) and are estimates: propose the snap, and keep the measured value beside it.
+`layout.py` finds flat fills (low colour gradient), drops thin lines and text, keeps components that are rectangular enough, and grows each panel's edges back out to where its fill ends. It reports each panel's box in % and in points, its fill colour and a corner radius. Tune `--flat` up for noisy or compressed captures and `--min-area` down for small buttons. Shadows and gradients can merge or split panels; check a doubtful one with a crop (`--crops`, at most 400 px).
+
+## Measuring an edge by hand
+
+For an element the finder misses (text, an icon, a gradient button), walk a row or column of pixels across it and take the first and last positions where the colour leaves the background by more than the noise. Anti-aliased edges blend over one or two pixels; take the half-way crossing. A shadow is not the box: it fades gradually, where the box edge steps. Convert with `pt = px × design_width / capture_width`, and propose any snap to a grid step as an estimate beside the measured value.
 
 ## Corner radius
 

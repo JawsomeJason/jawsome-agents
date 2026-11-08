@@ -2,7 +2,7 @@
 
 ## From frames to a CSV
 
-Build a per-frame CSV for one transition as [video.md](video.md) step 5 describes: a `t` column (or `frame` with `--fps`), and a `progress` column, a `diff` column, or both. Choose the window so it starts and ends at rest, with a few still frames on each side.
+Run `timing.py` on a recording with a region of interest and a window, and it differences the region itself as [video.md](video.md) step 5 describes. For a series read any other way, give it a CSV: a `t` column (or `frame` with `--fps`), and a `progress` column, a `diff` column, or both. Either way, choose the window so it starts and ends at rest, with a few still frames on each side.
 
 ```csv
 t,progress
@@ -12,7 +12,8 @@ t,progress
 ```
 
 ```sh
-node scripts/fit-motion.mjs --csv motion.csv
+python3 scripts/timing.py clip.mp4 --roi 0.1,0.6,0.8,0.3 --start 12.0 --end 13.5
+python3 scripts/timing.py --csv motion.csv
 ```
 
 ## Onset, settle and duration
@@ -43,4 +44,4 @@ Report, for the best fit: its name, residual (`rmse`), the fitted duration or sp
 
 ## What differencing cannot see
 
-Fades, slides and scales all produce a progress curve, so the fit recovers the timing shape, not the path. Measure the path separately: track the centroid of the change, or the position of an edge, per frame, and fit that series as `progress` too. Opacity and position of one element may use different curves; fit each.
+Fades, slides and scales all produce a progress curve, so the fit recovers the timing shape, not the path. Measure the path separately: `--track` reports the centroid of the change per frame, and a position read from an edge per frame fits as a CSV `progress` column too. Opacity and position of one element may use different curves; fit each.

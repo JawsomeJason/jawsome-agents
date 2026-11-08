@@ -9,13 +9,13 @@ Pick a box inside a flat area, at least 4 px on each side and a few pixels clear
 - **Anti-aliasing and dithering.** Edge pixels blend two colours; gradients may be dithered so that no single pixel holds the true value.
 - **Overlays.** A scrim, shadow or blur behind a translucent panel changes what the panel's pixels show. Sample the panel where its background is known, and report the result as the composite colour, not the token's raw value.
 
-`colors.mjs` reports each box's `spread`, the widest channel's interquartile range. Over 12 levels, the box crossed an edge, text or a gradient: shrink or move it before trusting its median.
+`colors.py` reports each box's `spread`, the share of its pixels more than 12 levels from the median in any channel. Over 0.1, the box crossed an edge, text or a gradient: shrink or move it before trusting its median.
 
 ```sh
-node scripts/colors.mjs --tokens tokens.json --image shot.png --box cta:0.14,0.51,0.72,0.04 --box ground:0.02,0.02,0.2,0.05
+python3 scripts/colors.py shot.png --tokens tokens.json --box cta:0.14,0.51,0.72,0.04 --box ground:0.02,0.02,0.2,0.05
 ```
 
-Box values are fractions of the image width and height, so the same box works on captures of different sizes. `--grid 4x8` samples a whole screen in cells when you do not yet know where the colours are.
+Box values are fractions of the image width and height, so the same box works on captures of different sizes. `--grid 4x8` samples a whole screen in cells when you do not yet know where the colours are, and `--auto` lists dominant colours by k-means (tagged `estimate`, because a cluster centre blends neighbours).
 
 ## Nearest token by CIEDE2000
 
@@ -32,11 +32,11 @@ Raise `--match` for heavily compressed video and lower it for lossless screensho
 
 ## Tokens file
 
-`colors.mjs` reads a flat map (`{"ground": "#e4eaf4"}`), an array of `{name, value}`, or nested groups whose leaves are hex strings or `{value}` / `{$value}` objects, joining group names with dots. A value that is an object of themes (`{"light": "#fff", "dark": "#111"}`) uses `--theme`. Alpha is ignored and non-colour values are skipped, so match translucent tokens by hand against the composite.
+`colors.py` reads a flat map (`{"ground": "#e4eaf4"}`), an array of `{name, value}`, or nested groups whose leaves are hex strings or `{value}` / `{$value}` objects, joining group names with dots. A value that is an object of themes (`{"light": "#fff", "dark": "#111"}`) uses `--theme`. Alpha is ignored and non-colour values are skipped, so match translucent tokens by hand against the composite.
 
-## Without a PNG decoder path
+## By hand
 
-`colors.mjs` decodes plain 8-bit and 16-bit PNG files itself. For a JPEG, a video frame or an interlaced PNG, convert the frame to a plain PNG with any image tool, or read the box pixels with any image library and pass them as `--samples`: `[{name, pixels: [[r, g, b], ...]}]`, or one `{name, hex}` per colour another tool already measured.
+Without the image library, read the box pixels with any tool that can, take the per-channel median, convert to Lab and compute CIEDE2000 against each token (the formulas are in `scripts/common.py`, which runs on the standard library alone). Write each colour in the shape of `schemas/colors.schema.json`.
 
 ## Capture colour
 
