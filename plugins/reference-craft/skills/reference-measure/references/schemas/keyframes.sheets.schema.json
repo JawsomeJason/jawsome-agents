@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sheets.json",
+  "description": "The contact sheets keyframes.py --sheet wrote beside result.json: one per batch unless tiles would fall under --min-tile.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "path",
+      "width",
+      "height",
+      "cols",
+      "rows",
+      "tile_w",
+      "tile_h",
+      "first_index",
+      "count"
+    ],
+    "properties": {
+      "path": {
+        "type": "string"
+      },
+      "width": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "height": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "cols": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "rows": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "tile_w": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "tile_h": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "first_index": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "count": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  }
+}

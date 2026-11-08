@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "fit-motion result.json",
+  "title": "timing result.json",
   "description": "Onset, settle and duration of one motion, and its progress fitted to easings and a damped spring.",
   "type": "object",
   "additionalProperties": false,
@@ -13,7 +13,7 @@
   ],
   "properties": {
     "step": {
-      "const": "fit-motion"
+      "const": "timing"
     },
     "version": {
       "type": "integer",
@@ -98,7 +98,7 @@
             "measured",
             "estimate"
           ],
-          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
         },
         "timing_method": {
           "type": "string"
@@ -107,6 +107,7 @@
           "type": "array",
           "items": {
             "type": "object",
+            "additionalProperties": false,
             "required": [
               "name",
               "rmse"
@@ -136,13 +137,13 @@
               "response_s": {
                 "type": "number"
               }
-            },
-            "additionalProperties": false
+            }
           },
           "description": "Every candidate, best first. Easings carry a fitted duration and start; the spring carries stiffness, damping and damping ratio at mass 1, and response_s = 2 pi / sqrt(stiffness)."
         },
         "best_fit": {
           "type": "object",
+          "additionalProperties": false,
           "required": [
             "name",
             "rmse"
@@ -172,8 +173,7 @@
             "response_s": {
               "type": "number"
             }
-          },
-          "additionalProperties": false
+          }
         },
         "overshoot_pct": {
           "type": "number"
@@ -187,10 +187,61 @@
             "measured",
             "estimate"
           ],
-          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
         },
         "fit_method": {
           "type": "string"
+        },
+        "roi": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "x, y, w, h fractions of the displayed frame."
+        },
+        "track": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "t",
+              "x",
+              "y"
+            ],
+            "properties": {
+              "t": {
+                "type": "number"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          },
+          "description": "Centroid of change, as fractions of the frame, decimated to about 120 points."
+        },
+        "track_displacement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dx",
+            "dy",
+            "dt_ms"
+          ],
+          "properties": {
+            "dx": {
+              "type": "number"
+            },
+            "dy": {
+              "type": "number"
+            },
+            "dt_ms": {
+              "type": "number"
+            }
+          }
         }
       }
     }

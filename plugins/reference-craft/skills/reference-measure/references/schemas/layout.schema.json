@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "layout result.json",
-  "description": "Boxes and lengths from capture pixels to % of the frame and points at a design width, with every capture's scale.",
+  "description": "Flat panels and buttons found in a screenshot, as % of the frame and points at a design width, with fill colour and an estimated corner radius.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -49,60 +49,25 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "size",
         "design_width_pt",
-        "grid_pt",
-        "captures",
+        "pt_per_px",
         "boxes",
-        "lengths",
-        "warnings"
+        "background"
       ],
       "properties": {
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
         "design_width_pt": {
           "type": "number"
         },
-        "grid_pt": {
+        "pt_per_px": {
           "type": "number"
-        },
-        "captures": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "name",
-              "width",
-              "height",
-              "pt_per_px",
-              "scale_vs_first",
-              "aspect",
-              "height_pt"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "width": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "height": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "pt_per_px": {
-                "type": "number"
-              },
-              "scale_vs_first": {
-                "type": "number"
-              },
-              "aspect": {
-                "type": "number"
-              },
-              "height_pt": {
-                "type": "number"
-              }
-            }
-          }
         },
         "boxes": {
           "type": "array",
@@ -110,8 +75,6 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "name",
-              "capture",
               "x_pct",
               "y_pct",
               "w_pct",
@@ -120,19 +83,17 @@
               "y_pt",
               "w_pt",
               "h_pt",
-              "w_pt_snapped",
-              "h_pt_snapped",
               "error_pt",
+              "area_pct",
+              "fill",
+              "color",
+              "kind",
+              "radius_px",
+              "radius_pt",
               "tag",
               "method"
             ],
             "properties": {
-              "name": {
-                "type": "string"
-              },
-              "capture": {
-                "type": "string"
-              },
               "x_pct": {
                 "type": "number"
               },
@@ -157,28 +118,38 @@
               "h_pt": {
                 "type": "number"
               },
-              "w_pt_snapped": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "h_pt_snapped": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
               "error_pt": {
                 "type": "number",
-                "description": "One capture pixel in points: the resolution of every value here."
+                "description": "Three capture pixels in points: the stated accuracy of every size."
+              },
+              "area_pct": {
+                "type": "number"
+              },
+              "fill": {
+                "type": "number"
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "kind": {
+                "enum": [
+                  "panel",
+                  "background"
+                ]
+              },
+              "radius_px": {
+                "type": "number"
+              },
+              "radius_pt": {
+                "type": "number"
               },
               "tag": {
                 "enum": [
                   "measured",
                   "estimate"
                 ],
-                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
               },
               "method": {
                 "type": "string"
@@ -186,41 +157,75 @@
             }
           }
         },
-        "lengths": {
+        "background": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "name",
-              "capture",
-              "px",
-              "pt",
-              "pt_snapped",
+              "x_pct",
+              "y_pct",
+              "w_pct",
+              "h_pct",
+              "x_pt",
+              "y_pt",
+              "w_pt",
+              "h_pt",
               "error_pt",
-              "tag",
-              "method"
+              "area_pct",
+              "fill",
+              "color",
+              "kind"
             ],
             "properties": {
-              "name": {
-                "type": "string"
-              },
-              "capture": {
-                "type": "string"
-              },
-              "px": {
+              "x_pct": {
                 "type": "number"
               },
-              "pt": {
+              "y_pct": {
                 "type": "number"
               },
-              "pt_snapped": {
-                "type": [
-                  "number",
-                  "null"
-                ]
+              "w_pct": {
+                "type": "number"
+              },
+              "h_pct": {
+                "type": "number"
+              },
+              "x_pt": {
+                "type": "number"
+              },
+              "y_pt": {
+                "type": "number"
+              },
+              "w_pt": {
+                "type": "number"
+              },
+              "h_pt": {
+                "type": "number"
               },
               "error_pt": {
+                "type": "number",
+                "description": "Three capture pixels in points: the stated accuracy of every size."
+              },
+              "area_pct": {
+                "type": "number"
+              },
+              "fill": {
+                "type": "number"
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}$"
+              },
+              "kind": {
+                "enum": [
+                  "panel",
+                  "background"
+                ]
+              },
+              "radius_px": {
+                "type": "number"
+              },
+              "radius_pt": {
                 "type": "number"
               },
               "tag": {
@@ -228,18 +233,12 @@
                   "measured",
                   "estimate"
                 ],
-                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+                "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
               },
               "method": {
                 "type": "string"
               }
             }
-          }
-        },
-        "warnings": {
-          "type": "array",
-          "items": {
-            "type": "string"
           }
         }
       }

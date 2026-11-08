@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "result.json",
-  "description": "The envelope every step writes to its cache folder. A hand-run step commits its own result object through cache.mjs commit, or writes this shape itself, atomically and last.",
+  "description": "The envelope every step writes to its cache folder, last and atomically. A hand-run step commits its own result object with common.py commit, or writes this shape itself.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -47,7 +47,7 @@
       "description": "The parameters the result was computed with. Different parameters write a different folder."
     },
     "result": {
-      "description": "The step's own output."
+      "description": "The step's own output, described by that step's schema."
     }
   }
 }

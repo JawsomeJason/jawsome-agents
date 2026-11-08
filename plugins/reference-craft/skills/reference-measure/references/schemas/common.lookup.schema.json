@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "cache.mjs lookup",
-  "description": "What cache.mjs lookup prints: where a step's result.json lives for these inputs, step version and parameters, and whether it exists.",
+  "title": "common.py lookup",
+  "description": "What common.py lookup prints: where a step's result.json lives for these inputs, step version and parameters, and whether it exists.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -54,17 +54,14 @@
           }
         },
         "inputs_sha12": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "params_sha8": {
           "type": "string"
         },
         "folder": {
           "type": "string",
-          "description": "<stem>-<inputs_sha12>/<step>-v<version>-<params_sha8>, or params/<step>-v<version>-<params_sha8> with no input file."
+          "description": "<stem>-<inputs_sha12>/<step>-v<version>-<params_sha8>"
         }
       }
     }

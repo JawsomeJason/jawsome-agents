@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "align result.json",
-  "description": "Audio onsets mapped to the nearest keyframe, with the capture's audio/video skew.",
+  "title": "keyframes result.json",
+  "description": "Scene-change keyframes of a recording, saved as small JPEGs beside result.json.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,7 +13,7 @@
   ],
   "properties": {
     "step": {
-      "const": "align"
+      "const": "keyframes"
     },
     "version": {
       "type": "integer",
@@ -49,84 +49,95 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "fps",
-        "frame_ms",
-        "tolerance_ms",
-        "matched",
-        "onsets",
-        "median_offset_ms",
+        "video",
+        "count",
+        "frame_error_ms",
         "tag",
         "method",
-        "matches"
+        "keyframes"
       ],
       "properties": {
-        "fps": {
-          "type": "number"
+        "video": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "codec",
+            "width",
+            "height",
+            "rotation",
+            "fps",
+            "duration"
+          ],
+          "properties": {
+            "codec": {
+              "type": "string"
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rotation": {
+              "type": "integer"
+            },
+            "fps": {
+              "type": "number"
+            },
+            "duration": {
+              "type": "number"
+            }
+          }
         },
-        "frame_ms": {
-          "type": "number"
-        },
-        "tolerance_ms": {
-          "type": "number"
-        },
-        "matched": {
+        "count": {
           "type": "integer",
           "minimum": 0
         },
-        "onsets": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "median_offset_ms": {
-          "type": [
-            "number",
-            "null"
-          ]
+        "frame_error_ms": {
+          "type": "number"
         },
         "tag": {
           "enum": [
             "measured",
             "estimate"
           ],
-          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a snap to a grid."
+          "description": "measured: read from the capture by the stated method. estimate: inferred, such as a fit or a cluster centre."
         },
         "method": {
           "type": "string"
         },
-        "matches": {
+        "keyframes": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "onset_index",
-              "t",
-              "keyframe_index",
-              "keyframe_t",
-              "dt_ms",
-              "within_tolerance"
+              "index",
+              "t_seconds",
+              "frame",
+              "path",
+              "diff_score"
             ],
             "properties": {
-              "onset_index": {
+              "index": {
                 "type": "integer",
                 "minimum": 0
               },
-              "t": {
+              "t_seconds": {
                 "type": "number"
               },
-              "keyframe_index": {
+              "frame": {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "description": "round(t * average fps): an estimate for variable-frame-rate sources."
               },
-              "keyframe_t": {
+              "path": {
+                "type": "string"
+              },
+              "diff_score": {
                 "type": "number"
-              },
-              "dt_ms": {
-                "type": "number",
-                "description": "Keyframe time minus onset time."
-              },
-              "within_tolerance": {
-                "type": "boolean"
               }
             }
           }
