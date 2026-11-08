@@ -51,6 +51,8 @@ const expected = {
   'generated-section': 'generated-section',
   'claude-only-skill': 'claude-only-skill',
   'claude-only-name': 'claude-only-name',
+  'official-mark': 'official-mark',
+  'media-file': 'media-file',
 };
 
 const passing = ['clean', 'dependency-declared', 'doc-allow', 'extension-key-allowed', 'generated-quote-allowed', 'generated-vendor-allowed', 'link-placeholder', 'private-term', 'fence-nested', 'generated-section-complete', 'claude-only-allowed', 'claude-only-labeled'];
@@ -208,4 +210,40 @@ test('a pack playbook answers to the identity rule alone, and other repo docs ke
   const rules = lint(root).map((e) => `${e.file.split('/').pop()} ${e.rule}`);
   rmSync(root, { recursive: true, force: true });
   assert.deepEqual(rules.sort(), ['NOTES.md time-word', 'who.md org-term']);
+});
+
+// The marks are built at run time so this public file never spells one out.
+test('official marks fail in every shipped file type, not only in skills and docs', () => {
+  const root = mkdtempSync(join(tmpdir(), 'lint-mark-'));
+  try {
+    mkdirSync(join(root, '.claude-plugin'));
+    writeFileSync(join(root, '.claude-plugin', 'marketplace.json'), '{"plugins":[]}');
+    mkdirSync(join(root, 'assets'));
+    writeFileSync(join(root, 'assets', 'card.css'), `/* ${['Nin', 'tendo'].join('')} red */\n`);
+    writeFileSync(join(root, 'assets', 'build.py'), `# ${'Pok' + '\u00e9' + 'mon'} card frame\n`);
+    writeFileSync(join(root, 'notes.md'), `The ${['faux', 'kemon'].join('')} plugin.\n`);
+    const found = lint(root).map((e) => `${e.file.split('/').pop()}:${e.line} ${e.rule}`);
+    assert.deepEqual(found.sort(), ['build.py:1 official-mark', 'card.css:1 official-mark', 'notes.md:1 official-mark']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('media passes only under an allowlisted glyph folder', () => {
+  const root = mkdtempSync(join(tmpdir(), 'lint-media-'));
+  const plugin = join(root, 'plugins', 'pocket-deck-kit');
+  try {
+    mkdirSync(join(root, '.claude-plugin'));
+    writeFileSync(join(root, '.claude-plugin', 'marketplace.json'), '{"plugins":[{"name":"pocket-deck-kit","source":"./plugins/pocket-deck-kit"}]}');
+    mkdirSync(join(plugin, '.claude-plugin'), { recursive: true });
+    writeFileSync(join(plugin, '.claude-plugin', 'plugin.json'), '{"name":"pocket-deck-kit"}');
+    const glyphs = join(plugin, 'skills', 'pocket-deck-glyphs', 'assets', 'glyphs', 'Energy');
+    mkdirSync(glyphs, { recursive: true });
+    writeFileSync(join(glyphs, 'fire.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>\n');
+    assert.deepEqual(lint(root), []);
+    writeFileSync(join(plugin, 'battle.WEBM'), '');
+    assert.deepEqual(lint(root).map((e) => `${e.file.split('/').pop()} ${e.rule}`), ['battle.WEBM media-file']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

@@ -111,7 +111,7 @@ function maskCode(text, maskInline) {
 const isQuote = (line) => /^\s*>/.test(line);
 
 // Code and other tracked files are scanned raw: their backticks and fences are not Markdown.
-const RAW_SCOPES = new Set(['code', 'tracked']);
+const RAW_SCOPES = new Set(['code', 'tracked', 'public']);
 
 // quoteExempt lists rules that skip blockquoted lines, where generated standards quote reviewers verbatim.
 function scanDenylists(file, text, scope, report, { skip = [], quoteExempt = [] } = {}) {
@@ -372,6 +372,26 @@ function claudeOnlyPlugins(pluginsDir, report) {
   return new Set(dirs.filter((d) => d.startsWith(RULES.claudeOnlyPrefix)));
 }
 
+/**
+ * The repo is public, so every file it ships, skills included, is checked for official marks of a game a plugin
+ * replicates, and for media other than the allowlisted original glyphs. A capture or a measured look published here
+ * is the original's trade dress, which only a private repo may hold.
+ */
+function lintPublic(root, report) {
+  const { extensions, allow } = RULES.media;
+  for (const rel of repoFiles(root)) {
+    if (rel.split('/').includes('lint-fixtures') || RULES.identityExempt.includes(rel)) continue;
+    const file = join(root, rel);
+    const ext = rel.includes('.') ? rel.split('.').pop().toLowerCase() : '';
+    if (extensions.includes(ext) && !allow.some((prefix) => rel.startsWith(prefix))) {
+      report(file, 1, 'media-file', `${ext} files may live only under ${allow.join(', ')}; images, audio and video of the original belong in a private repo`);
+    }
+    const raw = readFileSync(file);
+    if (raw.subarray(0, 8000).includes(0)) continue;
+    scanDenylists(file, raw.toString('utf8'), 'public', report);
+  }
+}
+
 function findSkillDirs(dir) {
   return listFiles(dir, (f) => basename(f) === 'SKILL.md').map(dirname).sort();
 }
@@ -416,6 +436,7 @@ export function lint(target) {
       }
       scanDenylists(file, text, 'tracked', report);
     }
+    lintPublic(root, report);
   } else {
     const skillDirs = findSkillDirs(root);
     if (!skillDirs.length) report(root, 1, 'no-skills', 'no SKILL.md found under this path');

@@ -10,7 +10,7 @@ Agent skills that run in any harness that reads the [Agent Skills spec](https://
 | `guard` | `enforce` turns one convention into the cheapest check the toolchain runs (a type, a lint rule, a hook, a test) and proves it fires. `harden` sorts every step of a skill into code, a judgment-model question or the agent, then rebuilds it on the split you approve. |
 | `playbook` | Applies team and personal playbook files over pstack's poteto-mode playbooks, and installs named packs of them into any repo as committed, hash-checked copies. See its [README](plugins/playbook/README.md). |
 | `claudecode-smart-usage` | Claude Code only. Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort. See its [README](plugins/claudecode-smart-usage/README.md). |
-| `fauxkemon` | Rules, design system, sound design and project playbook for building a private, non-monetized pocket trading-card game that plays like the mobile original on phone, tablet and desktop. `tcg-pocket-rules` is the rules and economy reference, `pocket-deck-design-system` the tokens and components, `fauxkemon-sound` the audio catalogue and Web Audio architecture, `fauxkemon-playbook` the stack, milestones and definition of done. See its [README](plugins/fauxkemon/README.md). |
+| `pocket-deck-kit` | Rules paraphrase, engine design, original glyphs and fonts, sound design and project playbook for building a private, non-monetized pocket trading-card game that plays like the original mobile card game on phone, tablet and desktop. `pocket-card-rules` is the rules paraphrase and engine design, `pocket-deck-glyphs` the original Energy and rarity glyphs and the fonts, `pocket-deck-sound` the audio catalogue and Web Audio architecture, `pocket-deck-playbook` the stack, milestones and definition of done. See its [README](plugins/pocket-deck-kit/README.md). |
 | `reference-craft` | Skills for building against a reference UI. `reference-measure` turns screenshots and screen recordings into tagged, reproducible numbers (token colours with ΔE, layout in points, motion durations and easing or spring fits, audio onsets, loudness and ducking) while looking at few pixels. See its [README](plugins/reference-craft/README.md). |
 
 Invoke `standards` as `/standards [command] [scope]`:
@@ -42,7 +42,7 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 /plugin install guard@jawsome-agents
 /plugin install claudecode-smart-usage@jawsome-agents
 /plugin install playbook@jawsome-agents
-/plugin install fauxkemon@jawsome-agents
+/plugin install pocket-deck-kit@jawsome-agents
 /plugin install reference-craft@jawsome-agents
 ```
 
@@ -52,11 +52,11 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 npx skills add JawsomeJason/jawsome-agents --skill standards
 npx skills add JawsomeJason/jawsome-agents --skill enforce --skill harden
 npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn
-npx skills add JawsomeJason/jawsome-agents --skill tcg-pocket-rules --skill pocket-deck-design-system --skill fauxkemon-playbook --skill fauxkemon-sound
+npx skills add JawsomeJason/jawsome-agents --skill pocket-card-rules --skill pocket-deck-glyphs --skill pocket-deck-playbook --skill pocket-deck-sound
 npx skills add JawsomeJason/jawsome-agents --skill reference-measure
 ```
 
-The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `tcg-pocket-rules`, `pocket-deck-design-system`, `fauxkemon-playbook`, `fauxkemon-sound` and `reference-measure` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
+The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `pocket-card-rules`, `pocket-deck-glyphs`, `pocket-deck-playbook`, `pocket-deck-sound` and `reference-measure` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
 
 ### A repo that commits its skills with rulesync
 
