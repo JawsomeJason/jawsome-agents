@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tokens.json",
+  "description": "The design system's machine-readable contract, written by the token generator. scripts/contrast.mjs reads themes, color and contrast; docs and preview generators read the rest. Families beyond color (type, spacing, radius, shadow, size, duration, easing, gradient, zIndex) are allowed and follow the same name, value, usage and evidence pattern.",
+  "type": "object",
+  "required": ["name", "themes", "color", "contrast"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "description": "The design system's name." },
+    "themes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "description": "Theme ids in output order. The first is the default and is written under :root."
+    },
+    "color": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value", "usage", "provenance", "confidence", "evidence"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+          "value": {
+            "type": ["string", "object"],
+            "pattern": "^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+            "additionalProperties": { "type": "string", "pattern": "^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+            "description": "One hex colour for every theme, or an object keyed by theme id."
+          },
+          "usage": { "type": "string", "minLength": 1, "description": "Where the token goes and what sits on it." },
+          "provenance": { "enum": ["measured", "derived", "original"], "description": "Read from the reference, computed from measured values, or chosen by this system." },
+          "confidence": { "enum": ["measured", "observed", "estimate"], "description": "Read from pixels or the reference's own statements; described in words without numbers; or no source." },
+          "evidence": { "type": "string", "minLength": 1, "description": "What was sampled and how, or why the value is original." },
+          "departure": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reference", "reason"],
+            "properties": {
+              "reference": {
+                "type": ["string", "object"],
+                "pattern": "^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+                "additionalProperties": { "type": "string", "pattern": "^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+                "description": "The reference's measured value, in the same shape as value."
+              },
+              "reason": { "type": "string", "minLength": 1, "description": "Why this system departs, and how it keeps the look." }
+            },
+            "description": "Present when the value deliberately differs from the reference for accessibility."
+          }
+        }
+      }
+    },
+    "contrast": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fg", "bg", "min"],
+        "properties": {
+          "fg": { "type": "string", "description": "Foreground colour token name. Alpha is composited over the background." },
+          "bg": { "type": "string", "description": "Background colour token name." },
+          "over": { "type": "string", "description": "An opaque colour token beneath bg, required when bg has alpha." },
+          "min": { "type": "number", "minimum": 1, "maximum": 21, "description": "The floor: 4.5 for text, 3 for large text, icons, control borders and focus rings." },
+          "note": { "type": "string", "description": "Why the pair exists, when its usage does not say." }
+        }
+      },
+      "description": "Every foreground and background pair features may use. The build fails when any is under its floor in any theme."
+    }
+  }
+}

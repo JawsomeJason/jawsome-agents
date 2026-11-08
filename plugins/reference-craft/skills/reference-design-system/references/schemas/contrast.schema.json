@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contrast report",
+  "description": "The contrast report for one tokens.json. Written by scripts/contrast.mjs --out, or by hand with the formula in references/tokens.md. A build fails when failed is above 0.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tokens", "themes", "checked", "failed", "pairs", "departures"],
+  "properties": {
+    "tokens": { "type": "string", "minLength": 1, "description": "Path of the tokens.json checked, as given." },
+    "themes": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "Theme ids, in the tokens file's order." },
+    "checked": { "type": "integer", "minimum": 0, "description": "Pairs times themes." },
+    "failed": { "type": "integer", "minimum": 0, "description": "Rows in pairs whose pass is false." },
+    "pairs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fg", "bg", "theme", "ratio", "min", "pass"],
+        "properties": {
+          "fg": { "type": "string" },
+          "bg": { "type": "string" },
+          "over": { "type": "string", "description": "The opaque surface bg was composited onto." },
+          "theme": { "type": "string" },
+          "ratio": { "type": "number", "minimum": 1, "maximum": 21, "description": "WCAG contrast ratio, truncated to two decimals so it never rounds up past a floor." },
+          "min": { "type": "number", "minimum": 1, "maximum": 21 },
+          "pass": { "type": "boolean", "description": "ratio is at least min." },
+          "reference_ratio": { "type": "number", "minimum": 1, "maximum": 21, "description": "The same pair with every departed token at its reference value. Present only when fg, bg or over has a departure." }
+        }
+      },
+      "description": "One row per declared pair per theme, in declaration order, themes inner."
+    },
+    "departures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token", "theme", "value", "reference", "reason"],
+        "properties": {
+          "token": { "type": "string" },
+          "theme": { "type": "string" },
+          "value": { "type": "string", "description": "This system's value." },
+          "reference": { "type": "string", "description": "The reference's measured value." },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      },
+      "description": "One row per departed token per theme, in token order."
+    }
+  }
+}
