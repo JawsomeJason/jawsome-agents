@@ -1,6 +1,6 @@
 ---
 name: fauxkemon-sound
-description: Sound design for the Fauxkemon replica: what each moment of the original mobile card game sounds like (pack tear, card reveal, rare chime, coin flip, Energy attach, attacks, KO, turn and result cues, adaptive battle music), free properly-licensed sound libraries with candidate files per event, layering and synthesis recipes, and the Web Audio bus architecture, haptics and loudness rules. Use whenever the replica needs a sound, music bed, haptic, volume setting or audio-related fix, including picking a sample, deciding a licence question, or making audio feel laggy or quiet on phones.
+description: Sound design for the Fauxkemon replica, covering what each moment of the original mobile card game sounds like (pack tear, card reveal, rare chime, coin flip, Energy attach, attacks, KO, turn and result cues, adaptive battle music), free properly-licensed sound libraries with candidate files per event, layering and synthesis recipes, and the Web Audio bus architecture, haptics and loudness rules. Use whenever the replica needs a sound, music bed, haptic, volume setting or audio-related fix, including picking a sample, deciding a licence question, or making audio feel laggy or quiet on phones.
 ---
 
 # Fauxkemon sound
