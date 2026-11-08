@@ -241,11 +241,22 @@ function lintSkill(skillDir, report, { claudeOnly = false } = {}) {
   }
   if (generated) lintGeneratedSections(skillDir, report);
 
+  // A skill that ships a dependency manifest must say so in `compatibility`, so a reader sees the dependency before
+  // installing. A lockfile pins an install the skill must not run, so it is never allowed.
+  const declared = (fm?.fields.get('compatibility')?.value ?? '').trim() !== '';
+  for (const file of listFiles(skillDir, (f) => RULES.dependencyManifests.includes(basename(f)) || RULES.lockfiles.includes(basename(f)))) {
+    if (RULES.lockfiles.includes(basename(file))) {
+      report(file, 1, 'package-file', `skills ship no lockfile; keep the manifest unpinned and delete ${basename(file)}`);
+    } else if (!declared) {
+      report(file, 1, 'dependency-undeclared', `${basename(file)} lists dependencies, so the SKILL.md frontmatter needs a non-empty compatibility that names them, such as "Requires Python 3 with Pillow"`);
+    }
+  }
+
   const scriptsDir = join(skillDir, 'scripts');
   if (existsSync(scriptsDir)) {
     const schemasDir = join(skillDir, 'references', 'schemas');
     const schemas = existsSync(schemasDir) ? readdirSync(schemasDir).map((f) => f.split('.')[0]) : [];
-    for (const script of readdirSync(scriptsDir)) {
+    for (const script of readdirSync(scriptsDir).filter((f) => ![...RULES.dependencyManifests, ...RULES.lockfiles].includes(f))) {
       const stem = script.split('.')[0];
       if (!schemas.includes(stem) && !RULES.scriptSchemaExempt.includes(stem)) {
         report(join(scriptsDir, script), 1, 'script-schema', `no output schema at references/schemas/${stem}.*`);
