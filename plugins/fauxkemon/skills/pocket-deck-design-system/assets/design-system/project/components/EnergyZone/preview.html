@@ -1,0 +1,7 @@
+<!-- @dsCard group="Board" height=150 subtitle="available · selected · empty (turn 1) · opponent size" -->
+<div class="pd-app" style="display:flex;gap:var(--space-12);align-items:center;padding:var(--space-6);background:var(--board)">
+  <div class="pd-energy-zone"><button class="pd-energy-zone__current" aria-label="Attach Fire Energy" aria-pressed="false"><span class="pd-energy" data-type="fire"></span></button><span class="pd-energy-zone__next" role="img" aria-label="Next: Water"><span class="pd-energy" data-type="water"></span></span></div>
+  <div class="pd-energy-zone"><button class="pd-energy-zone__current" aria-label="Fire Energy selected: choose a Pokémon" aria-pressed="true"><span class="pd-energy" data-type="fire"></span></button><span class="pd-energy-zone__next" role="img" aria-label="Next: Fire"><span class="pd-energy" data-type="fire"></span></span></div>
+  <div class="pd-energy-zone"><button class="pd-energy-zone__current" disabled aria-label="No Energy on your first turn"><span class="pd-energy" data-state="empty" data-type="colorless"></span></button><span class="pd-energy-zone__next" role="img" aria-label="Next: Grass"><span class="pd-energy" data-type="grass"></span></span></div>
+  <div class="pd-energy-zone" style="--size-energy-stand:44px"><button class="pd-energy-zone__current" disabled aria-label="Opponent's Energy: Water"><span class="pd-energy" data-type="water"></span></button><span class="pd-energy-zone__next" role="img" aria-label="Next: Water"><span class="pd-energy" data-type="water"></span></span></div>
+</div>

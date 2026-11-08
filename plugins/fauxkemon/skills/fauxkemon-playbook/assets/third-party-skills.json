@@ -1,0 +1,84 @@
+{
+  "$comment": "Third-party skills this project leans on, by skills-CLI install slug: npx skills add <repo> --skill <skill>. Install once per machine. Each carries its own licence; none is vendored here.",
+  "install": "npx skills add <repo> --skill <skill> -g",
+  "skills": [
+    {
+      "skill": "card-game",
+      "repo": "gamedev-skills/awesome-gamedev-agent-skills",
+      "use": "Card-game engine patterns (zones, effect-as-data, seeded shuffle); apply the Pocket overrides in tcg-pocket-rules",
+      "license": "Apache-2.0"
+    },
+    {
+      "skill": "game-feel",
+      "repo": "gamedev-skills/awesome-gamedev-agent-skills",
+      "use": "Impact feel (KO, big hits, rare pulls); its code targets game engines, so port the ideas to CSS and the Web Animations API",
+      "license": "Apache-2.0"
+    },
+    {
+      "skill": "game-ai",
+      "repo": "gamedev-skills/awesome-gamedev-agent-skills",
+      "use": "Opponent decision-making (state machines, search)",
+      "license": "Apache-2.0"
+    },
+    {
+      "skill": "save-systems",
+      "repo": "gamedev-skills/awesome-gamedev-agent-skills",
+      "use": "Saving collection, decks and games; port its file patterns to IndexedDB",
+      "license": "Apache-2.0"
+    },
+    {
+      "skill": "animate",
+      "repo": "emilkowalski/skills",
+      "use": "Building one animation (pack cut, card flip, attach Energy)",
+      "license": "MIT"
+    },
+    {
+      "skill": "choreograph",
+      "repo": "emilkowalski/skills",
+      "use": "Several things moving together (pack reveal, KO sequence)",
+      "license": "MIT"
+    },
+    {
+      "skill": "animation-performance",
+      "repo": "emilkowalski/skills",
+      "use": "Jank or dropped frames",
+      "license": "MIT"
+    },
+    {
+      "skill": "review-animations",
+      "repo": "emilkowalski/skills",
+      "use": "Reviewing motion before merging",
+      "license": "MIT"
+    },
+    {
+      "skill": "mobile-native",
+      "repo": "emilkowalski/skills",
+      "use": "Making the web app feel native on phones (notch, viewport height, tap delay, overscroll)",
+      "license": "MIT"
+    },
+    {
+      "skill": "accessibility",
+      "repo": "addyosmani/web-quality-skills",
+      "use": "Accessibility audit against WCAG 2.2",
+      "license": "MIT"
+    },
+    {
+      "skill": "web-design-guidelines",
+      "repo": "vercel-labs/agent-skills",
+      "use": "UI review against interface guidelines",
+      "license": "MIT"
+    },
+    {
+      "skill": "vitest",
+      "repo": "antfu/skills",
+      "use": "Writing engine and data tests",
+      "license": "MIT"
+    },
+    {
+      "skill": "playwright-cli",
+      "repo": "microsoft/playwright-cli",
+      "use": "Checking screens at phone, tablet and desktop sizes; scripted browser flows",
+      "license": "Apache-2.0"
+    }
+  ]
+}

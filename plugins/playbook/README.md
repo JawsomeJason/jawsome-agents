@@ -35,9 +35,14 @@ These are pstack-claude's own steps. The source for them is [the install section
 | Pi | `pi install git:github.com/michael-denyer/pstack-claude` | Yes |
 | GitHub Copilot | `copilot plugin marketplace add michael-denyer/pstack-claude`, then `copilot plugin install pstack@pstack-claude` | Untested |
 | Muse | `git clone https://github.com/michael-denyer/pstack-claude`, then `muse plugins install ./pstack-claude/plugins/pstack` and `muse plugins approve pstack` | Install yes, approve not run |
-| OpenCode | Clone pstack-claude and link each folder in `plugins/pstack/skills/` into `$HOME/.agents/skills/`, with the loop under [Other harnesses](https://github.com/michael-denyer/pstack-claude#other-harnesses) | Untested |
-| Gemini CLI | The same as OpenCode | Untested |
-| Prime Agent | The same as OpenCode | Untested |
+| OMP | `omp plugin marketplace add michael-denyer/pstack-claude`, then `omp plugin install --scope user pstack@pstack-claude`, then restart OMP | Untested |
+| Kimi Code CLI | Close other Kimi sessions, then in a fresh session run `/plugins install https://github.com/michael-denyer/pstack-claude`, then `/reload` | Untested |
+| Grok Build | `git clone https://github.com/michael-denyer/pstack-claude`, then `grok plugin install "$PWD/pstack-claude/plugins/pstack" --trust` and `grok plugin enable pstack` | Untested |
+| MiniMax Code | Check that `${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins/pstack` does not exist, then `git clone https://github.com/michael-denyer/pstack-claude`, `mkdir -p "${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins"` and `cp -R pstack-claude/plugins/pstack "${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins/pstack"` | Untested |
+| OpenCode 2 | `opencode plugin add 'github:michael-denyer/pstack-claude#main'`, or clone pstack-claude and add the absolute path to `plugins/pstack/opencode` to the `plugins` array in `~/.config/opencode/opencode.jsonc` | Untested |
+| Antigravity (agy) | `git clone https://github.com/michael-denyer/pstack-claude`, then `agy plugin install ./pstack-claude/plugins/pstack` | Untested |
+| Gemini CLI | Clone pstack-claude and link each folder in `plugins/pstack/skills/` into `$HOME/.agents/skills/`, with the loop under [Other harnesses](https://github.com/michael-denyer/pstack-claude#other-harnesses) | Untested |
+| Prime Agent | The same as Gemini CLI | Untested |
 
 ### 2. Install playbook
 
@@ -50,9 +55,14 @@ If the harness asks for a scope, pick user scope, so playbook works in every rep
 | Pi | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
 | GitHub Copilot | `copilot plugin marketplace add JawsomeJason/jawsome-agents`, then `copilot plugin install playbook@jawsome-agents` | Untested |
 | Muse | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
-| OpenCode | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
-| Gemini CLI | The same as OpenCode | Untested |
-| Prime Agent | The same as OpenCode | Untested |
+| OMP | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| Kimi Code CLI | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| Grok Build | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| MiniMax Code | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| OpenCode 2 | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| Antigravity (agy) | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| Gemini CLI | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| Prime Agent | The same as Gemini CLI | Untested |
 
 To update playbook or pstack, use the harness's own update command, such as `claude plugin update playbook@jawsome-agents`. Do not copy a newer version into a plugin cache by hand. The harness loads the version its install record names, so the harness never runs a hand copy. Playbook reads the same record to pick pstack.
 
@@ -73,9 +83,14 @@ Link from a folder that updates in place. A link into a versioned cache folder k
 | Pi | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
 | GitHub Copilot | `$HOME/.copilot/installed-plugins/jawsome-agents/playbook/bin/playbook`, from the layout pstack-claude's Copilot smoke test checks | Untested |
 | Muse | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
-| OpenCode | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
-| Gemini CLI | The same as OpenCode | Untested |
-| Prime Agent | The same as OpenCode | Untested |
+| OMP | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| Kimi Code CLI | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| Grok Build | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| MiniMax Code | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| OpenCode 2 | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| Antigravity (agy) | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| Gemini CLI | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| Prime Agent | The same as Gemini CLI | Untested |
 
 ### 4. Point playbook at pstack
 
@@ -88,9 +103,14 @@ Playbook finds pstack without help when the harness keeps a plugin cache in a do
 | Pi | Set `PLAYBOOKS_PSTACK_DIR=$HOME/.pi/agent/git/github.com/michael-denyer/pstack-claude/plugins/pstack` | Yes |
 | GitHub Copilot | Set `PLAYBOOKS_PSTACK_DIR=$HOME/.copilot/installed-plugins/pstack-claude/pstack`, the folder pstack-claude's Copilot smoke test checks | Untested |
 | Muse | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone. After a `git pull` there, run `muse plugins update pstack` so Muse loads the same version. | Yes |
-| OpenCode | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone | Untested |
-| Gemini CLI | The same as OpenCode | Untested |
-| Prime Agent | The same as OpenCode | Untested |
+| OMP | Set `PLAYBOOKS_PSTACK_DIR` to the pstack folder OMP installed. pstack-claude's README names no path for it. | Untested |
+| Kimi Code CLI | Set `PLAYBOOKS_PSTACK_DIR` to the pstack folder in the copy Kimi installed. pstack-claude's README names no path for it. | Untested |
+| Grok Build | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone. After a `git pull` there, reinstall as pstack-claude's Grok Build notes say, because `grok plugin update` does not refresh a local install. | Untested |
+| MiniMax Code | Set `PLAYBOOKS_PSTACK_DIR=${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins/pstack`, the folder the `cp` in step 1 writes | Untested |
+| OpenCode 2 | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone. pstack-claude's README names no path for the native Git package. | Untested |
+| Antigravity (agy) | Set `PLAYBOOKS_PSTACK_DIR=$HOME/.gemini/config/plugins/pstack`, where pstack-claude says `agy plugin install` puts the bundle | Untested |
+| Gemini CLI | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone | Untested |
+| Prime Agent | The same as Gemini CLI | Untested |
 
 ### 5. Run setup
 
@@ -105,9 +125,14 @@ After setup, start a new session, so the harness loads `/<handle>-mode`. To chec
 | Pi | `/skill:setup`, the form pstack-claude's Pi notes give | Untested |
 | GitHub Copilot | `/playbook:setup`, the form pstack-claude's Copilot notes give | Untested |
 | Muse | `/setup`, the form pstack-claude's Muse notes give. | Untested |
-| OpenCode | Ask the agent to run the `setup` skill by name. pstack-claude says these harnesses have no routing hook, so you name the skill. | Untested |
-| Gemini CLI | The same as OpenCode | Untested |
-| Prime Agent | The same as OpenCode | Untested |
+| OMP | Ask the agent to run the `setup` skill by name. pstack-claude's OMP notes give no skill command. | Untested |
+| Kimi Code CLI | Ask the agent to run the `setup` skill by name. pstack-claude's `/skill:pstack:<name>` form is for plugin skills, and playbook installs as a plain skill. | Untested |
+| Grok Build | Ask the agent to run the `setup` skill by name. pstack-claude's `/poteto-mode` form is for plugin skills, and playbook installs as a plain skill. | Untested |
+| MiniMax Code | Ask the agent to run the `setup` skill by name. pstack-claude's MiniMax Code notes give no skill command. | Untested |
+| OpenCode 2 | Ask the agent to run the `setup` skill by name. pstack-claude's `pstack-` skill IDs are for its plugin, and playbook installs as a plain skill. | Untested |
+| Antigravity (agy) | Ask the agent to run the `setup` skill by name. pstack-claude's Antigravity notes give no skill command. | Untested |
+| Gemini CLI | Ask the agent to run the `setup` skill by name. pstack-claude says these harnesses have no routing hook, so you name the skill. | Untested |
+| Prime Agent | The same as Gemini CLI | Untested |
 
 ## Credits
 

@@ -1,0 +1,63 @@
+{
+  "$comment": "Card-data sources for the engine. The primary database has a REST and GraphQL API without a key and SDKs for several languages; confirm coverage through the newest set before relying on any source. Card text and images remain the rights holders' property.",
+  "primary": {
+    "name": "TCGdex",
+    "series": "tcgp",
+    "setPath": "/v2/en/sets/<CODE>",
+    "languages": 9,
+    "perCardFields": [
+      "id",
+      "localId",
+      "name",
+      "image",
+      "category",
+      "illustrator",
+      "rarity",
+      "set",
+      "variants",
+      "boosters"
+    ],
+    "repository": "tcgdex/cards-database",
+    "license": "open-source database; card content belongs to the rights holders"
+  },
+  "alternatives": [
+    {
+      "name": "pokemon-tcg-pocket-database",
+      "repository": "flibustier/pokemon-tcg-pocket-database",
+      "format": "JSON cards and sets; also on npm",
+      "license": "MIT (compilation)"
+    },
+    {
+      "name": "pokemon-tcg-pocket-cards (PocketDecks)",
+      "repository": "chase-manning/pokemon-tcg-pocket-cards",
+      "format": "JSON scraped from Limitless",
+      "license": "v5 files AGPL-3.0-or-later; v1-v4 MIT; check freshness"
+    },
+    {
+      "name": "pokeclaude CSV",
+      "repository": "briansunter/pokeclaude",
+      "path": "data/pokemon_pocket_cards.csv",
+      "format": "CSV; also an MCP server on npm as pokeclaude",
+      "license": "MIT",
+      "warning": "deck-advice data, not engine-grade; see the Warning section in card-data.md"
+    }
+  ],
+  "referenceSites": [
+    {
+      "name": "Limitless TCG Pocket",
+      "use": "every set and promo, decklists, card text checks"
+    },
+    {
+      "name": "Bulbapedia",
+      "use": "rulings, per-set offering rates, set pages"
+    },
+    {
+      "name": "Serebii",
+      "use": "card lists, events"
+    },
+    {
+      "name": "Game8",
+      "use": "offering rates, events, rulings"
+    }
+  ]
+}
