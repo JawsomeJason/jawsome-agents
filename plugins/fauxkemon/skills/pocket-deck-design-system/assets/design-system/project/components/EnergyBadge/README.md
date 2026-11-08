@@ -8,7 +8,7 @@ The round type disc used for Energy, attack costs, Weakness, the Energy Zone and
 
 ## The consumer provides
 
-`<span class="pd-energy" data-type="fire"></span>`. Give it `role="img"` and an `aria-label` ("Fire Energy") wherever it stands alone; inside a labelled control or next to a type name, leave it decorative (`aria-hidden="true"`).
+`<span class="pd-energy" data-type="fire"></span>`. Give it `role="img"` and an `aria-label` ("Fire Energy") wherever it stands alone. Inside a labelled control or next to a type name, leave it decorative (`aria-hidden="true"`).
 
 ## Attributes
 
@@ -20,6 +20,6 @@ The round type disc used for Energy, attack costs, Weakness, the Energy Zone and
 
 ## Rules
 
-- The disc colours (`disc-*`, `disc-*-hi`, `disc-*-shade`) are measured from the original's cards; the glyph colour is `on-type-*`. Never recolour one without the other.
+- The disc colours (`disc-*`, `disc-*-hi`, `disc-*-shade`) are measured from the original's cards. The glyph colour is `on-type-*`. Never recolour one without the other.
 - Dragon and Colorless are types, not Energy: they never appear in the Energy Zone or the deck's Energy picker.
 - The glyphs are this system's own single-ink drawings. Don't swap in the original's Energy symbols.

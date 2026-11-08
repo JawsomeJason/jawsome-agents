@@ -13,9 +13,9 @@
 
 | Option | Pros | Cons | Pick when |
 | --- | --- | --- | --- |
-| **React + React Aria Components** (default) | Accessible drag and drop (`useDrag`/`useDrop`, `DropZone`) with keyboard and screen-reader paths; mature focus management for dialogs, menus and listboxes; the owner already knows both | Bundle weight; re-render discipline needed during animations | Default for this project |
-| Vanilla TS + web components | Smallest runtime; no framework churn | Accessible DnD, focus traps and menus must be hand-built | The UI stays very small |
-| Svelte / Solid | Fine-grained updates, small output | Smaller accessible-component ecosystem; less owner familiarity | A rewrite for performance, later |
+| **React + React Aria Components** (default) | Accessible drag and drop (`useDrag`, `useDrop`, `DropZone`) with keyboard and screen-reader paths. Mature focus management for dialogs, menus and listboxes. The owner already knows both. | Bundle weight. Needs re-render discipline during animations. | Default for this project |
+| Vanilla TS + web components | Smallest runtime. No framework churn. | You hand-build accessible drag and drop, focus traps and menus | The UI stays very small |
+| Svelte or Solid | Fine-grained updates, small output | Smaller accessible-component ecosystem. Less owner familiarity. | A rewrite for performance, later |
 
 Keep React out of the engine. Components subscribe to a small store that wraps the engine (section 3).
 
@@ -25,7 +25,7 @@ Keep React out of the engine. Components subscribe to a small store that wraps t
 | --- | --- | --- |
 | **DOM + CSS** (default) | Cards, board, hand fan, flips (`transform: rotateY` with `backface-visibility`), holo sheen (layered gradients + `mix-blend-mode`, driven by custom properties from pointer or tilt), View Transitions between screens | Thousands of particles |
 | WAAPI (`element.animate`) | Sequenced, interruptible animations with exact timing driven by engine events | Simple hover states (use CSS transitions) |
-| Canvas / WebGL (PixiJS) | Particle bursts on rare pulls or KOs, layered on top of the DOM | Text, interactive cards, anything that needs accessibility |
+| Canvas or WebGL (PixiJS) | Particle bursts on rare pulls or KOs, layered on top of the DOM | Text, interactive cards, anything that needs accessibility |
 
 If a WebGL layer becomes necessary, install the official PixiJS skills then (`npx skills add pixijs/pixijs-skills`), and keep it decorative: `aria-hidden`, pointer-events off, and turned off under reduced motion.
 
@@ -38,7 +38,7 @@ If a WebGL layer becomes necessary, install the official PixiJS skills then (`np
 
 ## 4. Storage and offline
 
-- IndexedDB through a small wrapper (`idb` or `idb-keyval`). One object store per entity: `collection`, `decks`, `packLog`, `games`, `settings`. A `meta` store holds the schema version; migrations are pure functions run at startup.
+- IndexedDB through a small wrapper (`idb` or `idb-keyval`). One object store per entity: `collection`, `decks`, `packLog`, `games`, `settings`. A `meta` store holds the schema version. Migrations are pure functions that run at startup.
 - Card data ships as static JSON per set in the app bundle, so the game works offline from the first load.
 - Card images, if the owner adds them, live in a separate cache (Cache Storage), filled once and never hotlinked during play.
 - Ask for persistent storage (`navigator.storage.persist()`) so the browser doesn't evict the collection.
@@ -63,13 +63,15 @@ pokeclaude/
 └── docs/
 ```
 
-Copy the design system's `tokens.css`, `bundle.css` and fonts into `apps/web/src/design-system/` once, and treat that folder as vendor code: change tokens in the design system first, then re-copy.
+Copy the design system's `tokens.css`, `bundle.css` and fonts into `apps/web/src/design-system/` once, and treat that folder as vendor code. Change tokens in the design system first, then re-copy.
 
 ## 6. Commands
 
-Keep these four working at all times, so any agent can verify its work:
+Keep these four commands working at all times, so any agent can verify its work:
 
-- `npm test` — engine and data tests (Vitest)
-- `npm run e2e` — Playwright flows at the four viewport sizes
-- `npm run dev` — the web app
-- `npm run data:check` — validation and effect coverage for enabled sets
+| Command              | Runs                                            |
+| -------------------- | ----------------------------------------------- |
+| `npm test`           | Engine and data tests (Vitest)                  |
+| `npm run e2e`        | Playwright flows at the four viewport sizes     |
+| `npm run dev`        | The web app                                     |
+| `npm run data:check` | Validation and effect coverage for enabled sets |

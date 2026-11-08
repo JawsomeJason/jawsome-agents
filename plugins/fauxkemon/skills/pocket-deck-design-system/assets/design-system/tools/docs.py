@@ -40,7 +40,7 @@ def themed(v):
 def tokens_md(t):
     parts = ["# Token reference", "",
              "Generated from `assets/design-system/project/tokens.json` by `tools/docs.py`. Use tokens only as `var(--name)`. "
-             "Colour and shadow tokens list light / dark values; everything else is theme-independent. "
+             "Colour and shadow tokens list light and dark values. Everything else is theme-independent. "
              "`card-*` and `disc-*` colours are the same in both themes because a card is a printed object.", ""]
     color = t["color"]["tokens"]
     families = [
@@ -106,8 +106,8 @@ def components_md():
         by_group.setdefault(group_of(c["preview"]), []).append(name)
     parts = ["# Component reference", "",
              "Every component's contract, generated from the component READMEs by `tools/docs.py`. Markup lives in each "
-             "`assets/design-system/project/components/<Name>/preview.html`; styles in `components/bundle.css`. "
-             "Groups: Primitives know nothing about game state; Cards, Board, Navigation and Collecting compose them for one surface.", "",
+             "`assets/design-system/project/components/<Name>/preview.html`, and styles live in `components/bundle.css`. "
+             "Groups: Primitives know nothing about game state. Cards, Board, Navigation and Collecting compose them for one surface.", "",
              "## Contents", ""]
     for g in GROUP_ORDER:
         parts.append(f"- {g}: " + ", ".join(by_group.get(g, [])))

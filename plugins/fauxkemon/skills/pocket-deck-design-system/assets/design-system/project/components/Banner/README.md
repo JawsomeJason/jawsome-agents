@@ -18,6 +18,6 @@ A diagonal announcement band over the board: turn changes, attacks, KOs, points,
 
 ## Rules
 
-- One banner at a time; queue the rest in event order. Titles are two or three words in `display-l` italic.
-- Enter over `dur-base` with `ease-pop` from the left; under reduced motion it fades.
+- One banner at a time. Queue the rest in event order. Titles are two or three words in `display-l` italic.
+- Enter over `dur-base` with `ease-pop` from the left. Under reduced motion it fades.
 - A long press skips the current animation, never the information: the engine state is already final.

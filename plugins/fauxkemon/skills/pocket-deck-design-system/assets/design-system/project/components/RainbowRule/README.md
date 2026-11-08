@@ -8,5 +8,5 @@ The 2px rule under section titles (My Cards, Wonder Pick, Display Boards) and th
 
 ## Rules
 
-- One per screen, under the title only; it is a section marker, not a divider between rows (rows use `line`).
+- One per screen, under the title only. It is a section marker, not a divider between rows (rows use `line`).
 - Titles above it are `title` (21px, 700) centred, as the original centres "My Cards".

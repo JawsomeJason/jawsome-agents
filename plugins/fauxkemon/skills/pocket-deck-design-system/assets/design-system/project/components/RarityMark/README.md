@@ -11,10 +11,10 @@ A row of rarity glyphs (◊ to ◊◊◊◊, ☆ to ☆☆☆, ♕, ✵ to ✵�
 | Attribute | Values |
 | --- | --- |
 | `data-tier` | `diamond` (default), `star`, `crown`, `shiny` |
-| `font-size` | the glyph size; it inherits, so set it on the mark or its parent |
+| `font-size` | the glyph size. It inherits, so set it on the mark or its parent |
 
 ## Rules
 
 - In the UI the glyphs take `rarity-*`, which hold 3:1 on `surface` in both themes. On a card face PocketCard swaps in the measured card colours (`card-rarity-*`: a dark olive diamond, indigo star, lime shiny, gold crown) at 4% of card width with a 4.08% pitch.
-- Name rarities in words where a player decides something (odds, crafting costs); glyphs alone are fine on card faces.
+- Name rarities in words where a player decides something (odds, crafting costs). Glyphs alone are fine on card faces.
 - The glyphs are this system's own drawings.

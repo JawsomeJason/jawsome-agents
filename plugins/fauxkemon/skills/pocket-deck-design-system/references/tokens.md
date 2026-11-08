@@ -1,6 +1,6 @@
 # Token reference
 
-Generated from `assets/design-system/project/tokens.json` by `tools/docs.py`. Use tokens only as `var(--name)`. Colour and shadow tokens list light / dark values; everything else is theme-independent. `card-*` and `disc-*` colours are the same in both themes because a card is a printed object.
+Generated from `assets/design-system/project/tokens.json` by `tools/docs.py`. Use tokens only as `var(--name)`. Colour and shadow tokens list light and dark values. Everything else is theme-independent. `card-*` and `disc-*` colours are the same in both themes because a card is a printed object.
 
 ## Colour
 

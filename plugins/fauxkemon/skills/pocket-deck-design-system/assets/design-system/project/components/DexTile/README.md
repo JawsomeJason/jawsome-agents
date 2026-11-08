@@ -13,5 +13,5 @@ A `.pd-dex-grid` of links or buttons with `class="pd-dex-tile"`, each containing
 ## Rules
 
 - Not-owned tiles show the number only, never a silhouette of the art.
-- Owned tiles open the card inspector; not-owned tiles open the card's crafting cost and which packs contain it.
-- Above the grid the original shows per-rarity counters (◊ 183/226, ☆ 22, ♕ 1) and a Dex/Owned Toggle; use Chips and Toggle for those.
+- Owned tiles open the card inspector. Not-owned tiles open the card's crafting cost and which packs contain it.
+- Above the grid the original shows per-rarity counters (◊ 183/226, ☆ 22, ♕ 1) and a Toggle between owned cards and the full Dex. Use Chips and Toggle for those.

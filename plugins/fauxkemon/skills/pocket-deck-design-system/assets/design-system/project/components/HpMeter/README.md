@@ -11,7 +11,7 @@ The floating HP read-out on a board card. Measured from the battle screen: a hea
 </div>
 ```
 
-`--pd-hp` and `--pd-hp-max` are unitless numbers (the bare `--hp` name is the bar colour token, so the numbers take the component prefix); the fill width is computed from them. BoardSlot anchors the meter to the card's top-right; elsewhere it stands alone.
+`--pd-hp` and `--pd-hp-max` are unitless numbers (the bare `--hp` name is the bar colour token, so the numbers take the component prefix). The fill width is computed from them. BoardSlot anchors the meter to the card's top-right. Elsewhere it stands alone.
 
 ## Attributes
 
@@ -22,6 +22,6 @@ The floating HP read-out on a board card. Measured from the battle screen: a hea
 
 ## Rules
 
-- The number is always visible; the bar is a hint. The bar does not change colour at low HP (the original's stays mint); say "low" in the label if the app wants to.
+- The number is always visible. The bar is a hint. The bar does not change colour at low HP (the original's stays mint). Say "low" in the label if the app wants to.
 - The bar drains over `dur-slow` with `ease-out` after the damage number has shown.
-- Printed HP on the card face is PocketCard's `.pd-card__hp`; this meter is only for cards in play.
+- Printed HP on the card face is PocketCard's `.pd-card__hp`. This meter is only for cards in play.
