@@ -11,36 +11,39 @@
       "description": "Mines a repo's review history into coding standards that agents follow while they write code, and prunes the rules agents already follow.",
       "version": "0.2.0",
       "source": "./plugins/standards",
-      "skills": [
-        "./skills/standards"
-      ]
+      "skills": ["./skills/standards"]
     },
     {
       "name": "guard",
       "description": "Turns conventions into checks the toolchain runs, and moves the steps a skill does by hand into scripts and narrow judgment-model questions.",
       "version": "0.3.0",
       "source": "./plugins/guard",
-      "skills": [
-        "./skills/enforce",
-        "./skills/harden"
-      ]
+      "skills": ["./skills/enforce", "./skills/harden"]
     },
     {
       "name": "playbook",
       "description": "Extends pstack's poteto-mode playbooks with team and personal playbook files, ordered by their extends chains, delivers shared packs of them to any repo, and validates them against each pstack release.",
       "version": "0.15.1",
       "source": "./plugins/playbook",
-      "skills": [
-        "./skills/playbook",
-        "./skills/setup",
-        "./skills/learn"
-      ]
+      "skills": ["./skills/playbook", "./skills/setup", "./skills/learn"]
     },
     {
       "name": "claudecode-smart-usage",
       "description": "Picks the reasoning effort for each prompt you send, and makes every subagent spawn name its model and effort on purpose.",
       "version": "0.1.0",
       "source": "./plugins/claudecode-smart-usage"
+    },
+    {
+      "name": "fauxkemon",
+      "description": "Rules, design system, sound design and project playbook for building a private, non-monetized pocket trading-card game that plays like the mobile original on phone, tablet and desktop.",
+      "version": "0.1.0",
+      "source": "./plugins/fauxkemon",
+      "skills": [
+        "./skills/tcg-pocket-rules",
+        "./skills/pocket-deck-design-system",
+        "./skills/fauxkemon-playbook",
+        "./skills/fauxkemon-sound"
+      ]
     }
   ]
 }
