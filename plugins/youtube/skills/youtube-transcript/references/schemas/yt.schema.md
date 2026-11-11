@@ -20,17 +20,21 @@ One line per upload, newest first, at most `n`:
 
 ## fetch
 
-Writes `<out_dir>/<id>.txt` and prints `<path> (<count> caption lines)`. The file holds a header, one blank line, then one line per caption:
+Writes `<out_dir>/<id>.txt` and prints `<path> (<count> caption lines)`. The file holds a header, one blank line, the video's description with each line quoted by `> `, one blank line, then one line per caption:
 
 ```text
 # <title>
 # <channel> | <upload date YYYYMMDD> | <duration>
 # <the video's watch-page URL>
 
+> <description line, with its links>
+>
+> <description line>
+
 [m:ss] <caption text, whitespace collapsed to single spaces>
 ```
 
-When the metadata lookup fails, the header is the single line `# <id>`. Minutes keep counting past 59, so a caption at one hour five minutes reads `[65:00]`.
+A video with no description has no `>` lines. When the metadata lookup fails, the header is the single line `# <id>` and there is no description. Minutes keep counting past 59, so a caption at one hour five minutes reads `[65:00]`.
 
 ## Exit codes
 

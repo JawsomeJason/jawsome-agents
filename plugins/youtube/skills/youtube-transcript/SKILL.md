@@ -35,7 +35,7 @@ If two candidates still fit, ask the user in one line that names both, because a
 yt.sh fetch <id|url> <temp dir>/yt-$(date +%s)
 ```
 
-The file holds a header with title, channel, date and URL, then one `[m:ss] text` line per caption. Don't swap in `yt-dlp --write-auto-subs`: YouTube often blocks it with HTTP 429 or a proof-of-origin token wall. Requests from cloud and datacenter addresses get blocked more often than home connections, so on a block, say where the run came from.
+The file holds a header with title, channel, date and URL, the description quoted with `> ` (its links often point to the talks and tools the video cites), then one `[m:ss] text` line per caption. Don't swap in `yt-dlp --write-auto-subs`: YouTube often blocks it with HTTP 429 or a proof-of-origin token wall. Requests from cloud and datacenter addresses get blocked more often than home connections, so on a block, say where the run came from.
 
 If the video has no captions, say so. Transcribe the audio only when the user asks, because it costs far more than a caption fetch.
 
