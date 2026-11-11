@@ -2,7 +2,7 @@
 # Find a YouTube video and fetch its transcript.
 #   yt.sh search "<query>"            top 8 search hits: id | title | channel | duration
 #   yt.sh channel <@handle> [n]       the channel's newest n uploads (default 8)
-#   yt.sh fetch <id|url> <out_dir>    writes <out_dir>/<id>.txt with a metadata header
+#   yt.sh fetch <id|url> <out_dir>    writes <out_dir>/<id>.txt with a metadata header and the description
 # Set PYTHON to the interpreter that has scripts/requirements.txt installed (default python3).
 set -euo pipefail
 
@@ -55,9 +55,17 @@ case "${1:-}" in
     mkdir -p "${out_dir}"
     out="${out_dir}/${id}.txt"
     {
-      ytdlp --skip-download --no-warnings \
-        --print "# %(title)s" --print "# %(channel)s | %(upload_date)s | %(duration_string)s" \
-        --print "# %(webpage_url)s" "https://www.youtube.com/watch?v=${id}" || echo "# ${id}"
+      ytdlp -J --skip-download --no-warnings "https://www.youtube.com/watch?v=${id}" | "${PY}" -c '
+import json, sys
+d = json.load(sys.stdin)
+print("# " + d["title"])
+print("# %s | %s | %s" % (d.get("channel"), d.get("upload_date"), d.get("duration_string")))
+print("# " + d["webpage_url"])
+print()
+# Quote the description so its lines never look like header or caption lines.
+for line in (d.get("description") or "").strip().splitlines():
+    print(f"> {line}".rstrip())
+' || echo "# ${id}"
       echo
     } >"${out}"
     "${PY}" -W ignore - "${id}" >>"${out}" <<'PY'
