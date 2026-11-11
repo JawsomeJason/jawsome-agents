@@ -1,0 +1,11 @@
+{
+  "name": "youtube",
+  "description": "Finds a YouTube video from a link, a title or a photo of the player, and saves its timestamped transcript to a file for summaries and quotes.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jason Featheringham",
+    "email": "jason@jawsomejason.com"
+  },
+  "license": "MIT",
+  "keywords": ["youtube", "transcript", "captions", "video", "summary"]
+}
