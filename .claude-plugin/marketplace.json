@@ -88,6 +88,15 @@
         "./skills/skill-audit",
         "./skills/wiki"
       ]
+    },
+    {
+      "name": "choosing-a-model",
+      "description": "Picks a model tier and reasoning effort by capability, speed and cost, starts efficiency-first or capability-first, and settles the pick with an eval.",
+      "version": "0.1.0",
+      "source": "./plugins/choosing-a-model",
+      "skills": [
+        "./skills/choosing-a-model"
+      ]
     }
   ]
 }
