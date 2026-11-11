@@ -13,6 +13,7 @@ Agent skills that run in any harness that reads the [Agent Skills spec](https://
 | `pocket-deck-kit` | Rules paraphrase, engine design, original glyphs and fonts, sound design and project playbook for building a private, non-monetized pocket trading-card game that plays like the original mobile card game on phone, tablet and desktop. `pocket-card-rules` is the rules paraphrase and engine design, `pocket-deck-glyphs` the original Energy and rarity glyphs and the fonts, `pocket-deck-sound` the audio catalogue and Web Audio architecture, `pocket-deck-playbook` the stack, milestones and definition of done. See its [README](plugins/pocket-deck-kit/README.md). |
 | `reference-craft` | Skills for building against a reference UI. `reference-measure` turns screenshots and screen recordings into tagged, reproducible numbers (token colours with ΔE, layout in points, motion durations and easing or spring fits, audio onsets, loudness and ducking) while looking at few pixels. See its [README](plugins/reference-craft/README.md). |
 | `youtube` | `youtube-transcript` finds a YouTube video from a link, a title or a photo of the player, and saves its timestamped transcript to a file for summaries and quotes. See its [README](plugins/youtube/README.md). |
+| `prompt-craft` | `spec` interviews you for the goal behind a task and writes a small spec with criteria set before the work. `skill-audit` checks a skill against the rules for triggering, one job, scripts and a lessons loop. `wiki` compiles saved sources into a linked markdown wiki and lints it. See its [README](plugins/prompt-craft/README.md). |
 
 Invoke `standards` as `/standards [command] [scope]`:
 
@@ -46,6 +47,7 @@ The `review` pass showed no lift over a plain review in our tests on two repos, 
 /plugin install pocket-deck-kit@jawsome-agents
 /plugin install reference-craft@jawsome-agents
 /plugin install youtube@jawsome-agents
+/plugin install prompt-craft@jawsome-agents
 ```
 
 ### Every other harness
@@ -57,9 +59,10 @@ npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skil
 npx skills add JawsomeJason/jawsome-agents --skill pocket-card-rules --skill pocket-deck-glyphs --skill pocket-deck-playbook --skill pocket-deck-sound
 npx skills add JawsomeJason/jawsome-agents --skill reference-measure
 npx skills add JawsomeJason/jawsome-agents --skill youtube-transcript
+npx skills add JawsomeJason/jawsome-agents --skill spec --skill skill-audit --skill wiki
 ```
 
-The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `pocket-card-rules`, `pocket-deck-glyphs`, `pocket-deck-playbook`, `pocket-deck-sound`, `reference-measure` and `youtube-transcript` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
+The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `pocket-card-rules`, `pocket-deck-glyphs`, `pocket-deck-playbook`, `pocket-deck-sound`, `reference-measure`, `youtube-transcript`, `spec`, `skill-audit` and `wiki` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
 
 ### A repo that commits its skills with rulesync
 

@@ -29,6 +29,7 @@ jobs:
         env:
           REFERENCE_MEASURE_PYTHON: ${{ runner.temp }}/venv/bin/python
           REFERENCE_MEASURE_REQUIRE_DEPS: '1'
+      - run: node --test 'plugins/prompt-craft/tests/*.test.mjs'
       - run: git clone --depth 1 https://github.com/michael-denyer/pstack-claude "$RUNNER_TEMP/pstack-claude"
       - run: node --test 'plugins/playbook/tests/*.test.mjs'
         env:
