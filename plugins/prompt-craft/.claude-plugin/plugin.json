@@ -1,0 +1,11 @@
+{
+  "name": "prompt-craft",
+  "description": "Prompts the environment instead of the model: specs with up-front evaluation criteria, an audit for skills, and a markdown knowledge base an agent compiles and lints.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jason Featheringham",
+    "email": "jason@jawsomejason.com"
+  },
+  "license": "MIT",
+  "keywords": ["spec", "skills", "audit", "wiki", "knowledge-base"]
+}

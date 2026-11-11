@@ -77,6 +77,17 @@
       "skills": [
         "./skills/youtube-transcript"
       ]
+    },
+    {
+      "name": "prompt-craft",
+      "description": "Prompts the environment instead of the model: specs with up-front evaluation criteria, an audit for skills, and a markdown knowledge base an agent compiles and lints.",
+      "version": "0.1.0",
+      "source": "./plugins/prompt-craft",
+      "skills": [
+        "./skills/spec",
+        "./skills/skill-audit",
+        "./skills/wiki"
+      ]
     }
   ]
 }
