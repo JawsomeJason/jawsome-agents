@@ -1,0 +1,11 @@
+{
+  "name": "choosing-a-model",
+  "description": "Picks a model tier and reasoning effort by capability, speed and cost, starts efficiency-first or capability-first, and settles the pick with an eval.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jason Featheringham",
+    "email": "jason@jawsomejason.com"
+  },
+  "license": "MIT",
+  "keywords": ["model selection", "effort", "cost", "latency", "evals"]
+}
