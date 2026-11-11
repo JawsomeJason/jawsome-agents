@@ -68,6 +68,15 @@
       "description": "Amie calendar, todos, meeting notes and Gmail over MCP, as one installable plugin",
       "version": "0.1.0",
       "source": "./plugins/meetings"
+    },
+    {
+      "name": "youtube",
+      "description": "Finds a YouTube video from a link, a title or a photo of the player, and saves its timestamped transcript to a file for summaries and quotes.",
+      "version": "0.1.0",
+      "source": "./plugins/youtube",
+      "skills": [
+        "./skills/youtube-transcript"
+      ]
     }
   ]
 }
