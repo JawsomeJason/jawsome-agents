@@ -100,6 +100,7 @@ node --test 'plugins/standards/tests/*.test.mjs'   # tests for the standards scr
 node --test 'plugins/playbook/tests/*.test.mjs'   # tests for playbook
 node --test 'plugins/reference-craft/tests/*.test.mjs'  # tests for the reference-craft scripts
 node scripts/test-harnesses.mjs                    # real runs in each installed harness
+node plugins/guard/tests/eval.mjs                  # guard's routing and behavior evals, in real Claude Code sessions
 ```
 
 CI runs the format check, the lint and every test suite. The harness test needs each harness's login and spends real usage, so it runs by hand: in a temp home per harness, it installs the skills, invokes `standards` with no argument and checks that the menu prints. A harness that isn't installed or isn't logged in shows as skipped. Pass `--keep` to keep the temp homes for debugging.

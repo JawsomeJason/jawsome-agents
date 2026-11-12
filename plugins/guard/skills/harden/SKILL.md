@@ -31,7 +31,7 @@ List every action the agent takes when it runs: each command it runs, value it c
 
 Mark a step already in the right place `keep`. Split a step that mixes them: code gathers the candidates, the judgment model judges them, the agent writes what is left. Leave each rule's check to the `enforce` skill, which picks the rung.
 
-A judgment model is optional. Follow [references/judgment-model.md](references/judgment-model.md) to detect one, read its question types, and fall back when there is none.
+Sort a step to a judgment model only when the operator already has one set up; otherwise it stays with the agent as the same narrow question, because an unset model is a proposal the operator cannot run. Follow [references/judgment-model.md](references/judgment-model.md) to detect one, read its question types, and fall back when there is none.
 
 Worked example: a ticket-status step became a report script plus one yes-or-no question for the judgment model: does a ticket key found only in a pull request body mean the pull request delivers that ticket.
 
