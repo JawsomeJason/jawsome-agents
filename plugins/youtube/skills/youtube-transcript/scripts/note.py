@@ -43,9 +43,32 @@ def kind(line):
     return "separator" if SEPARATOR.match(line) else "list" if LIST_ITEM.match(line) else "text"
 
 
-def chapters(desc):
+def seconds(stamp):
+    *h, m, s = (int(x) for x in stamp.split(":"))
+    return (h[0] if h else 0) * 3600 + m * 60 + s
+
+
+def link(stamp, vid):
+    return f"[{stamp}](https://youtu.be/{vid}?t={seconds(stamp)})" if vid else f"[{stamp}]"
+
+
+def video_id(text):
+    m = re.search(r"watch\?v=([\w-]{11})", text)
+    return m[1] if m else None
+
+
+def chapter(line, vid):
+    # "0:00 Intro" or "1. (0:18) - Rule" -> "1. [0:00](link) Intro"; a line already linked no longer matches.
+    m = re.match(r"(?:1\. )?(\(?)(\d{1,2}(?::\d\d){1,2})(\)?)(\s.*)$", line)
+    if not m or not (CHAPTER.match(line) or line.startswith("1. ")):
+        return line
+    return f"1. {m[1]}{link(m[2], vid) if vid else m[2]}{m[3]}{m[4]}"
+
+
+def chapters(desc, vid=None):
     # Chapter lines ("0:00 Intro", "(0:18) - Rule") become a Markdown ordered list; "1." on every line lets Markdown number them.
-    lines = [f"1. {l}" if CHAPTER.match(l) else l for l in desc.splitlines()]
+    # With a video id, each chapter time links to that moment.
+    lines = [chapter(l, vid) for l in desc.splitlines()]
     out = []
     for l in lines:
         prev = out[-1] if out else ""
@@ -79,10 +102,10 @@ def render(v, today):
     ]
     body = []
     if v["description"]:
-        body += ["## Description", "", chapters(v["description"]), ""]
+        body += ["## Description", "", chapters(v["description"], video_id(v["url"])), ""]
     if v["channel_url"]:
         body += [f"- Youtube: {v['channel_url']}", ""]
-    body += ["## Transcript", "", prose(v["transcript"]), ""]
+    body += ["## Transcript", "", prose(v["transcript"], video_id(v["url"])), ""]
     return "\n".join(props + body)
 
 
@@ -121,12 +144,12 @@ def stamp(sec):
     return f"{h}:{m:02}:{s:02}" if h else f"{m}:{s:02}"
 
 
-def prose(text):
+def prose(text, vid=None):
     # Timestamps cost about a third of an agent's tokens; one per paragraph keeps the time a reader can jump to.
     # Saved paragraphs parse as caption lines too, so regrouping a note is idempotent.
     text = text.partition("## Transcript\n\n")[2] or text
     words = []
-    for m in re.finditer(r"^\[(?:(\d+):)?(\d+):(\d\d)\] ?(.*)$", text, re.M):
+    for m in re.finditer(r"^\[(?:(\d+):)?(\d+):(\d\d)\](?:\([^)]*\))? ?(.*)$", text, re.M):
         sec = int(m[1] or 0) * 3600 + int(m[2]) * 60 + int(m[3])
         words += [(w, sec) for w in m[4].split()]
     # A paragraph holds the sentences whose first word was said in the same minute; it opens with that first word's time.
@@ -139,7 +162,7 @@ def prose(text):
             first = words[i + 1 - len(sentence)][1]
             paras.setdefault(first // 60, [first, []])[1].append(" ".join(sentence))
             sentence = []
-    return "\n\n".join(f"[{stamp(t)}] " + " ".join(v) for t, v in paras.values())
+    return "\n\n".join(f"{link(stamp(t), vid)} " + " ".join(v) for t, v in paras.values())
 
 
 def main(src, out_dir):
@@ -159,10 +182,10 @@ if __name__ == "__main__":
         note = render(v, "2026-11-16")
         assert v["published"] == "2026-04-29" and v["captions"] == "manual", v
         assert "source: https://www.youtube.com/watch?v=96jN2OCOfLs" in note and 'duration: "29:49"' in note
-        assert "## Description\n\nLine one\\\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n\n--------\n\nFOR YOU:\n\n--------\n\n--------\n" in note, note
+        assert "## Description\n\nLine one\\\n16: Age line\n\n1. [0:00](https://youtu.be/96jN2OCOfLs?t=0) Intro\n1. ([1:02:03](https://youtu.be/96jN2OCOfLs?t=3723)) - Q&A\n\nAfter\n\n--------\n\nFOR YOU:\n\n--------\n\n--------\n" in note, note
         assert chapters(chapters(v["description"])) == chapters(v["description"]) and "- Youtube: https://www.youtube.com/@chan" in note
-        assert note.rstrip().endswith("## Transcript\n\n[0:00] hi there"), note
-        assert prose(note) == "[0:00] hi there"
+        assert note.rstrip().endswith("## Transcript\n\n[0:00](https://youtu.be/96jN2OCOfLs?t=0) hi there"), note
+        assert prose(note, video_id(note)) == "[0:00](https://youtu.be/96jN2OCOfLs?t=0) hi there"
         assert filename(v["title"]) == "Talk AB w Guest.md", filename(v["title"])
         import tempfile
         with tempfile.TemporaryDirectory() as d:
@@ -176,11 +199,19 @@ if __name__ == "__main__":
         assert prose(caps) == "[0:04] Hi there. This runs on past.\n\n[1:00] Next one here?\n\n[1:02:03] Late.", prose(caps)
         assert prose(prose(caps)) == prose(caps)
         flat = "[0:00] " + "w " * 70 + "\n[1:00] " + "x " * 5
+        linked = prose(caps, "96jN2OCOfLs")
+        assert linked.startswith("[0:04](https://youtu.be/96jN2OCOfLs?t=4) Hi there.") and "[1:02:03](https://youtu.be/96jN2OCOfLs?t=3723) Late." in linked, linked
+        assert prose(linked, "96jN2OCOfLs") == linked and prose(linked) == prose(caps)
+        desc = "Intro text\n0:35 Why now?\n(1:02:03) - Q&A"
+        once = chapters(desc, "96jN2OCOfLs")
+        assert once == "Intro text\n\n1. [0:35](https://youtu.be/96jN2OCOfLs?t=35) Why now?\n1. ([1:02:03](https://youtu.be/96jN2OCOfLs?t=3723)) - Q&A", once
+        assert chapters(once, "96jN2OCOfLs") == once
         assert prose(flat) == "[0:00] " + " ".join(["w"] * 70) + "\n\n[1:00] x x x x x", prose(flat)
         print("ok")
         sys.exit(0)
     if len(sys.argv) == 3 and sys.argv[1] == "--text":
-        print(prose(pathlib.Path(sys.argv[2]).read_text()))
+        text = pathlib.Path(sys.argv[2]).read_text()
+        print(prose(text, video_id(text)))
         sys.exit(0)
     if len(sys.argv) != 3:
         print(__doc__, file=sys.stderr)

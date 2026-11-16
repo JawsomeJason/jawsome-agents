@@ -56,15 +56,15 @@ tags: [youtube]
 
 ## Description
 
-<description, unquoted; each chapter line such as `0:00 Intro` or `(0:18) - Rule` gets a `1. ` prefix so it renders as an ordered list, a plain line followed by another plain line ends in `\` so each shows on its own line, and a blank line separates a list from plain text and surrounds a separator line such as `--------`>
+<description, unquoted; each chapter line such as `0:00 Intro` or `(0:18) - Rule` gets a `1. ` prefix so it renders as an ordered list and its time links to that moment (`[0:00](https://youtu.be/<id>?t=0)`), a plain line followed by another plain line ends in `\` so each shows on its own line, and a blank line separates a list from plain text and surrounds a separator line such as `--------`>
 
 - Youtube: <channel URL>
 
 ## Transcript
 
-[m:ss] <the whole sentences that start in that minute, joined; m:ss is when the first one starts>
+[m:ss](https://youtu.be/<id>?t=<seconds>) <the whole sentences that start in that minute, joined; m:ss is when the first one starts, linked to that moment>
 
-[m:ss] ...
+[m:ss](...) ...
 ````
 
 ## text
@@ -72,9 +72,9 @@ tags: [youtube]
 `yt.sh text <note|fetch file>` prints every caption joined into one paragraph per minute, each opening with the exact time its first sentence starts, with a blank line between. A saved note already holds this, so for a note it prints the transcript section as is:
 
 ```text
-[0:00] <sentences that start in minute 0>
+[0:00](https://youtu.be/<id>?t=0) <sentences that start in minute 0>
 
-[1:02] <sentences that start in minute 1>
+[1:02](https://youtu.be/<id>?t=62) <sentences that start in minute 1>
 ```
 
 ## Exit codes
