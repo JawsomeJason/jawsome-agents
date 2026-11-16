@@ -7,7 +7,7 @@
 ## Requirements
 
 - bash and Python 3.
-- `pip install -r skills/youtube-transcript/scripts/requirements.txt`, ideally into a virtual environment. Set `PYTHON` to that environment's interpreter. A `yt-dlp` CLI already on `PATH` is used in place of the package.
+- Nothing to install by hand: on first use, `yt.sh` installs `skills/youtube-transcript/scripts/requirements.txt` into a private venv under `~/.cache/youtube-transcript` (with `uv` when present). Set `PYTHON` to use your own interpreter instead. A `yt-dlp` CLI already on `PATH` is used in place of the package.
 
 For `youtube-later`: the gog CLI, a token from `gog auth add <email> --services youtube --readonly`, and `gog auth alias set youtube <email>` (or set `LATER_ACCOUNT`).
 
@@ -18,7 +18,7 @@ YouTube blocks transcript requests from many cloud and datacenter addresses, so 
 ```sh
 skills/youtube-transcript/scripts/yt.sh search "<query>"
 skills/youtube-transcript/scripts/yt.sh channel @<handle> [n]
-skills/youtube-transcript/scripts/yt.sh fetch <id|url> <out_dir>
+skills/youtube-transcript/scripts/yt.sh fetch <id|url> [out_dir]
 ```
 
 Output shapes and exit codes are in [references/schemas/yt.schema.md](skills/youtube-transcript/references/schemas/yt.schema.md).

@@ -2,11 +2,14 @@
 # Find a YouTube video and fetch its transcript.
 #   yt.sh search "<query>"            top 8 search hits: id | title | channel | duration
 #   yt.sh channel <@handle> [n]       the channel's newest n uploads (default 8)
-#   yt.sh fetch <id|url> <out_dir>    writes <out_dir>/<id>.txt with a metadata header and the description
-# Set PYTHON to the interpreter that has scripts/requirements.txt installed (default python3).
+#   yt.sh fetch <id|url> [out_dir]    writes <out_dir>/<id>.txt (default: a new temp dir) with a header and the description
+# Missing Python packages install themselves into a private venv under ~/.cache/youtube-transcript;
+# set PYTHON to use an interpreter of your own instead.
 set -euo pipefail
 
+VENV="${XDG_CACHE_HOME:-${HOME}/.cache}/youtube-transcript/venv"
 PY="${PYTHON:-python3}"
+if [[ -z "${PYTHON:-}" && -x "${VENV}/bin/python" ]]; then PY="${VENV}/bin/python"; fi
 
 # The yt-dlp CLI when it is on PATH, else the pip package of the same name.
 ytdlp() {
@@ -17,7 +20,20 @@ ytdlp() {
   fi
 }
 
+# Build the private venv once, quietly, so a missing package never needs an agent's hands.
+bootstrap() {
+  [[ -z "${PYTHON:-}" ]] || return 1
+  echo "installing transcript packages into ${VENV} (one time)" >&2
+  if command -v uv >/dev/null 2>&1; then
+    uv venv -q "${VENV}" && uv pip install -q --python "${VENV}/bin/python" -r "$(dirname "$0")/requirements.txt"
+  else
+    python3 -m venv "${VENV}" && "${VENV}/bin/pip" install -q -r "$(dirname "$0")/requirements.txt"
+  fi >&2 && PY="${VENV}/bin/python"
+}
+
 need() {
+  if ! command -v yt-dlp >/dev/null 2>&1 && ! "${PY}" -c 'import yt_dlp' 2>/dev/null; then bootstrap || true; fi
+  if [[ "$1" == fetch ]] && ! "${PY}" -c 'import youtube_transcript_api' 2>/dev/null; then bootstrap || true; fi
   if ! command -v yt-dlp >/dev/null 2>&1 && ! "${PY}" -c 'import yt_dlp' 2>/dev/null; then
     echo "missing: yt-dlp (pip install -r $(dirname "$0")/requirements.txt)" >&2
     exit 3
@@ -51,7 +67,7 @@ case "${1:-}" in
   fetch)
     need fetch
     id="$(video_id "${2:?id or url required}")"
-    out_dir="${3:?out_dir required}"
+    out_dir="${3:-$(mktemp -d)}"
     mkdir -p "${out_dir}"
     out="${out_dir}/${id}.txt"
     {
@@ -65,14 +81,21 @@ print()
 # Quote the description so its lines never look like header or caption lines.
 for line in (d.get("description") or "").strip().splitlines():
     print(f"> {line}".rstrip())
-' || echo "# ${id}"
+' 2>/dev/null || echo "# ${id}"
       echo
     } >"${out}"
+    # A failed fetch leaves no half-written file behind.
+    trap 'rm -f "${out}"' ERR
     "${PY}" -W ignore - "${id}" >>"${out}" <<'PY'
 import sys
 from youtube_transcript_api import YouTubeTranscriptApi
 
-segments = YouTubeTranscriptApi().fetch(sys.argv[1], languages=["en", "en-US", "en-GB"])
+try:
+    segments = YouTubeTranscriptApi().fetch(sys.argv[1], languages=["en", "en-US", "en-GB"])
+except Exception as e:
+    # One line instead of a traceback: the reason is all the agent needs.
+    print(f"no transcript: {type(e).__name__}: {str(e).strip().splitlines()[0] if str(e).strip() else ''}", file=sys.stderr)
+    sys.exit(4)
 for s in segments:
     text = " ".join(s.text.split())
     print(f"[{int(s.start // 60)}:{int(s.start % 60):02d}] {text}")

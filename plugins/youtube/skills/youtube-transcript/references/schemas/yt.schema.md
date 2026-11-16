@@ -20,7 +20,7 @@ One line per upload, newest first, at most `n`:
 
 ## fetch
 
-Writes `<out_dir>/<id>.txt` and prints `<path> (<count> caption lines)`. The file holds a header, one blank line, the video's description with each line quoted by `> `, one blank line, then one line per caption:
+Writes `<out_dir>/<id>.txt` (`out_dir` defaults to a new temp dir) and prints `<path> (<count> caption lines)`. The file holds a header, one blank line, the video's description with each line quoted by `> `, one blank line, then one line per caption:
 
 ```text
 # <title>
@@ -40,8 +40,9 @@ A video with no description has no `>` lines. When the metadata lookup fails, th
 
 - `0`: success.
 - `2`: unknown command; usage goes to stderr.
-- `3`: a dependency is missing; stderr names it and the install command.
-- Any other non-zero code comes from yt-dlp or the transcript library, such as a video with no captions or a blocked request.
+- `3`: a dependency is missing and the one-time venv install failed; stderr names it.
+- `4`: no transcript (no captions, unavailable video or a blocked request); stderr gives the reason in one line and no file is left behind.
+- Any other non-zero code comes from yt-dlp.
 
 ## By hand
 
