@@ -10,7 +10,7 @@ argument-hint: "[words from the video's title or channel]"
 
 `scripts/later.sh` does every lookup, read-only. Output shapes and exit codes: [references/schemas/later.schema.md](references/schemas/later.schema.md).
 
-1. No words given: run `scripts/later.sh list` and show a numbered list of title and channel. Stop there; summarizing unasked spends tokens.
+1. No words given: run `scripts/later.sh list` and show a numbered list of title and channel, newest save first as the script prints it. Stop there; summarizing unasked spends tokens.
 2. Words given: run `scripts/later.sh find "<words>"`. It prints up to 5 rows, best match first.
 3. Pick the video:
    - One clear fit: go to step 4.

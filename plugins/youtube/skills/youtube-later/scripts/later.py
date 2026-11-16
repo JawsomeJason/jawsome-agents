@@ -1,7 +1,7 @@
 """Turn gog's JSON pages (one document per stdin line) into compact rows.
 
   later.py playlist <title>   print the id of the playlist with that exact title (case-insensitive)
-  later.py list               n, id, title, channel, added (tab-separated)
+  later.py list               n, id, title, channel, added (tab-separated), newest save first
   later.py find "<words>"     the 5 rows that best match the words, best first
 """
 import json
@@ -50,7 +50,7 @@ def main(argv, stdin):
     # Deleted and private videos stay in a playlist with no channel; drop them.
     rows = [row(n, it) for n, it in enumerate(items(stdin), 1) if row(n, it).split("\t")[3]]
     if cmd == "list":
-        print("\n".join(rows) if rows else "(empty)")
+        print("\n".join(reversed(rows)) if rows else "(empty)")
         return 0
     if cmd == "find":
         query = words(argv[2])
@@ -80,7 +80,8 @@ if __name__ == "__main__":
         main(["", "find", "the kevin powell css one"], io.StringIO(page))
         sys.stdout = real
         lines = out.getvalue().splitlines()
-        assert lines[0] == "1\t5C_HPTJg5ek\tRust in 100 Seconds\tFireship\t2026-11-01", lines
+        assert lines[1] == "1\t5C_HPTJg5ek\tRust in 100 Seconds\tFireship\t2026-11-01", lines
+        assert lines[0].startswith("3\tOGJvhpoE8b4"), lines
         assert len(lines) == 3 and lines[2].startswith("3\tOGJvhpoE8b4"), lines
         print("ok")
         sys.exit(0)

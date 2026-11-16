@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Read the "Later" playlist (not Watch Later) through gog, read-only.
-#   later.sh list              every video: n, id, title, channel, added (tab-separated)
+#   later.sh list              every video, newest save first: n, id, title, channel, added (tab-separated)
 #   later.sh find "<words>"    the 5 best title/channel matches, best first, same columns
 # Env: LATER_ACCOUNT (default: the gog account alias "youtube"), LATER_TITLE (default Later).
 # Exit 2 = auth needed, 4 = playlist not found.

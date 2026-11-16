@@ -4,7 +4,7 @@
 
 ## list
 
-One line per video in playlist order, fields split by a tab. Deleted and private videos, which have no channel, are left out, so the position can skip a number:
+One line per video, newest save first (reverse playlist order), fields split by a tab. Deleted and private videos, which have no channel, are left out, so the position can skip a number:
 
 ```text
 <position from 1>	<11-char id>	<title>	<channel>	<date added YYYY-MM-DD>
