@@ -1,7 +1,7 @@
 """Turn a yt.sh fetch file into a Markdown note with properties, rebuild index.md, and print the note's path.
 
   note.py <fetch file> <notes dir>
-  note.py --text <note or fetch file>   print the captions as one paragraph per minute, "[12m] ..."
+  note.py --text <note or fetch file>   print the transcript as one paragraph per minute, "[12m] ..."
   note.py --test
 """
 import datetime
@@ -68,7 +68,7 @@ def render(v, today):
         body += ["## Description", "", chapters(v["description"]), ""]
     if v["channel_url"]:
         body += [f"- Youtube: {v['channel_url']}", ""]
-    body += ["## Transcript", "", "```", v["transcript"], "```", ""]
+    body += ["## Transcript", "", prose(v["transcript"]), ""]
     return "\n".join(props + body)
 
 
@@ -105,6 +105,8 @@ def prose(text):
     for m in re.finditer(r"^\[(?:(\d+):)?(\d+):(\d\d)\] ?(.*)$", text, re.M):
         minute = int(m[1] or 0) * 60 + int(m[2])
         paras.setdefault(minute, []).append(m[4].strip())
+    if not paras:  # a saved note already holds minute paragraphs
+        return text.partition("## Transcript\n\n")[2].strip()
     return "\n\n".join(f"[{k}m] " + " ".join(w for w in v if w) for k, v in paras.items())
 
 
@@ -127,7 +129,8 @@ if __name__ == "__main__":
         assert "source: https://www.youtube.com/watch?v=96jN2OCOfLs" in note and 'duration: "29:49"' in note
         assert "## Description\n\nLine one\n\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n" in note, note
         assert chapters(chapters(v["description"])) == chapters(v["description"]) and "- Youtube: https://www.youtube.com/@chan" in note
-        assert note.rstrip().endswith("```\n[0:00] hi\n[0:02] there\n```"), note
+        assert note.rstrip().endswith("## Transcript\n\n[0m] hi there"), note
+        assert prose(note) == "[0m] hi there"
         assert filename(v["title"]) == "Talk AB w Guest.md", filename(v["title"])
         import tempfile
         with tempfile.TemporaryDirectory() as d:

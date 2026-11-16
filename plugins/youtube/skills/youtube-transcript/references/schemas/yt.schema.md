@@ -62,14 +62,14 @@ tags: [youtube]
 
 ## Transcript
 
-```
-[m:ss] <caption text>
-```
+[<minute>m] <every caption said in that minute, joined>
+
+[<minute>m] ...
 ````
 
 ## text
 
-`yt.sh text <note|fetch file>` prints every caption joined into one paragraph per minute, each opening with its minute, with a blank line between:
+`yt.sh text <note|fetch file>` prints every caption joined into one paragraph per minute, each opening with its minute, with a blank line between. A saved note already holds this, so for a note it prints the transcript section as is:
 
 ```text
 [0m] <captions said in minute 0>

@@ -72,7 +72,7 @@
     {
       "name": "youtube",
       "description": "Finds a YouTube video from a link, a title or a photo of the player, and saves its timestamped transcript to a file for summaries and quotes. Also lists your own \"Later\" playlist and fetches the transcript of a video you saved there.",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "source": "./plugins/youtube",
       "skills": [
         "./skills/youtube-transcript",
