@@ -99,15 +99,26 @@ def index(out_dir):
     (pathlib.Path(out_dir) / "index.md").write_text("\n".join(lines) + "\n")
 
 
+SENTENCE_END = re.compile(r"[.?!][\"')\]]*$")
+
+
 def prose(text):
     # Timestamps cost about a third of an agent's tokens; one marker per minute keeps rough timing.
-    paras = {}
-    for m in re.finditer(r"^\[(?:(\d+):)?(\d+):(\d\d)\] ?(.*)$", text, re.M):
-        minute = int(m[1] or 0) * 60 + int(m[2])
-        paras.setdefault(minute, []).append(m[4].strip())
-    if not paras:  # a saved note already holds minute paragraphs
-        return text.partition("## Transcript\n\n")[2].strip()
-    return "\n\n".join(f"[{k}m] " + " ".join(w for w in v if w) for k, v in paras.items())
+    # Reads caption lines ("[1:02:03] text") or saved minute paragraphs ("[62m] text"), so regrouping is idempotent.
+    text = text.partition("## Transcript\n\n")[2] or text
+    words = []
+    for m in re.finditer(r"^\[(?:(?:(\d+):)?(\d+):\d\d|(\d+)m)\] ?(.*)$", text, re.M):
+        minute = int(m[3]) if m[3] else int(m[1] or 0) * 60 + int(m[2])
+        words += [(w, minute) for w in m[4].split()]
+    # Each sentence goes under the minute its first word was said; unpunctuated captions break at the minute after 60 words.
+    paras, sentence = {}, []
+    for i, (w, minute) in enumerate(words):
+        sentence.append(w)
+        nxt = words[i + 1][1] if i + 1 < len(words) else None
+        if SENTENCE_END.search(w) or nxt is None or (len(sentence) >= 60 and nxt != minute):
+            paras.setdefault(words[i + 1 - len(sentence)][1], []).append(" ".join(sentence))
+            sentence = []
+    return "\n\n".join(f"[{k}m] " + " ".join(v) for k, v in paras.items())
 
 
 def main(src, out_dir):
@@ -140,7 +151,11 @@ if __name__ == "__main__":
             assert "| 2026-11-16 | [Talk: A/B w/ Guest](<Talk AB w Guest.md>) | Chan | 29:49 |" in idx, idx
             index(d)
             assert idx.count("| [") == (pathlib.Path(d) / "index.md").read_text().count("| [") == 1
-        assert prose("```\n[0:00] hi\n[0:59] there\n[1:00] next\n[1:02:03] late\n```") == "[0m] hi there\n\n[1m] next\n\n[62m] late", prose("[0:00] hi")
+        caps = "[0:00] Hi there. This\n[0:59] runs on\n[1:00] past. Next one\n[1:30] here?\n[1:02:03] Late."
+        assert prose(caps) == "[0m] Hi there. This runs on past.\n\n[1m] Next one here?\n\n[62m] Late.", prose(caps)
+        assert prose(prose(caps)) == prose(caps)
+        flat = "[0:00] " + "w " * 70 + "\n[1:00] " + "x " * 5
+        assert prose(flat) == "[0m] " + " ".join(["w"] * 70) + "\n\n[1m] x x x x x", prose(flat)
         print("ok")
         sys.exit(0)
     if len(sys.argv) == 3 and sys.argv[1] == "--text":
