@@ -41,9 +41,14 @@ def chapters(desc):
     lines = [f"1. {l}" if CHAPTER.match(l) else l for l in desc.splitlines()]
     out = []
     for l in lines:
-        # Markdown joins back-to-back plain lines into one paragraph, so split them unless both are list items.
-        if out and out[-1].strip() and l.strip() and not (LIST_ITEM.match(out[-1]) and LIST_ITEM.match(l)):
-            out.append("")
+        prev = out[-1] if out else ""
+        # Markdown joins back-to-back lines into one paragraph: a trailing "\\" breaks between plain lines,
+        # and a list next to plain text needs a blank line or it swallows the text.
+        if prev.strip() and l.strip():
+            if not LIST_ITEM.match(prev) and not LIST_ITEM.match(l):
+                out[-1] = prev.rstrip().rstrip("\\") + "\\"
+            elif not (LIST_ITEM.match(prev) and LIST_ITEM.match(l)):
+                out.append("")
         out.append(l)
     return "\n".join(out)
 
@@ -145,7 +150,7 @@ if __name__ == "__main__":
         note = render(v, "2026-11-16")
         assert v["published"] == "2026-04-29" and v["captions"] == "manual", v
         assert "source: https://www.youtube.com/watch?v=96jN2OCOfLs" in note and 'duration: "29:49"' in note
-        assert "## Description\n\nLine one\n\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n" in note, note
+        assert "## Description\n\nLine one\\\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n" in note, note
         assert chapters(chapters(v["description"])) == chapters(v["description"]) and "- Youtube: https://www.youtube.com/@chan" in note
         assert note.rstrip().endswith("## Transcript\n\n[0:00] hi there"), note
         assert prose(note) == "[0:00] hi there"
