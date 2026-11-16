@@ -67,6 +67,16 @@ tags: [youtube]
 ```
 ````
 
+## text
+
+`yt.sh text <note|fetch file>` prints every caption joined into one paragraph per minute, each opening with its minute, with a blank line between:
+
+```text
+[0m] <captions said in minute 0>
+
+[1m] <captions said in minute 1>
+```
+
 ## Exit codes
 
 - `0`: success.

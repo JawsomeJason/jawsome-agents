@@ -1,6 +1,7 @@
 """Turn a yt.sh fetch file into a Markdown note with properties, rebuild index.md, and print the note's path.
 
   note.py <fetch file> <notes dir>
+  note.py --text <note or fetch file>   print the captions as one paragraph per minute, "[12m] ..."
   note.py --test
 """
 import datetime
@@ -98,6 +99,15 @@ def index(out_dir):
     (pathlib.Path(out_dir) / "index.md").write_text("\n".join(lines) + "\n")
 
 
+def prose(text):
+    # Timestamps cost about a third of an agent's tokens; one marker per minute keeps rough timing.
+    paras = {}
+    for m in re.finditer(r"^\[(?:(\d+):)?(\d+):(\d\d)\] ?(.*)$", text, re.M):
+        minute = int(m[1] or 0) * 60 + int(m[2])
+        paras.setdefault(minute, []).append(m[4].strip())
+    return "\n\n".join(f"[{k}m] " + " ".join(w for w in v if w) for k, v in paras.items())
+
+
 def main(src, out_dir):
     v = parse(pathlib.Path(src).read_text())
     out = pathlib.Path(out_dir)
@@ -127,7 +137,11 @@ if __name__ == "__main__":
             assert "| 2026-11-16 | [Talk: A/B w/ Guest](<Talk AB w Guest.md>) | Chan | 29:49 |" in idx, idx
             index(d)
             assert idx.count("| [") == (pathlib.Path(d) / "index.md").read_text().count("| [") == 1
+        assert prose("```\n[0:00] hi\n[0:59] there\n[1:00] next\n[1:02:03] late\n```") == "[0m] hi there\n\n[1m] next\n\n[62m] late", prose("[0:00] hi")
         print("ok")
+        sys.exit(0)
+    if len(sys.argv) == 3 and sys.argv[1] == "--text":
+        print(prose(pathlib.Path(sys.argv[2]).read_text()))
         sys.exit(0)
     if len(sys.argv) != 3:
         print(__doc__, file=sys.stderr)
