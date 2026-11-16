@@ -1,7 +1,7 @@
 """Turn a yt.sh fetch file into a Markdown note with properties, rebuild index.md, and print the note's path.
 
   note.py <fetch file> <notes dir>
-  note.py --text <note or fetch file>   print the transcript as one paragraph per minute, "[12m] ..."
+  note.py --text <note or fetch file>   print the transcript as one paragraph per minute, "[12:04] ..."
   note.py --test
 """
 import datetime
@@ -102,23 +102,30 @@ def index(out_dir):
 SENTENCE_END = re.compile(r"[.?!][\"')\]]*$")
 
 
+def stamp(sec):
+    h, m, s = sec // 3600, sec // 60 % 60, sec % 60
+    return f"{h}:{m:02}:{s:02}" if h else f"{m}:{s:02}"
+
+
 def prose(text):
-    # Timestamps cost about a third of an agent's tokens; one marker per minute keeps rough timing.
-    # Reads caption lines ("[1:02:03] text") or saved minute paragraphs ("[62m] text"), so regrouping is idempotent.
+    # Timestamps cost about a third of an agent's tokens; one per paragraph keeps the time a reader can jump to.
+    # Saved paragraphs parse as caption lines too, so regrouping a note is idempotent.
     text = text.partition("## Transcript\n\n")[2] or text
     words = []
-    for m in re.finditer(r"^\[(?:(?:(\d+):)?(\d+):\d\d|(\d+)m)\] ?(.*)$", text, re.M):
-        minute = int(m[3]) if m[3] else int(m[1] or 0) * 60 + int(m[2])
-        words += [(w, minute) for w in m[4].split()]
-    # Each sentence goes under the minute its first word was said; unpunctuated captions break at the minute after 60 words.
+    for m in re.finditer(r"^\[(?:(\d+):)?(\d+):(\d\d)\] ?(.*)$", text, re.M):
+        sec = int(m[1] or 0) * 3600 + int(m[2]) * 60 + int(m[3])
+        words += [(w, sec) for w in m[4].split()]
+    # A paragraph holds the sentences whose first word was said in the same minute; it opens with that first word's time.
+    # Unpunctuated captions break at the minute after 60 words.
     paras, sentence = {}, []
-    for i, (w, minute) in enumerate(words):
+    for i, (w, sec) in enumerate(words):
         sentence.append(w)
-        nxt = words[i + 1][1] if i + 1 < len(words) else None
-        if SENTENCE_END.search(w) or nxt is None or (len(sentence) >= 60 and nxt != minute):
-            paras.setdefault(words[i + 1 - len(sentence)][1], []).append(" ".join(sentence))
+        nxt = words[i + 1][1] // 60 if i + 1 < len(words) else None
+        if SENTENCE_END.search(w) or nxt is None or (len(sentence) >= 60 and nxt != sec // 60):
+            first = words[i + 1 - len(sentence)][1]
+            paras.setdefault(first // 60, [first, []])[1].append(" ".join(sentence))
             sentence = []
-    return "\n\n".join(f"[{k}m] " + " ".join(v) for k, v in paras.items())
+    return "\n\n".join(f"[{stamp(t)}] " + " ".join(v) for t, v in paras.values())
 
 
 def main(src, out_dir):
@@ -140,8 +147,8 @@ if __name__ == "__main__":
         assert "source: https://www.youtube.com/watch?v=96jN2OCOfLs" in note and 'duration: "29:49"' in note
         assert "## Description\n\nLine one\n\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n" in note, note
         assert chapters(chapters(v["description"])) == chapters(v["description"]) and "- Youtube: https://www.youtube.com/@chan" in note
-        assert note.rstrip().endswith("## Transcript\n\n[0m] hi there"), note
-        assert prose(note) == "[0m] hi there"
+        assert note.rstrip().endswith("## Transcript\n\n[0:00] hi there"), note
+        assert prose(note) == "[0:00] hi there"
         assert filename(v["title"]) == "Talk AB w Guest.md", filename(v["title"])
         import tempfile
         with tempfile.TemporaryDirectory() as d:
@@ -151,11 +158,11 @@ if __name__ == "__main__":
             assert "| 2026-11-16 | [Talk: A/B w/ Guest](<Talk AB w Guest.md>) | Chan | 29:49 |" in idx, idx
             index(d)
             assert idx.count("| [") == (pathlib.Path(d) / "index.md").read_text().count("| [") == 1
-        caps = "[0:00] Hi there. This\n[0:59] runs on\n[1:00] past. Next one\n[1:30] here?\n[1:02:03] Late."
-        assert prose(caps) == "[0m] Hi there. This runs on past.\n\n[1m] Next one here?\n\n[62m] Late.", prose(caps)
+        caps = "[0:04] Hi there. This\n[0:59] runs on\n[1:00] past. Next one\n[1:30] here?\n[1:02:03] Late."
+        assert prose(caps) == "[0:04] Hi there. This runs on past.\n\n[1:00] Next one here?\n\n[1:02:03] Late.", prose(caps)
         assert prose(prose(caps)) == prose(caps)
         flat = "[0:00] " + "w " * 70 + "\n[1:00] " + "x " * 5
-        assert prose(flat) == "[0m] " + " ".join(["w"] * 70) + "\n\n[1m] x x x x x", prose(flat)
+        assert prose(flat) == "[0:00] " + " ".join(["w"] * 70) + "\n\n[1:00] x x x x x", prose(flat)
         print("ok")
         sys.exit(0)
     if len(sys.argv) == 3 and sys.argv[1] == "--text":

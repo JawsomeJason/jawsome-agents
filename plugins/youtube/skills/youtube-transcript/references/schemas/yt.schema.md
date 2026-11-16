@@ -62,19 +62,19 @@ tags: [youtube]
 
 ## Transcript
 
-[<minute>m] <every caption said in that minute, joined>
+[m:ss] <the whole sentences that start in that minute, joined; m:ss is when the first one starts>
 
-[<minute>m] ...
+[m:ss] ...
 ````
 
 ## text
 
-`yt.sh text <note|fetch file>` prints every caption joined into one paragraph per minute, each opening with its minute, with a blank line between. A saved note already holds this, so for a note it prints the transcript section as is:
+`yt.sh text <note|fetch file>` prints every caption joined into one paragraph per minute, each opening with the exact time its first sentence starts, with a blank line between. A saved note already holds this, so for a note it prints the transcript section as is:
 
 ```text
-[0m] <captions said in minute 0>
+[0:00] <sentences that start in minute 0>
 
-[1m] <captions said in minute 1>
+[1:02] <sentences that start in minute 1>
 ```
 
 ## Exit codes
