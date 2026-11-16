@@ -1,6 +1,6 @@
 ---
-name: later-playlist
-description: Lists the user's own YouTube playlist named "Later" (not the built-in Watch Later), or finds one saved video in it from a few words and fetches its transcript. Use when the user asks what is on their Later list or names a video they saved and wants it summarized or transcribed. Triggers include "/later-playlist", "show my Later playlist", "what did I save to watch", or "summarize the X video from Later". Reach for it even when the ask only says "my saved videos" or "that video I saved".
+name: youtube-later
+description: Lists the user's own YouTube playlist named "Later" (not the built-in Watch Later), or finds one saved video in it from a few words and fetches its transcript. Use when the user asks what is on their Later list or names a video they saved and wants it summarized or transcribed. Triggers include "/youtube-later", "show my Later playlist", "what did I save to watch", or "summarize the X video from Later". Reach for it even when the ask only says "my saved videos" or "that video I saved".
 license: MIT
 compatibility: Requires bash, Python 3 and the gog CLI with a YouTube read-only token. The account is the gog alias `youtube` (`gog auth alias set youtube <email>`), or LATER_ACCOUNT.
 argument-hint: "[words from the video's title or channel]"
