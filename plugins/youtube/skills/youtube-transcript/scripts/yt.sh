@@ -5,9 +5,9 @@
 #   yt.sh fetch <id|url> [out_dir]    writes <out_dir>/<id>.txt (default: a new temp dir) with a header and the description
 #   yt.sh save <id|url> [notes_dir]   fetch, then write a Markdown note to notes_dir (default $YT_NOTES_DIR);
 #                                     a video already saved there is not fetched again
-#   yt.sh source <note> "<phrase>" <url> <author|found> "<confirmed by>" [dir]   add a link to the note's linked copy
+#   yt.sh source <note> "<phrase>" <url> <author|found> [dir]   add a link to the note's linked copy
 #                                     in dir (default $YT_SOURCES_DIR); the note only gains a linked: property
-#   yt.sh relink <note> [dir]         rebuild the linked copy from the note and the copy's own link table
+#   yt.sh relink <note> [dir]         rebuild the linked copy from the note and the copy's own inline links
 #   yt.sh text <note|fetch file>      print the captions as prose, one paragraph per minute, each opening with its start time
 # Missing Python packages install themselves into a private venv under ~/.cache/youtube-transcript;
 # set PYTHON to use an interpreter of your own instead.
@@ -123,8 +123,8 @@ PY
     "${PY}" "$(dirname "$0")/note.py" "${tmp}/${id}.txt" "${dir}"
     ;;
   source)
-    "${PY}" "$(dirname "$0")/note.py" --source "${2:?note required}" "${7:-${YT_SOURCES_DIR:?set YT_SOURCES_DIR or pass dir}}" \
-      "${3:?phrase required}" "${4:?url required}" "${5:?author or found required}" "${6:?confirmed by required}"
+    "${PY}" "$(dirname "$0")/note.py" --source "${2:?note required}" "${6:-${YT_SOURCES_DIR:?set YT_SOURCES_DIR or pass dir}}" \
+      "${3:?phrase required}" "${4:?url required}" "${5:?author or found required}"
     ;;
   relink)
     "${PY}" "$(dirname "$0")/note.py" --relink "${2:?note required}" "${3:-${YT_SOURCES_DIR:?set YT_SOURCES_DIR or pass dir}}"

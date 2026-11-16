@@ -15,7 +15,7 @@ Links go in a linked copy, `$YT_SOURCES_DIR/<note name> (linked).md`, never in t
 3. The subagent reads the whole note, in parts when a reader cuts it short, and lists, on first mention, each specific talk, video, post, paper, repo or event the speaker names, and each person and tool or product. Named products count as tools, including Anthropic's own (Claude Code, Opus 5.5). It skips the video's own creator, the bare words "Anthropic" or "Claude", and first names with no surname. It adds only links the copy does not already have. For each:
    - **author link**: the description holds its URL. Kind `author`.
    - **found link**: no URL in the description, and the user did not pass `--no-search`. Search the web and open the page. Link it only when the page itself confirms it: the same talk or event name, a person's own profile showing the name and role, or a tool's official docs. Kind `found`. When nothing confirms, skip it: a wrong link is worse than none.
-4. For each, run `yt.sh source "<note>" "<words exactly as in the transcript>" <url> <kind> "<how the page confirmed it>"`. Auto captions garble names, so use the transcript's spelling. On exit 1, fix the phrase from the message or skip.
+4. For each, run `yt.sh source "<note>" "<words exactly as in the transcript>" <url> <kind>`. Auto captions garble names, so use the transcript's spelling. On exit 1, fix the phrase from the message or skip.
 5. Report one line per link (words → URL, kind) and one line per skip with its reason, then the copy's path.
 
-After a note is re-saved, `yt.sh relink "<note>"` rebuilds its copy from the copy's own link table, with no new search.
+After a note is re-saved, `yt.sh relink "<note>"` rebuilds its copy from the copy's own inline links, with no new search.

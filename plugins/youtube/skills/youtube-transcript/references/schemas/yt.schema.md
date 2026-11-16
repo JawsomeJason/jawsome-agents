@@ -79,9 +79,9 @@ tags: [youtube]
 
 ## source and relink
 
-`yt.sh source <note> "<phrase>" <url> <author|found> "<confirmed by>" [dir]` adds one link to the note's linked copy, `<dir>/<note name> (linked).md` (`dir` defaults to `$YT_SOURCES_DIR`), and prints the copy's path. It wraps the first mention of `<phrase>` in the copy's transcript not already inside a link as `[<phrase>](<url> "<kind>")`, never adding or changing words. `author` means the URL came from the video's description; `found` means a web search found it. The note itself only gains a `linked: "[[<note name> (linked)]]"` property. Exit `1` with the reason on stderr when the phrase has no unlinked mention, the pair is already linked, the URL is not `http(s)`, or the kind is neither; nothing is written then.
+`yt.sh source <note> "<phrase>" <url> <author|found> [dir]` adds one link to the note's linked copy, `<dir>/<note name> (linked).md` (`dir` defaults to `$YT_SOURCES_DIR`), and prints the copy's path. It wraps the first mention of `<phrase>` in the copy's transcript not already inside a link as `[<phrase>](<url> "<kind>")`, never adding or changing words. `author` means the URL came from the video's description; `found` means a web search found it. The note itself only gains a `linked: "[[<note name> (linked)]]"` property. Exit `1` with the reason on stderr when the phrase has no unlinked mention, the pair is already linked, the URL is not `http(s)`, or the kind is neither; nothing is written then.
 
-`yt.sh relink <note> [dir]` rebuilds the copy from the note and the copy's own link table, for after a note is re-saved.
+`yt.sh relink <note> [dir]` rebuilds the copy from the note and the copy's own inline links, for after a note is re-saved.
 
 The copy:
 
@@ -96,12 +96,6 @@ tags: [youtube, sources]
 # <title> (linked)
 
 Agent-made: ...
-
-## Links
-
-| Time | Words | Link | Kind | Confirmed by |
-| --- | --- | --- | --- | --- |
-| [m:ss](<time link>) | <phrase> | [<domain>](<url>) | <author|found> | <how the page confirmed it> |
 
 ## Transcript
 
