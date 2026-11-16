@@ -1,7 +1,8 @@
 """Turn a yt.sh fetch file into a Markdown note with properties, rebuild index.md, and print the note's path.
 
   note.py <fetch file> <notes dir>
-  note.py --link <note> <phrase> <url> <author|found>   link the first unlinked mention of phrase in the transcript
+  note.py --source <note> <dir> <phrase> <url> <author|found> <confirmed by>   add a link to the note's linked copy in dir
+  note.py --relink <note> <dir>   rebuild the linked copy from the note and the copy's own link table
   note.py --text <note or fetch file>   print the transcript as one paragraph per minute, "[12:04] ..."
   note.py --test
 """
@@ -181,6 +182,49 @@ def add_link(note, phrase, url, kind):
     raise LookupError(f"no unlinked mention of {phrase!r} in the transcript")
 
 
+ROW = re.compile(r"^\| \[[\d:]+\]\([^)]*\) \| (.*?) \| \[[^\]]*\]\(([^)]*)\) \| (author|found) \| (.*) \|$", re.M)
+
+
+def cell(text):
+    return text.replace("|", "\\|").replace("\n", " ")
+
+
+def linked_copy(note, stem, links, today):
+    # Agent links live only in this copy; the note keeps the source as scripts made it.
+    body = "## Transcript\n\n" + note.partition("## Transcript\n\n")[2]
+    rows = []
+    for phrase, url, kind, why in links:
+        body = add_link(body, phrase, url, kind)
+        para = next(l for l in body.splitlines() if f"[{phrase}]({url} " in l)
+        rows.append((seconds(re.match(r"\[([\d:]+)\]", para)[1]), f"| {para.split(' ', 1)[0]} | {cell(phrase)} | [{url.split('/')[2]}]({url}) | {kind} | {cell(why)} |"))
+    title = re.search(r"^# (.+)$", note, re.M)[1]
+    return "\n".join([
+        "---", f'source: "[[{stem}]]"', f"video: {re.search(r'^source: (.+)$', note, re.M)[1]}", f"linked: {today}", "tags: [youtube, sources]", "---", "",
+        f"# {title} (linked)", "",
+        f"Agent-made: an agent chose every link below, and any of them may be wrong. The transcript words are copied unchanged from [[{stem}|the original note]].", "",
+        "## Links", "", "| Time | Words | Link | Kind | Confirmed by |", "| --- | --- | --- | --- | --- |",
+        *[r for _, r in sorted(rows, key=lambda r: r[0])], "", body.rstrip("\n"), ""])
+
+
+def write_copy(note_path, out_dir, new=None):
+    note_path, out = pathlib.Path(note_path), pathlib.Path(out_dir)
+    copy = out / f"{note_path.stem} (linked).md"
+    links = [(m[1].replace("\\|", "|"), m[2], m[3], m[4].replace("\\|", "|")) for m in ROW.finditer(copy.read_text())] if copy.exists() else []
+    if new:
+        if any(l[0] == new[0] and l[1] == new[1] for l in links):
+            raise ValueError(f"already linked: {new[0]!r}")
+        links.append(new)
+    note = note_path.read_text()
+    text = linked_copy(note, note_path.stem, links, datetime.date.today().isoformat())
+    out.mkdir(parents=True, exist_ok=True)
+    copy.write_text(text)
+    # The note only gains a property pointing at the copy.
+    head, sep, rest = note.partition("\n---\n")
+    if note.startswith("---\n") and sep and "\nlinked: " not in head:
+        note_path.write_text(head + f'\nlinked: "[[{copy.stem}]]"' + sep + rest)
+    return copy
+
+
 def main(src, out_dir):
     v = parse(pathlib.Path(src).read_text())
     out = pathlib.Path(out_dir)
@@ -235,16 +279,34 @@ if __name__ == "__main__":
                 raise AssertionError(bad)
             except (ValueError, LookupError):
                 pass
+        with tempfile.TemporaryDirectory() as d:
+            n = pathlib.Path(d) / "Talk.md"
+            n.write_text("---\nsource: https://www.youtube.com/watch?v=96jN2OCOfLs\ntags: [youtube]\n---\n\n# Talk\n\n" + talk + "\n\n[1:05](https://youtu.be/96jN2OCOfLs?t=65) Boris Cherny said so.\n")
+            before = n.read_text().partition("\n---\n")[2]
+            c = write_copy(n, d, ("Boris Cherny", "https://borischerny.com/about/", "found", "His site | says so"))
+            write_copy(n, d, ("AI Code Summit", "https://example.com/summit", "author", "In the description"))
+            text = c.read_text()
+            assert c.name == "Talk (linked).md" and 'source: "[[Talk]]"' in text, text
+            assert text.index("| [0:00](") < text.index("| [1:05](") and "His site \\| says so" in text, text
+            assert '[Boris Cherny](https://borischerny.com/about/ "found")' in text and '[AI Code Summit](https://example.com/summit "author")' in text
+            assert n.read_text().partition("\n---\n")[2] == before and '\nlinked: "[[Talk (linked)]]"\n' in n.read_text()
+            assert write_copy(n, d).read_text() == text
+            for bad in [("Nope", "https://x.y", "found", "x"), ("Boris Cherny", "https://borischerny.com/about/", "found", "again")]:
+                try:
+                    write_copy(n, d, bad)
+                    raise AssertionError(bad)
+                except (ValueError, LookupError):
+                    pass
+            assert c.read_text() == text
         print("ok")
         sys.exit(0)
-    if len(sys.argv) == 6 and sys.argv[1] == "--link":
-        f = pathlib.Path(sys.argv[2])
+    if len(sys.argv) in (4, 8) and sys.argv[1] in ("--source", "--relink"):
         try:
-            f.write_text(add_link(f.read_text(), *sys.argv[3:]))
+            copy = write_copy(sys.argv[2], sys.argv[3], tuple(sys.argv[4:8]) if sys.argv[1] == "--source" else None)
         except (ValueError, LookupError) as e:
             print(e, file=sys.stderr)
             sys.exit(1)
-        print(f"linked {sys.argv[3]!r} ({sys.argv[5]})")
+        print(copy)
         sys.exit(0)
     if len(sys.argv) == 3 and sys.argv[1] == "--text":
         text = pathlib.Path(sys.argv[2]).read_text()

@@ -4,6 +4,8 @@
 
 `youtube-later` lists the videos in your own YouTube playlist named "Later" (not Watch Later), and finds one from a few words so `youtube-transcript` can fetch it. It reads the playlist through the gog CLI with a read-only token.
 
+`youtube-sources` links the talks, posts, people and tools a speaker names in a saved note. An agent picks each link, so the links go in a separate linked copy under `YT_SOURCES_DIR`, and the note only gains a `linked:` property pointing at it.
+
 ## Requirements
 
 - bash and Python 3.
@@ -12,6 +14,8 @@
 For `youtube-later`: the gog CLI, a token from `gog auth add <email> --services youtube --readonly`, and `gog auth alias set youtube <email>` (or set `LATER_ACCOUNT`).
 
 Set `YT_NOTES_DIR` to a notes folder to keep each transcript as a Markdown note there; a video already saved is read from its note instead of fetched again.
+
+Set `YT_SOURCES_DIR` to a folder for the linked copies `youtube-sources` writes.
 
 YouTube blocks transcript requests from many cloud and datacenter addresses, so the skill works best from a home or office connection.
 

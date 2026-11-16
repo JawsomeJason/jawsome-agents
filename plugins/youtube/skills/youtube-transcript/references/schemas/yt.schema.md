@@ -77,9 +77,36 @@ tags: [youtube]
 [1:02](https://youtu.be/<id>?t=62) <sentences that start in minute 1>
 ```
 
-## link
+## source and relink
 
-`yt.sh link <note> "<phrase>" <url> <author|found>` wraps the first mention of `<phrase>` in the note's transcript that is not already inside a link, as `[<phrase>](<url> "<author|found>")`, and prints `linked '<phrase>' (<kind>)`. It never adds or changes words. `author` means the URL came from the video's description; `found` means a web search found it. Exit `1` with the reason on stderr when the phrase has no unlinked mention, the URL is not `http(s)`, or the kind is neither.
+`yt.sh source <note> "<phrase>" <url> <author|found> "<confirmed by>" [dir]` adds one link to the note's linked copy, `<dir>/<note name> (linked).md` (`dir` defaults to `$YT_SOURCES_DIR`), and prints the copy's path. It wraps the first mention of `<phrase>` in the copy's transcript not already inside a link as `[<phrase>](<url> "<kind>")`, never adding or changing words. `author` means the URL came from the video's description; `found` means a web search found it. The note itself only gains a `linked: "[[<note name> (linked)]]"` property. Exit `1` with the reason on stderr when the phrase has no unlinked mention, the pair is already linked, the URL is not `http(s)`, or the kind is neither; nothing is written then.
+
+`yt.sh relink <note> [dir]` rebuilds the copy from the note and the copy's own link table, for after a note is re-saved.
+
+The copy:
+
+```text
+---
+source: "[[<note name>]]"
+video: <watch-page URL>
+linked: <YYYY-MM-DD>
+tags: [youtube, sources]
+---
+
+# <title> (linked)
+
+Agent-made: ...
+
+## Links
+
+| Time | Words | Link | Kind | Confirmed by |
+| --- | --- | --- | --- | --- |
+| [m:ss](<time link>) | <phrase> | [<domain>](<url>) | <author|found> | <how the page confirmed it> |
+
+## Transcript
+
+<the note's transcript, with each phrase linked>
+```
 
 ## Exit codes
 
