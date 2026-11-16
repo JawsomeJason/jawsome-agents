@@ -56,7 +56,7 @@ tags: [youtube]
 
 ## Description
 
-<description, unquoted; each chapter line such as `0:00 Intro` or `(0:18) - Rule` gets a `1. ` prefix so it renders as an ordered list>
+<description, unquoted; each chapter line such as `0:00 Intro` or `(0:18) - Rule` gets a `1. ` prefix so it renders as an ordered list, and back-to-back plain lines get a blank line between them so each shows on its own line>
 
 - Youtube: <channel URL>
 

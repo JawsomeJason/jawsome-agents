@@ -32,9 +32,19 @@ def parse(text):
 CHAPTER = re.compile(r"\(?\d{1,2}(:\d\d){1,2}\)?\s")
 
 
+LIST_ITEM = re.compile(r"([-*+]|\d+\.)\s")
+
+
 def chapters(desc):
     # Chapter lines ("0:00 Intro", "(0:18) - Rule") become a Markdown ordered list; "1." on every line lets Markdown number them.
-    return "\n".join(f"1. {l}" if CHAPTER.match(l) else l for l in desc.splitlines())
+    lines = [f"1. {l}" if CHAPTER.match(l) else l for l in desc.splitlines()]
+    out = []
+    for l in lines:
+        # Markdown joins back-to-back plain lines into one paragraph, so split them unless both are list items.
+        if out and out[-1].strip() and l.strip() and not (LIST_ITEM.match(out[-1]) and LIST_ITEM.match(l)):
+            out.append("")
+        out.append(l)
+    return "\n".join(out)
 
 
 def render(v, today):
@@ -100,12 +110,13 @@ def main(src, out_dir):
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--test"]:
-        sample = "# Talk: A/B w/ Guest\n# Chan | 20260429 | 29:49 | https://www.youtube.com/@chan\n# https://www.youtube.com/watch?v=96jN2OCOfLs\n\n> Line one\n>\n> 0:00 Intro\n> (1:02:03) - Q&A\n\n# captions: manual\n[0:00] hi\n[0:02] there\n"
+        sample = "# Talk: A/B w/ Guest\n# Chan | 20260429 | 29:49 | https://www.youtube.com/@chan\n# https://www.youtube.com/watch?v=96jN2OCOfLs\n\n> Line one\n> 16: Age line\n>\n> 0:00 Intro\n> (1:02:03) - Q&A\n> After\n\n# captions: manual\n[0:00] hi\n[0:02] there\n"
         v = parse(sample)
         note = render(v, "2026-11-16")
         assert v["published"] == "2026-04-29" and v["captions"] == "manual", v
         assert "source: https://www.youtube.com/watch?v=96jN2OCOfLs" in note and 'duration: "29:49"' in note
-        assert "## Description\n\nLine one\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n" in note and "- Youtube: https://www.youtube.com/@chan" in note
+        assert "## Description\n\nLine one\n\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n" in note, note
+        assert chapters(chapters(v["description"])) == chapters(v["description"]) and "- Youtube: https://www.youtube.com/@chan" in note
         assert note.rstrip().endswith("```\n[0:00] hi\n[0:02] there\n```"), note
         assert filename(v["title"]) == "Talk AB w Guest.md", filename(v["title"])
         import tempfile
