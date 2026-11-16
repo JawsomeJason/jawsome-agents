@@ -39,9 +39,9 @@ A video with no description has no `>` lines. When the metadata lookup fails, th
 
 ## save
 
-Fetches as above, then writes `<notes_dir>/<title>.md` (characters file systems refuse are dropped from the title) and prints `<path> (<count> caption lines)`. When any `.md` file in `notes_dir` already holds the video's `watch?v=<id>` URL, it prints `<that path> (already saved)` and fetches nothing. The note:
+Fetches as above, then writes `<notes_dir>/<title>.md` (characters file systems refuse are dropped from the title) and prints `<path> (<count> caption lines)`. Each save also rebuilds `<notes_dir>/index.md`: one table row per note (saved date, linked title, channel, length), newest save first, read from the notes' properties. When a note in `notes_dir` already has the video's `watch?v=<id>` URL as its `source`, it prints `<that path> (already saved)` and fetches nothing. The note:
 
-```text
+````text
 ---
 source: <watch-page URL>
 channel: <channel>
@@ -56,14 +56,16 @@ tags: [youtube]
 
 ## Description
 
-<description, unquoted>
+<description, unquoted; each chapter line such as `0:00 Intro` or `(0:18) - Rule` gets a `1. ` prefix so it renders as an ordered list>
 
 - Youtube: <channel URL>
 
 ## Transcript
 
+```
 [m:ss] <caption text>
 ```
+````
 
 ## Exit codes
 

@@ -109,7 +109,7 @@ PY
     need fetch
     id="$(video_id "${2:?id or url required}")"
     dir="${3:-${YT_NOTES_DIR:?set YT_NOTES_DIR or pass notes_dir}}"
-    hit="$(grep -l "watch?v=${id}" "${dir}"/*.md 2>/dev/null | head -1 || true)"
+    hit="$(grep -l "^source: .*watch?v=${id}" "${dir}"/*.md 2>/dev/null | head -1 || true)"
     if [[ -n "${hit}" ]]; then
       echo "${hit} (already saved)"
       exit 0

@@ -12,7 +12,7 @@ argument-hint: "<url | id | title | screenshot>"
 
 1. A URL or 11-character ID: go to step 3.
 2. Anything else: read every clue (title, channel, duration from the `9:06 / 9:16` counter, upload age), then run `yt.sh search "<title> <channel>"` and, if needed, `yt.sh channel @<handle>`. Channels A/B test titles, so confirm by channel and duration (within 1s), not title. If two candidates still fit, ask in one line naming both.
-3. When `YT_NOTES_DIR` is set, run `yt.sh save <id|url>`: it writes a Markdown note there, or prints the existing note's path without fetching again. Otherwise run `yt.sh fetch <id|url>`. Either prints the file's path and caption count.
+3. When `YT_NOTES_DIR` is set, run `yt.sh save <id|url>`: it writes a Markdown note there and rebuilds the folder's `index.md`, or prints the existing note's path without fetching again. Otherwise run `yt.sh fetch <id|url>`. Either prints the file's path and caption count.
 4. Report the title, channel, URL and file path, and answer from the file. Never write a summary into a saved note; it holds only the source. Don't paste the transcript into chat. Warn that auto captions garble numbers and names.
 
 On exit 4 (no transcript or a blocked request), say so in one line; blocks hit cloud addresses more than home ones. Transcribe audio only when asked, since it costs far more. On exit 3, the one-time install failed: ask the user to paste the video's "Show transcript" panel instead.

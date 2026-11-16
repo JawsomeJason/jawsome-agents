@@ -1,4 +1,4 @@
-"""Turn a yt.sh fetch file into a Markdown note with properties, and print the note's path.
+"""Turn a yt.sh fetch file into a Markdown note with properties, rebuild index.md, and print the note's path.
 
   note.py <fetch file> <notes dir>
   note.py --test
@@ -29,6 +29,14 @@ def parse(text):
                 url=url, captions=kind, description="\n".join(desc).strip(), transcript="\n".join(caps))
 
 
+CHAPTER = re.compile(r"\(?\d{1,2}(:\d\d){1,2}\)?\s")
+
+
+def chapters(desc):
+    # Chapter lines ("0:00 Intro", "(0:18) - Rule") become a Markdown ordered list; "1." on every line lets Markdown number them.
+    return "\n".join(f"1. {l}" if CHAPTER.match(l) else l for l in desc.splitlines())
+
+
 def render(v, today):
     props = [
         "---",
@@ -46,10 +54,10 @@ def render(v, today):
     ]
     body = []
     if v["description"]:
-        body += ["## Description", "", v["description"], ""]
+        body += ["## Description", "", chapters(v["description"]), ""]
     if v["channel_url"]:
         body += [f"- Youtube: {v['channel_url']}", ""]
-    body += ["## Transcript", "", v["transcript"], ""]
+    body += ["## Transcript", "", "```", v["transcript"], "```", ""]
     return "\n".join(props + body)
 
 
@@ -59,25 +67,55 @@ def filename(title):
     return re.sub(r"\s+", " ", name).strip()[:150] + ".md"
 
 
+def props(text):
+    head = text.split("\n---\n", 1)[0].splitlines()[1:] if text.startswith("---\n") else []
+    v = dict(l.split(": ", 1) for l in head if ": " in l)
+    v["title"] = next((l[2:] for l in text.splitlines() if l.startswith("# ")), "")
+    return v
+
+
+def index(out_dir):
+    # Rebuilt from every note's properties, so edits and deletions never leave it stale.
+    rows = []
+    for f in pathlib.Path(out_dir).glob("*.md"):
+        if f.name == "index.md":
+            continue
+        v = props(f.read_text())
+        title = v["title"].replace("|", "\\|") or f.stem
+        rows.append((v.get("saved", ""), f"| {v.get('saved', '')} | [{title}](<{f.name}>) | {v.get('channel', '')} | {v.get('duration', '').strip(chr(34))} |"))
+    lines = ["# YouTube notes", "", "| Saved | Title | Channel | Length |", "| --- | --- | --- | --- |"]
+    lines += [r for _, r in sorted(rows, key=lambda r: r[0], reverse=True)]
+    (pathlib.Path(out_dir) / "index.md").write_text("\n".join(lines) + "\n")
+
+
 def main(src, out_dir):
     v = parse(pathlib.Path(src).read_text())
     out = pathlib.Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     path = out / filename(v["title"] or pathlib.Path(src).stem)
     path.write_text(render(v, datetime.date.today().isoformat()))
+    index(out)
     print(f"{path} ({v['transcript'].count(chr(10)) + 1 if v['transcript'] else 0} caption lines)")
 
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--test"]:
-        sample = "# Talk: A/B w/ Guest\n# Chan | 20260429 | 29:49 | https://www.youtube.com/@chan\n# https://www.youtube.com/watch?v=96jN2OCOfLs\n\n> Line one\n>\n> Line two\n\n# captions: manual\n[0:00] hi\n[0:02] there\n"
+        sample = "# Talk: A/B w/ Guest\n# Chan | 20260429 | 29:49 | https://www.youtube.com/@chan\n# https://www.youtube.com/watch?v=96jN2OCOfLs\n\n> Line one\n>\n> 0:00 Intro\n> (1:02:03) - Q&A\n\n# captions: manual\n[0:00] hi\n[0:02] there\n"
         v = parse(sample)
         note = render(v, "2026-11-16")
         assert v["published"] == "2026-04-29" and v["captions"] == "manual", v
         assert "source: https://www.youtube.com/watch?v=96jN2OCOfLs" in note and 'duration: "29:49"' in note
-        assert "## Description\n\nLine one\n\nLine two\n" in note and "- Youtube: https://www.youtube.com/@chan" in note
-        assert note.rstrip().endswith("[0:02] there"), note
+        assert "## Description\n\nLine one\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n" in note and "- Youtube: https://www.youtube.com/@chan" in note
+        assert note.rstrip().endswith("```\n[0:00] hi\n[0:02] there\n```"), note
         assert filename(v["title"]) == "Talk AB w Guest.md", filename(v["title"])
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (pathlib.Path(d) / "Talk AB w Guest.md").write_text(note)
+            index(d)
+            idx = (pathlib.Path(d) / "index.md").read_text()
+            assert "| 2026-11-16 | [Talk: A/B w/ Guest](<Talk AB w Guest.md>) | Chan | 29:49 |" in idx, idx
+            index(d)
+            assert idx.count("| [") == (pathlib.Path(d) / "index.md").read_text().count("| [") == 1
         print("ok")
         sys.exit(0)
     if len(sys.argv) != 3:
