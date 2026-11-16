@@ -12,7 +12,7 @@ Links go in a linked copy, `$YT_SOURCES_DIR/<note name> (linked).md`, never in t
 
 1. Resolve the note: a path, or a title matched against `$YT_NOTES_DIR/*.md`. Ask in one line if two fit.
 2. Hand the note's path to one Sonnet subagent with steps 3 and 4, so the transcript stays out of your context. For several notes, run one subagent per note, at most 5 at once.
-3. The subagent reads the note and lists, on first mention, each specific talk, video, post, paper, repo or event the speaker names, and each person and tool or product. It skips the video's own creator, bare "Anthropic" or "Claude", and first names with no surname. For each:
+3. The subagent reads the whole note, in parts when a reader cuts it short, and lists, on first mention, each specific talk, video, post, paper, repo or event the speaker names, and each person and tool or product. Named products count as tools, including Anthropic's own (Claude Code, Opus 5.5). It skips the video's own creator, the bare words "Anthropic" or "Claude", and first names with no surname. It adds only links the copy does not already have. For each:
    - **author link**: the description holds its URL. Kind `author`.
    - **found link**: no URL in the description, and the user did not pass `--no-search`. Search the web and open the page. Link it only when the page itself confirms it: the same talk or event name, a person's own profile showing the name and role, or a tool's official docs. Kind `found`. When nothing confirms, skip it: a wrong link is worse than none.
 4. For each, run `yt.sh source "<note>" "<words exactly as in the transcript>" <url> <kind> "<how the page confirmed it>"`. Auto captions garble names, so use the transcript's spelling. On exit 1, fix the phrase from the message or skip.
