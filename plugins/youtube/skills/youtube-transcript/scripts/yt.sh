@@ -5,6 +5,7 @@
 #   yt.sh fetch <id|url> [out_dir]    writes <out_dir>/<id>.txt (default: a new temp dir) with a header and the description
 #   yt.sh save <id|url> [notes_dir]   fetch, then write a Markdown note to notes_dir (default $YT_NOTES_DIR);
 #                                     a video already saved there is not fetched again
+#   yt.sh link <note> "<phrase>" <url> <author|found>   link the first unlinked spoken mention of phrase
 #   yt.sh text <note|fetch file>      print the captions as prose, one paragraph per minute, each opening with its start time
 # Missing Python packages install themselves into a private venv under ~/.cache/youtube-transcript;
 # set PYTHON to use an interpreter of your own instead.
@@ -119,11 +120,14 @@ PY
     "$0" fetch "${id}" "${tmp}" >/dev/null
     "${PY}" "$(dirname "$0")/note.py" "${tmp}/${id}.txt" "${dir}"
     ;;
+  link)
+    "${PY}" "$(dirname "$0")/note.py" --link "${2:?note required}" "${3:?phrase required}" "${4:?url required}" "${5:?author or found required}"
+    ;;
   text)
     "${PY}" "$(dirname "$0")/note.py" --text "${2:?note or fetch file required}"
     ;;
   *)
-    sed -n '2,10p' "$0" >&2
+    sed -n '2,11p' "$0" >&2
     exit 2
     ;;
 esac

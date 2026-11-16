@@ -1,6 +1,7 @@
 """Turn a yt.sh fetch file into a Markdown note with properties, rebuild index.md, and print the note's path.
 
   note.py <fetch file> <notes dir>
+  note.py --link <note> <phrase> <url> <author|found>   link the first unlinked mention of phrase in the transcript
   note.py --text <note or fetch file>   print the transcript as one paragraph per minute, "[12:04] ..."
   note.py --test
 """
@@ -165,6 +166,21 @@ def prose(text, vid=None):
     return "\n\n".join(f"{link(stamp(t), vid)} " + " ".join(v) for t, v in paras.values())
 
 
+MD_LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
+
+
+def add_link(note, phrase, url, kind):
+    # Wraps words already spoken, never adds or rewords any; the title records where the URL came from.
+    if kind not in ("author", "found") or not re.fullmatch(r"https?://[^\s()\"]+", url) or "[" in phrase or "]" in phrase:
+        raise ValueError(f"bad link: {phrase!r} {url!r} {kind!r}")
+    head, sep, tr = note.partition("## Transcript\n\n")
+    taken = [m.span() for m in MD_LINK.finditer(tr)]
+    for m in re.finditer(re.escape(phrase), tr):
+        if not any(a < m.end() and m.start() < b for a, b in taken):
+            return head + sep + tr[:m.start()] + f'[{phrase}]({url} "{kind}")' + tr[m.end():]
+    raise LookupError(f"no unlinked mention of {phrase!r} in the transcript")
+
+
 def main(src, out_dir):
     v = parse(pathlib.Path(src).read_text())
     out = pathlib.Path(out_dir)
@@ -207,7 +223,28 @@ if __name__ == "__main__":
         assert once == "Intro text\n\n1. [0:35](https://youtu.be/96jN2OCOfLs?t=35) Why now?\n1. ([1:02:03](https://youtu.be/96jN2OCOfLs?t=3723)) - Q&A", once
         assert chapters(once, "96jN2OCOfLs") == once
         assert prose(flat) == "[0:00] " + " ".join(["w"] * 70) + "\n\n[1:00] x x x x x", prose(flat)
+        talk = "## Transcript\n\n[0:00](https://youtu.be/96jN2OCOfLs?t=0) I went to the AI Code Summit. It was the AI Code Summit"
+        one = add_link(talk, "AI Code Summit", "https://example.com/summit", "found")
+        assert one.endswith('I went to the [AI Code Summit](https://example.com/summit "found"). It was the AI Code Summit'), one
+        two = add_link(one, "AI Code Summit", "https://example.com/summit", "author")
+        assert two.endswith('It was the [AI Code Summit](https://example.com/summit "author")') and two.count("](https://example.com") == 2
+        assert prose(two, "96jN2OCOfLs") == two.partition("## Transcript\n\n")[2]
+        for bad in [("Nope", "https://x.y", "found"), ("AI Code Summit", "javascript:x", "found"), ("AI Code Summit", "https://x.y", "guess")]:
+            try:
+                add_link(two if bad[0] == "AI Code Summit" else talk, *bad)
+                raise AssertionError(bad)
+            except (ValueError, LookupError):
+                pass
         print("ok")
+        sys.exit(0)
+    if len(sys.argv) == 6 and sys.argv[1] == "--link":
+        f = pathlib.Path(sys.argv[2])
+        try:
+            f.write_text(add_link(f.read_text(), *sys.argv[3:]))
+        except (ValueError, LookupError) as e:
+            print(e, file=sys.stderr)
+            sys.exit(1)
+        print(f"linked {sys.argv[3]!r} ({sys.argv[5]})")
         sys.exit(0)
     if len(sys.argv) == 3 and sys.argv[1] == "--text":
         text = pathlib.Path(sys.argv[2]).read_text()

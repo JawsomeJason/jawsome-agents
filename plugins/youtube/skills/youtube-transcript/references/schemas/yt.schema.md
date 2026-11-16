@@ -77,6 +77,10 @@ tags: [youtube]
 [1:02](https://youtu.be/<id>?t=62) <sentences that start in minute 1>
 ```
 
+## link
+
+`yt.sh link <note> "<phrase>" <url> <author|found>` wraps the first mention of `<phrase>` in the note's transcript that is not already inside a link, as `[<phrase>](<url> "<author|found>")`, and prints `linked '<phrase>' (<kind>)`. It never adds or changes words. `author` means the URL came from the video's description; `found` means a web search found it. Exit `1` with the reason on stderr when the phrase has no unlinked mention, the URL is not `http(s)`, or the kind is neither.
+
 ## Exit codes
 
 - `0`: success.
