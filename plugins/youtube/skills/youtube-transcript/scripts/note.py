@@ -36,18 +36,27 @@ CHAPTER = re.compile(r"\(?\d{1,2}(:\d\d){1,2}\)?\s")
 LIST_ITEM = re.compile(r"([-*+]|\d+\.)\s")
 
 
+SEPARATOR = re.compile(r"\s*([-_*=~━─═—–])(\s*\1){2,}\s*\\?$")
+
+
+def kind(line):
+    return "separator" if SEPARATOR.match(line) else "list" if LIST_ITEM.match(line) else "text"
+
+
 def chapters(desc):
     # Chapter lines ("0:00 Intro", "(0:18) - Rule") become a Markdown ordered list; "1." on every line lets Markdown number them.
     lines = [f"1. {l}" if CHAPTER.match(l) else l for l in desc.splitlines()]
     out = []
     for l in lines:
         prev = out[-1] if out else ""
-        # Markdown joins back-to-back lines into one paragraph: a trailing "\\" breaks between plain lines,
-        # and a list next to plain text needs a blank line or it swallows the text.
+        # Markdown joins back-to-back lines into one paragraph: a trailing "\\" breaks between plain lines.
+        # A list next to plain text needs a blank line or it swallows the text, and a separator needs one
+        # on each side or it turns the line above into a heading.
         if prev.strip() and l.strip():
-            if not LIST_ITEM.match(prev) and not LIST_ITEM.match(l):
+            a, b = kind(prev), kind(l)
+            if a == b == "text":
                 out[-1] = prev.rstrip().rstrip("\\") + "\\"
-            elif not (LIST_ITEM.match(prev) and LIST_ITEM.match(l)):
+            elif not a == b == "list":
                 out.append("")
         out.append(l)
     return "\n".join(out)
@@ -145,12 +154,12 @@ def main(src, out_dir):
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--test"]:
-        sample = "# Talk: A/B w/ Guest\n# Chan | 20260429 | 29:49 | https://www.youtube.com/@chan\n# https://www.youtube.com/watch?v=96jN2OCOfLs\n\n> Line one\n> 16: Age line\n>\n> 0:00 Intro\n> (1:02:03) - Q&A\n> After\n\n# captions: manual\n[0:00] hi\n[0:02] there\n"
+        sample = "# Talk: A/B w/ Guest\n# Chan | 20260429 | 29:49 | https://www.youtube.com/@chan\n# https://www.youtube.com/watch?v=96jN2OCOfLs\n\n> Line one\n> 16: Age line\n>\n> 0:00 Intro\n> (1:02:03) - Q&A\n> After\n> --------\n> FOR YOU:\n> --------\n> --------\n\n# captions: manual\n[0:00] hi\n[0:02] there\n"
         v = parse(sample)
         note = render(v, "2026-11-16")
         assert v["published"] == "2026-04-29" and v["captions"] == "manual", v
         assert "source: https://www.youtube.com/watch?v=96jN2OCOfLs" in note and 'duration: "29:49"' in note
-        assert "## Description\n\nLine one\\\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n" in note, note
+        assert "## Description\n\nLine one\\\n16: Age line\n\n1. 0:00 Intro\n1. (1:02:03) - Q&A\n\nAfter\n\n--------\n\nFOR YOU:\n\n--------\n\n--------\n" in note, note
         assert chapters(chapters(v["description"])) == chapters(v["description"]) and "- Youtube: https://www.youtube.com/@chan" in note
         assert note.rstrip().endswith("## Transcript\n\n[0:00] hi there"), note
         assert prose(note) == "[0:00] hi there"
