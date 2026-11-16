@@ -16,6 +16,6 @@ argument-hint: "[words from the video's title or channel]"
    - One clear fit: go to step 4.
    - Several fit equally: ask in one line naming each by title and channel.
    - `(no match)`: run `list`, pick by meaning, and ask if none fits.
-4. Hand its video id to the `youtube-transcript` skill, from its fetch step, and answer from the file it writes.
+4. Hand its video id to the `youtube-transcript` skill, from its step 3, which saves the note or reuses a saved one, and answer from that file.
 
 On exit 2, run the `gog auth add` command the script prints in the background, ask the user to approve the browser sign-in, then rerun. On exit 4, say no playlist has that title.

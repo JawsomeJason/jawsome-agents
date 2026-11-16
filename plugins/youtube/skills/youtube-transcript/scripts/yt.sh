@@ -3,6 +3,8 @@
 #   yt.sh search "<query>"            top 8 search hits: id | title | channel | duration
 #   yt.sh channel <@handle> [n]       the channel's newest n uploads (default 8)
 #   yt.sh fetch <id|url> [out_dir]    writes <out_dir>/<id>.txt (default: a new temp dir) with a header and the description
+#   yt.sh save <id|url> [notes_dir]   fetch, then write a Markdown note to notes_dir (default $YT_NOTES_DIR);
+#                                     a video already saved there is not fetched again
 # Missing Python packages install themselves into a private venv under ~/.cache/youtube-transcript;
 # set PYTHON to use an interpreter of your own instead.
 set -euo pipefail
@@ -75,7 +77,7 @@ case "${1:-}" in
 import json, sys
 d = json.load(sys.stdin)
 print("# " + d["title"])
-print("# %s | %s | %s" % (d.get("channel"), d.get("upload_date"), d.get("duration_string")))
+print("# %s | %s | %s | %s" % (d.get("channel"), d.get("upload_date"), d.get("duration_string"), d.get("channel_url") or ""))
 print("# " + d["webpage_url"])
 print()
 # Quote the description so its lines never look like header or caption lines.
@@ -96,14 +98,28 @@ except Exception as e:
     # One line instead of a traceback: the reason is all the agent needs.
     print(f"no transcript: {type(e).__name__}: {str(e).strip().splitlines()[0] if str(e).strip() else ''}", file=sys.stderr)
     sys.exit(4)
+print("# captions: " + ("auto-generated" if segments.is_generated else "manual"))
 for s in segments:
     text = " ".join(s.text.split())
     print(f"[{int(s.start // 60)}:{int(s.start % 60):02d}] {text}")
 PY
     echo "${out} ($(grep -c '^\[' "${out}") caption lines)"
     ;;
+  save)
+    need fetch
+    id="$(video_id "${2:?id or url required}")"
+    dir="${3:-${YT_NOTES_DIR:?set YT_NOTES_DIR or pass notes_dir}}"
+    hit="$(grep -l "watch?v=${id}" "${dir}"/*.md 2>/dev/null | head -1 || true)"
+    if [[ -n "${hit}" ]]; then
+      echo "${hit} (already saved)"
+      exit 0
+    fi
+    tmp="$(mktemp -d)"
+    "$0" fetch "${id}" "${tmp}" >/dev/null
+    "${PY}" "$(dirname "$0")/note.py" "${tmp}/${id}.txt" "${dir}"
+    ;;
   *)
-    sed -n '2,6p' "$0" >&2
+    sed -n '2,9p' "$0" >&2
     exit 2
     ;;
 esac

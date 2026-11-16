@@ -11,6 +11,8 @@
 
 For `youtube-later`: the gog CLI, a token from `gog auth add <email> --services youtube --readonly`, and `gog auth alias set youtube <email>` (or set `LATER_ACCOUNT`).
 
+Set `YT_NOTES_DIR` to a notes folder to keep each transcript as a Markdown note there; a video already saved is read from its note instead of fetched again.
+
 YouTube blocks transcript requests from many cloud and datacenter addresses, so the skill works best from a home or office connection.
 
 ## Usage
@@ -19,6 +21,7 @@ YouTube blocks transcript requests from many cloud and datacenter addresses, so 
 skills/youtube-transcript/scripts/yt.sh search "<query>"
 skills/youtube-transcript/scripts/yt.sh channel @<handle> [n]
 skills/youtube-transcript/scripts/yt.sh fetch <id|url> [out_dir]
+skills/youtube-transcript/scripts/yt.sh save <id|url> [notes_dir]   # default $YT_NOTES_DIR
 ```
 
 Output shapes and exit codes are in [references/schemas/yt.schema.md](skills/youtube-transcript/references/schemas/yt.schema.md).
