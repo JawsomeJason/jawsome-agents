@@ -1,0 +1,13 @@
+{
+  "channel": "C0000000000",
+  "user": "U0000000001",
+  "repos": ["example-org/web", "example-org/api"],
+  "reviewers": {
+    "octocat": "U0000000002",
+    "example-team": "U0000000003"
+  },
+  "ticketRegex": "[A-Z]{2,}-\\d+",
+  "ticketBaseUrl": "<tracker browse URL ending in a slash>",
+  "timezone": "America/New_York",
+  "hours": { "start": "08:30", "end": "17:30", "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri"] }
+}
