@@ -41,6 +41,7 @@ These are pstack-claude's own steps. The source for them is [the install section
 | MiniMax Code | Check that `${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins/pstack` does not exist, then `git clone https://github.com/michael-denyer/pstack-claude`, `mkdir -p "${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins"` and `cp -R pstack-claude/plugins/pstack "${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins/pstack"` | Untested |
 | OpenCode 2 | `opencode plugin add 'github:michael-denyer/pstack-claude#main'`, or clone pstack-claude and add the absolute path to `plugins/pstack/opencode` to the `plugins` array in `~/.config/opencode/opencode.jsonc` | Untested |
 | Antigravity (agy) | `git clone https://github.com/michael-denyer/pstack-claude`, then `agy plugin install ./pstack-claude/plugins/pstack` | Untested |
+| DeepSeek Harness (skills-only) | Clone pstack-claude and link each folder in `plugins/pstack/skills/` into `$HOME/.agents/skills/`, with the loop under [Other harnesses](https://github.com/michael-denyer/pstack-claude#other-harnesses) | Untested |
 | Gemini CLI | Clone pstack-claude and link each folder in `plugins/pstack/skills/` into `$HOME/.agents/skills/`, with the loop under [Other harnesses](https://github.com/michael-denyer/pstack-claude#other-harnesses) | Untested |
 | Prime Agent | The same as Gemini CLI | Untested |
 
@@ -61,6 +62,7 @@ If the harness asks for a scope, pick user scope, so playbook works in every rep
 | MiniMax Code | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
 | OpenCode 2 | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
 | Antigravity (agy) | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
+| DeepSeek Harness (skills-only) | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
 | Gemini CLI | `npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skill learn` | Untested |
 | Prime Agent | The same as Gemini CLI | Untested |
 
@@ -89,6 +91,7 @@ Link from a folder that updates in place. A link into a versioned cache folder k
 | MiniMax Code | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
 | OpenCode 2 | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
 | Antigravity (agy) | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
+| DeepSeek Harness (skills-only) | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
 | Gemini CLI | `scripts/playbook.mjs` in the installed `playbook` skill folder | Untested |
 | Prime Agent | The same as Gemini CLI | Untested |
 
@@ -109,6 +112,7 @@ Playbook finds pstack without help when the harness keeps a plugin cache in a do
 | MiniMax Code | Set `PLAYBOOKS_PSTACK_DIR=${MINIMAX_DATA_DIR:-$HOME/.minimax}/plugins/pstack`, the folder the `cp` in step 1 writes | Untested |
 | OpenCode 2 | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone. pstack-claude's README names no path for the native Git package. | Untested |
 | Antigravity (agy) | Set `PLAYBOOKS_PSTACK_DIR=$HOME/.gemini/config/plugins/pstack`, where pstack-claude says `agy plugin install` puts the bundle | Untested |
+| DeepSeek Harness (skills-only) | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone | Untested |
 | Gemini CLI | Set `PLAYBOOKS_PSTACK_DIR` to `plugins/pstack` in your pstack-claude clone | Untested |
 | Prime Agent | The same as Gemini CLI | Untested |
 
@@ -131,6 +135,7 @@ After setup, start a new session, so the harness loads `/<handle>-mode`. To chec
 | MiniMax Code | Ask the agent to run the `setup` skill by name. pstack-claude's MiniMax Code notes give no skill command. | Untested |
 | OpenCode 2 | Ask the agent to run the `setup` skill by name. pstack-claude's `pstack-` skill IDs are for its plugin, and playbook installs as a plain skill. | Untested |
 | Antigravity (agy) | Ask the agent to run the `setup` skill by name. pstack-claude's Antigravity notes give no skill command. | Untested |
+| DeepSeek Harness (skills-only) | Ask the agent to run the `setup` skill by name. pstack-claude says these harnesses have no routing hook, so you name the skill. | Untested |
 | Gemini CLI | Ask the agent to run the `setup` skill by name. pstack-claude says these harnesses have no routing hook, so you name the skill. | Untested |
 | Prime Agent | The same as Gemini CLI | Untested |
 

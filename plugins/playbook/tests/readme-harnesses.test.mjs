@@ -20,7 +20,7 @@ function pstackReadmePath() {
 /**
  * pstack-claude names a harness in an install `<summary>`, or in the sentence under "Other harnesses" that lists
  * the harnesses reading `~/.agents/skills/`. A listed item that names a harness already found, such as
- * "skills-only Codex installs", is a variant of it, not a harness.
+ * "skills-only Codex installs", is a variant of it, not a harness, even when the summary adds a parenthetical.
  */
 function pstackHarnesses(readme) {
   const summaries = [...readme.matchAll(/<summary><strong>(.+?)<\/strong><\/summary>/g)].map((m) => m[1]);
@@ -29,7 +29,8 @@ function pstackHarnesses(readme) {
   assert.ok(shared, 'pstack-claude README no longer lists the harnesses that read ~/.agents/skills/; update this parser');
   for (const item of shared[1].replace(/\([^)]*\)/g, '').split(/,\s*(?:and\s+)?|\s+and\s+/)) {
     const name = item.trim();
-    if (name && !harnesses.some((known) => name.includes(known))) harnesses.push(name);
+    // A harness's parenthetical, as in "DeepSeek Harness (skills-only)", is dropped before matching its variant.
+    if (name && !harnesses.some((known) => name.includes(known.replace(/\s*\([^)]*\)/g, '')))) harnesses.push(name);
   }
   return harnesses;
 }

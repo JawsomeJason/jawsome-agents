@@ -39,9 +39,9 @@ A video with no description has no `>` lines. When the metadata lookup fails, th
 
 ## save
 
-Fetches as above, then writes `<notes_dir>/<title>.md` (characters file systems refuse are dropped from the title) and prints `<path> (<count> caption lines)`. Each save also rebuilds `<notes_dir>/index.md`: one table row per note (saved date, linked title, channel, length), newest save first, read from the notes' properties. When a note in `notes_dir` already has the video's `watch?v=<id>` URL as its `source`, it prints `<that path> (already saved)` and fetches nothing. The note:
+Fetches as above, then writes `<notes_dir>/<title>.md` (characters file systems refuse are dropped from the title) and prints `<path> (<count> caption lines)`. Each save also rebuilds `<notes_dir>/index.md`: one table row per note (saved date, linked title, channel, length), newest save first, read from the notes' properties. When a note in `notes_dir` already has the video's `watch?v=<id>` URL as its `source`, it prints `<that path> (already saved)` and fetches nothing. Time links below are the https short link `youtu.be/<id>?t=<seconds>`. The note:
 
-````text
+```text
 ---
 source: <watch-page URL>
 channel: <channel>
@@ -56,25 +56,25 @@ tags: [youtube]
 
 ## Description
 
-<description, unquoted; each chapter line such as `0:00 Intro` or `(0:18) - Rule` gets a `1. ` prefix so it renders as an ordered list and its time links to that moment (`[0:00](https://youtu.be/<id>?t=0)`), a plain line followed by another plain line ends in `\` so each shows on its own line, and a blank line separates a list from plain text and surrounds a separator line such as `--------`>
+<description, unquoted; each chapter line such as `0:00 Intro` or `(0:18) - Rule` gets a `1. ` prefix so it renders as an ordered list and its time links to that moment (`[0:00](youtu.be/<id>?t=0)`), a plain line followed by another plain line ends in `\` so each shows on its own line, and a blank line separates a list from plain text and surrounds a separator line such as `--------`>
 
 - Youtube: <channel URL>
 
 ## Transcript
 
-[m:ss](https://youtu.be/<id>?t=<seconds>) <the whole sentences that start in that minute, joined; m:ss is when the first one starts, linked to that moment>
+[m:ss](youtu.be/<id>?t=<seconds>) <the whole sentences that start in that minute, joined; m:ss is when the first one starts, linked to that moment>
 
 [m:ss](...) ...
-````
+```
 
 ## text
 
 `yt.sh text <note|fetch file>` prints every caption joined into one paragraph per minute, each opening with the exact time its first sentence starts, with a blank line between. A saved note already holds this, so for a note it prints the transcript section as is:
 
 ```text
-[0:00](https://youtu.be/<id>?t=0) <sentences that start in minute 0>
+[0:00](youtu.be/<id>?t=0) <sentences that start in minute 0>
 
-[1:02](https://youtu.be/<id>?t=62) <sentences that start in minute 1>
+[1:02](youtu.be/<id>?t=62) <sentences that start in minute 1>
 ```
 
 ## source and relink
