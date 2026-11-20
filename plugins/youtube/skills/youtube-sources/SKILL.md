@@ -8,11 +8,11 @@ argument-hint: "<note path or title> [--no-search]"
 
 # YouTube sources
 
-Links go in a linked copy, `$YT_SOURCES_DIR/<note name> (linked).md`, never in the note itself: an agent chooses each link and can be wrong, and the note holds only what scripts made. `../youtube-transcript/scripts/yt.sh source` writes every link; the note only gains a `linked:` property pointing at the copy. Shapes: [yt.schema.md](../youtube-transcript/references/schemas/yt.schema.md#source-and-relink).
+Links go in a linked copy, `$YT_SOURCES_DIR/<note name> (linked).md`, never in the note itself: an agent chooses each link and can be wrong, and the note holds only what scripts made. `../youtube-transcript/scripts/yt.sh source` writes every link; the note only gains a `linked:` property pointing at the copy. Shapes: the source and relink section of youtube-transcript's `references/schemas/yt.schema.md`.
 
 1. Resolve the note: a path, or a title matched against `$YT_NOTES_DIR/*.md`. Ask in one line if two fit.
-2. Hand the note's path to one Sonnet subagent with steps 3 and 4, so the transcript stays out of your context. For several notes, run one subagent per note, at most 5 at once.
-3. The subagent reads the whole note, in parts when a reader cuts it short, and lists, on first mention, each specific talk, video, post, paper, repo or event the speaker names, and each person and tool or product. Named products count as tools, including Anthropic's own (Claude Code, Opus 5.5). It skips the video's own creator, the bare words "Anthropic" or "Claude", and first names with no surname. It adds only links the copy does not already have. For each:
+2. Hand the note's path to one subagent on a fast, cheap model with steps 3 and 4, so the transcript stays out of your context. For several notes, run one subagent per note, at most 5 at once.
+3. The subagent reads the whole note, in parts when a reader cuts it short, and lists, on first mention, each specific talk, video, post, paper, repo or event the speaker names, and each person and tool or product. Named products count as tools, including the AI products the video is about. It skips the video's own creator, a bare company or product-family name with no specific product, and first names with no surname. It adds only links the copy does not already have. For each:
    - **author link**: the description holds its URL. Kind `author`.
    - **found link**: no URL in the description, and the user did not pass `--no-search`. Search the web and open the page. Link it only when the page itself confirms it: the same talk or event name, a person's own profile showing the name and role, or a tool's official docs. Kind `found`. When nothing confirms, skip it: a wrong link is worse than none.
 4. For each, run `yt.sh source "<note>" "<words exactly as in the transcript>" <url> <kind>`. Auto captions garble names, so use the transcript's spelling. On exit 1, fix the phrase from the message or skip.
