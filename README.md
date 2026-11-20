@@ -16,7 +16,7 @@ Agent skills that run in any harness that reads the [Agent Skills spec](https://
 | `choosing-a-model` | Picks a model tier and reasoning effort for a job by capability, speed and cost, starts efficiency-first or capability-first, and settles the pick with an eval. See its [README](plugins/choosing-a-model/README.md). |
 | `prompt-craft` | `spec` interviews you for the goal behind a task and writes a small spec with criteria set before the work. `skill-audit` checks a skill against the rules for triggering, one job, scripts and a lessons loop. `wiki` compiles saved sources into a linked markdown wiki and lints it. See its [README](plugins/prompt-craft/README.md). |
 
-Invoke `standards` as `/standards [command] [scope]`:
+| `ping` | Posts pull request review asks to a team chat channel in one fixed format, reusing earlier threads and never pinging twice. A script decides every message from pull request data and channel history, and the agent sends each one verbatim. Previews by default. See its [README](plugins/ping/README.md). | | `claudecode-ping-guard` | Claude Code only. Blocks any message to the ping channel that is not an unsent action from the `ping` plan. See its [README](plugins/claudecode-ping-guard/README.md). | Invoke `standards` as `/standards [command] [scope]`:
 
 - `command` is one of `mine`, `write`, `review`, `prune` or `doctor`. With no argument, the skill shows a menu and waits.
 - `scope` is a path or glob, an area from the generated standards, or a § number such as `§2`. A scope with no command runs `review` on it.
@@ -61,10 +61,11 @@ npx skills add JawsomeJason/jawsome-agents --skill playbook --skill setup --skil
 npx skills add JawsomeJason/jawsome-agents --skill pocket-card-rules --skill pocket-deck-glyphs --skill pocket-deck-playbook --skill pocket-deck-sound
 npx skills add JawsomeJason/jawsome-agents --skill reference-measure
 npx skills add JawsomeJason/jawsome-agents --skill youtube-transcript
+npx skills add JawsomeJason/jawsome-agents --skill ping
 npx skills add JawsomeJason/jawsome-agents --skill spec --skill skill-audit --skill wiki
 ```
 
-The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `pocket-card-rules`, `pocket-deck-glyphs`, `pocket-deck-playbook`, `pocket-deck-sound`, `reference-measure`, `youtube-transcript`, `spec`, `skill-audit` and `wiki` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
+The [skills CLI](https://skills.sh) asks which harnesses to install into, then links the skill into each one's skills folder. `standards`, `enforce`, `harden`, `playbook`, `setup`, `learn`, `pocket-card-rules`, `pocket-deck-glyphs`, `pocket-deck-playbook`, `pocket-deck-sound`, `reference-measure`, `youtube-transcript`, `ping`, `spec`, `skill-audit` and `wiki` are the portable skills here, so they are the ones the CLI lists. `enforce` and `harden` hand work to each other, so install both.
 
 ### A repo that commits its skills with rulesync
 
@@ -99,6 +100,7 @@ node --test 'scripts/*.test.mjs'                   # tests for the lint and test
 node --test 'plugins/standards/tests/*.test.mjs'   # tests for the standards scripts
 node --test 'plugins/playbook/tests/*.test.mjs'   # tests for playbook
 node --test 'plugins/reference-craft/tests/*.test.mjs'  # tests for the reference-craft scripts
+node --test 'plugins/ping/tests/*.test.mjs'  # tests for ping
 node scripts/test-harnesses.mjs                    # real runs in each installed harness
 ```
 
