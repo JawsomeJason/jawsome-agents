@@ -92,8 +92,8 @@ const date = (s) => Date.parse(s);
 export function decide(pr, thread, config) {
   if (pr.state !== 'OPEN') return { skip: pr.state === 'MERGED' ? 'merged' : 'closed' };
   if (pr.isDraft) return { skip: 'draft' };
-  const reviews = (pr.reviews ?? []).filter((r) => isHuman(r.author, pr.author));
-  const current = (pr.latestReviews ?? []).filter((r) => isHuman(r.author, pr.author));
+  const reviews = (pr.reviews ?? []).filter((r) => !r.bot && isHuman(r.author, pr.author));
+  const current = (pr.latestReviews ?? []).filter((r) => !r.bot && isHuman(r.author, pr.author));
   if (current.some((r) => r.state === 'APPROVED')) return { skip: 'already approved' };
   if (pr.conflicting) return { skip: 'merge conflicts' };
   if ((pr.checks ?? []).some((c) => c.bucket === 'fail')) return { skip: 'required checks failing' };
@@ -253,7 +253,8 @@ export function preview(plan) {
 
 const gh = (args) => JSON.parse(execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
 
-const THREADS = 'query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{isResolved comments(last:1){nodes{author{login}}}}}}}}';
+// A GitHub App reviewer such as `cursor` has no [bot] suffix, so only its type marks it.
+const THREADS = 'query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviews(last:100){nodes{author{__typename login}}} reviewThreads(first:100){nodes{isResolved comments(last:1){nodes{author{login}}}}}}}}';
 
 // `gh pr checks` exits non-zero while checks fail or run, but still prints the JSON.
 function requiredChecks(repo, number) {
@@ -273,6 +274,7 @@ export function fetchPr(repo, number) {
   const [o, r] = repo.split('/');
   const parent = gh(['pr', 'list', '-R', repo, '--head', v.baseRefName, '--state', 'open', '--json', 'number'])[0]?.number ?? null;
   const t = gh(['api', 'graphql', '-f', `query=${THREADS}`, '-f', `o=${o}`, '-f', `r=${r}`, '-F', `n=${number}`]);
+  const bots = new Set(t.data.repository.pullRequest.reviews.nodes.filter((n) => n.author?.__typename === 'Bot').map((n) => n.author.login));
   return {
     repo,
     number: v.number,
@@ -287,8 +289,8 @@ export function fetchPr(repo, number) {
     state: v.state,
     author: v.author?.login,
     reviewRequests: v.reviewRequests.map((q) => ({ login: q.login, slug: q.slug })),
-    reviews: v.reviews.map((x) => ({ author: x.author?.login, state: x.state, submittedAt: x.submittedAt })),
-    latestReviews: v.latestReviews.map((x) => ({ author: x.author?.login, state: x.state, submittedAt: x.submittedAt })),
+    reviews: v.reviews.map((x) => ({ author: x.author?.login, bot: bots.has(x.author?.login), state: x.state, submittedAt: x.submittedAt })),
+    latestReviews: v.latestReviews.map((x) => ({ author: x.author?.login, bot: bots.has(x.author?.login), state: x.state, submittedAt: x.submittedAt })),
     commits: v.commits.map((c) => ({ date: c.committedDate })),
     threads: t.data.repository.pullRequest.reviewThreads.nodes.map((n) => ({ resolved: n.isResolved, lastAuthor: n.comments.nodes[0]?.author?.login })),
   };
