@@ -1,7 +1,7 @@
 {
   "name": "ping",
   "description": "Posts pull request review asks to a team chat channel in one fixed format, reusing earlier threads and never pinging twice; a script decides every message and the agent sends it verbatim.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Jason Featheringham",
     "email": "jason@jawsomejason.com"

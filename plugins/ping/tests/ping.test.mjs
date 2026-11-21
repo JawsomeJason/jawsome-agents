@@ -158,6 +158,8 @@ test('bots and the author are not reviewers', () => {
   assert.equal(plan([feedback(only)], pinged(1)).actions[0].kind, 'skip');
   const approvedByBot = pr(1, { latestReviews: [{ author: 'ci[bot]', state: 'APPROVED' }] });
   assert.equal(plan([approvedByBot]).actions[0].kind, 'send');
+  const approvedByApp = pr(1, { latestReviews: [{ author: 'cursor', bot: true, state: 'APPROVED' }] });
+  assert.equal(plan([approvedByApp]).actions[0].kind, 'send');
 });
 
 test('needs-reply: a reviewer question is last in the thread', () => {
