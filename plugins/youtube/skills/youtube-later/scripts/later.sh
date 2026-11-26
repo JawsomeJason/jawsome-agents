@@ -27,7 +27,8 @@ gogyt() {
 pages() {
   local token="" doc
   while :; do
-    doc="$(gogyt "$@" --max 50 ${token:+--page "${token}"} | tr -d '\n')"
+    # Bash drops set -e inside $(...), so each failure has to exit by hand.
+    doc="$(gogyt "$@" --max 50 ${token:+--page "${token}"} | tr -d '\n')" || exit $?
     printf '%s\n' "${doc}"
     token="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("nextPageToken") or "")' "${doc}")"
     [[ -n "${token}" ]] || break
@@ -36,13 +37,19 @@ pages() {
 
 playlist_id() {
   local id
-  id="$(pages playlists list --mine | python3 "${HERE}/later.py" playlist "${TITLE}")"
+  id="$(pages playlists list --mine | python3 "${HERE}/later.py" playlist "${TITLE}")" || exit $?
   [[ -n "${id}" ]] || { echo "no playlist titled \"${TITLE}\" on ${ACCOUNT}" >&2; exit 4; }
   echo "${id}"
 }
 
+# The id is assigned first: a failed $(...) used as an argument would not stop the script.
 case "${1:-}" in
-  list) pages playlists items list --playlist-id "$(playlist_id)" | python3 "${HERE}/later.py" list ;;
-  find) pages playlists items list --playlist-id "$(playlist_id)" | python3 "${HERE}/later.py" find "${2:?words required}" ;;
+  list)
+    id="$(playlist_id)"
+    pages playlists items list --playlist-id "${id}" | python3 "${HERE}/later.py" list ;;
+  find)
+    words="${2:?words required}"
+    id="$(playlist_id)"
+    pages playlists items list --playlist-id "${id}" | python3 "${HERE}/later.py" find "${words}" ;;
   *) sed -n '2,5p' "$0" >&2; exit 64 ;;
 esac
