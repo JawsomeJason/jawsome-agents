@@ -61,6 +61,7 @@ node --test 'plugins/standards/tests/*.test.mjs'  # the standards scripts
 node --test 'plugins/playbook/tests/*.test.mjs'  # the playbook CLI
 node --test 'plugins/reference-craft/tests/*.test.mjs'  # the reference-craft scripts
 node --test 'plugins/ping/tests/*.test.mjs'  # ping
+node --test 'plugins/youtube/tests/*.test.mjs'  # youtube
 ```
 
 Errors print as `file:line rule message`, and the lint exits non-zero when it finds any. Every check has a violating fixture in `scripts/lint-fixtures/`, and `scripts/lint.test.mjs` proves each fixture fails its rule and the clean fixture passes. Add a fixture and a test with every check you add.
